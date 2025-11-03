@@ -1,0 +1,7 @@
+BROWSER=firefox
+EDITOR=nvim
+SHELL=fish
+
+# Should point to wherever the arch config is stored
+SCRIPTS_DIR=/home/firesquid/arch-config/scripts
+SYSTEM_CONFIG_DIR=/home/firesquid/arch-config

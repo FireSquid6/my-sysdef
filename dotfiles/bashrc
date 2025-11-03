@@ -1,0 +1,7 @@
+[[ $- == *i* ]] || return
+
+export PATH="$PATH:$SCRIPTS_DIR"
+
+eval "$(direnv hook bash)"
+
+alias e='NVIM_APPNAME=ink-nvim nvim'

@@ -1,0 +1,13 @@
+[user]
+	email = jdeiss06@gmail.com
+	name = firesquid6
+[credential "https://github.com"]
+  helper =
+  helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+  helper =
+  helper = !/usr/bin/gh auth git-credential
+[init]
+	defaultBranch = main
+[safe]
+	directory = /etc/nixos
