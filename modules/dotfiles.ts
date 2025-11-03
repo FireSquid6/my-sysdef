@@ -8,7 +8,7 @@ const m: ModuleGenerator = () => {
   return {
     name: "dotfiles",
     variables: {
-      "HOME": "/home/firesquid/"
+      "HOME": "/home/firesquid"
     },
     files: {
       "{HOME}/.vimrc": "./dotfiles/vimrc",

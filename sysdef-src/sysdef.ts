@@ -189,23 +189,26 @@ export function getPackageList(modules: Module[], lockfile: Lockfile): PackageIn
 
       const packageInfos: PackageInfo[] = packages.map(p => {
         const split = p.split(":");
-        switch (split.length) {
-          case 1:
-            const name = split[0]!;
-            const version = lockfile.getVersion(provider, name) ?? ANY_VERSION_STRING;
-            return {
-              name,
-              version,
-              provider,
-            }
-          case 2:
-            return {
-              name: split[0]!,
-              provider: provider,
-              version: split[1]!,
-            }
-          default:
-            errorOut(`Improper package name: ${p}`);
+
+        if (split.length === 1) {
+          const name = split[0]!;
+          const version = lockfile.getVersion(provider, name) ?? ANY_VERSION_STRING;
+          return {
+            name,
+            version,
+            provider,
+          }
+        } else {
+          const name = split[0]!;
+          split.shift();
+          const version = split.join(":");
+
+          return {
+            name,
+            version,
+            provider,
+
+          }
         }
       });
 
@@ -307,7 +310,8 @@ export function syncFiles(modules: Module[], baseStore: VariableStore, fs: Files
     for (const [fp, file] of Object.entries(mod.files)) {
       const destinationFilepath = store.fillIn(fp)
       if (typeof file === "string") {
-        const sourceFilepath = path.resolve(path.join("./dotfiles", file));
+        const s = path.resolve(path.join("./dotfiles", file));
+        const sourceFilepath = store.fillIn(s);
         fs.ensureSymlink(destinationFilepath, sourceFilepath);
         console.log(`Linked file: ${sourceFilepath} -> ${destinationFilepath}`);
       } else {
@@ -320,7 +324,8 @@ export function syncFiles(modules: Module[], baseStore: VariableStore, fs: Files
     for (const [directoryPath, directory] of Object.entries(mod.directories)) {
       const destinationPath = store.fillIn(directoryPath);
 
-      const sourcePath = path.resolve(path.join("./dotfiles", directory));
+      const s = path.resolve(path.join("./dotfiles", directory));
+      const sourcePath = store.fillIn(s);
       fs.ensureSymlink(destinationPath, sourcePath);
       console.log(`Linked directory: ${sourcePath} -> ${destinationPath}`);
     }
