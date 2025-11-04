@@ -1,6 +1,7 @@
-#!/usr/bin/env bun
-import path from "path";
-import { cli } from "../sysdef-src/index";
+#!/usr/bin/env bash
 
-process.env.SYSDEF_ROOT_DIR = path.resolve(import.meta.dir, "..");
-cli.parse();
+
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+"$SCRIPT_DIR/bun" run "$SCRIPT_DIR/../sysdef-src/entrypoint.ts" "$@"

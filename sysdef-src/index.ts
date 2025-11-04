@@ -56,7 +56,7 @@ const syncCommand = cli.command("sync")
     const filesystem = options.dryRun ? dryFilesystem : normalFilesystem;
 
     console.log("\nSYNCING FILES:");
-    await syncFiles(modules, store, filesystem);
+    await syncFiles(modules, store, filesystem, rootDir);
 
     if (filesOnly) {
       return;

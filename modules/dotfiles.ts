@@ -28,7 +28,8 @@ const m: ModuleGenerator = () => {
       "{HOME}/.config/alacritty/alacritty.toml": "./dotfiles/alacritty.toml",
       "{HOME}/.gitconfig": "./dotfiles/gitconfig",
       "{HOME}/.tmux.conf": "./dotfiles/tmux.conf",
-      "/etc/environment": "./dotfiles/globalenv",
+      // TODO: 
+      // "/etc/environment": "./dotfiles/globalenv",
     },
     directories: {},
     packages: {

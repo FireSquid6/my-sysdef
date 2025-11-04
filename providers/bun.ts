@@ -6,32 +6,39 @@ import { v } from "../sysdef-src/validation";
 
 // bun povider - installs packages globally
 
+const BUN_USER = process.env.SUDO_USER || process.env.USER || "root";
+
 const packageJsonSchema = v.obj({
   dependencies: v.record(v.string(), v.string()),
-})
+});
+
 
 const provider: ProviderGenerator = (run: Shell) => {
   return {
     name: "bun",
     async checkInstallation() {
-      const result = await run(`which bun`, true);
+      const result = await run(`sudo -u ${BUN_USER} which bun`, true);
       if (result.code !== 0) {
         throw new Error("bun is not installed or not in PATH");
       }
     },
     // this should be able to handle the case where a package is requested to be intsalled of a different version! 
     async install(packages: PackageInfo[]) {
-      await Promise.all(packages.map(p => run(`bun add -g ${p.name}@${p.version === ANY_VERSION_STRING
+      await Promise.all(packages.map(p => run(`sudo -u ${BUN_USER} bun add -g ${p.name}@${p.version === ANY_VERSION_STRING
         ? "latest"
         : p.version
       } -E`)));
     },
 
     async uninstall(packages: string[]) {
-      await Promise.all(packages.map(p => run(`bun remove -g ${p}`)))
+      await Promise.all(packages.map(p => run(`sudo -u ${BUN_USER} bun remove -g ${p}`)))
     },
     async getInstalled() {
-      const homedir = os.homedir();
+      const result = await run(`sudo -u ${BUN_USER} bash -c 'echo $HOME'`, true);
+      if (result.code !== 0) {
+        throw new Error("Failed to get home directory for BUN_USER");
+      }
+      const homedir = result.output.trim();
       const packagePath = path.join(homedir, ".bun/install/global/package.json");
 
       if (!fs.existsSync(packagePath)) {
@@ -56,7 +63,7 @@ const provider: ProviderGenerator = (run: Shell) => {
       });
     },
     async update(packages: string[]) {
-      await Promise.all(packages.map(p => run(`bun update -g ${p}`)))
+      await Promise.all(packages.map(p => run(`sudo -u ${BUN_USER} bun update -g ${p}`)))
     },
   }
 }

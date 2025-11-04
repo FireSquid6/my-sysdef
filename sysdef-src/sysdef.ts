@@ -303,14 +303,14 @@ export async function updateLockfile(providers: Provider[], lockfile: Lockfile) 
 }
 
 
-export async  function syncFiles(modules: Module[], baseStore: VariableStore, fs: Filesystem) {
+export async  function syncFiles(modules: Module[], baseStore: VariableStore, fs: Filesystem, rootDir: string) {
   for (const mod of modules) {
     const store = baseStore.branchOff(mod.variables);
 
     for (const [fp, file] of Object.entries(mod.files)) {
       const destinationFilepath = store.fillIn(fp)
       if (typeof file === "string") {
-        const s = path.resolve(path.join("./dotfiles", file));
+        const s = path.resolve(path.join(rootDir, file));
         const sourceFilepath = store.fillIn(s);
         await fs.ensureSymlink(destinationFilepath, sourceFilepath);
         console.log(`Linked file: ${sourceFilepath} -> ${destinationFilepath}`);
