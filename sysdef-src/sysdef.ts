@@ -303,7 +303,7 @@ export async function updateLockfile(providers: Provider[], lockfile: Lockfile) 
 }
 
 
-export function syncFiles(modules: Module[], baseStore: VariableStore, fs: Filesystem) {
+export async  function syncFiles(modules: Module[], baseStore: VariableStore, fs: Filesystem) {
   for (const mod of modules) {
     const store = baseStore.branchOff(mod.variables);
 
@@ -312,11 +312,11 @@ export function syncFiles(modules: Module[], baseStore: VariableStore, fs: Files
       if (typeof file === "string") {
         const s = path.resolve(path.join("./dotfiles", file));
         const sourceFilepath = store.fillIn(s);
-        fs.ensureSymlink(destinationFilepath, sourceFilepath);
+        await fs.ensureSymlink(destinationFilepath, sourceFilepath);
         console.log(`Linked file: ${sourceFilepath} -> ${destinationFilepath}`);
       } else {
         const sourceContents = file(store);
-        fs.writeFile(destinationFilepath, sourceContents);
+        await fs.writeFile(destinationFilepath, sourceContents);
         console.log(`Generated: ${destinationFilepath}`);
       }
     }
@@ -326,7 +326,7 @@ export function syncFiles(modules: Module[], baseStore: VariableStore, fs: Files
 
       const s = path.resolve(path.join("./dotfiles", directory));
       const sourcePath = store.fillIn(s);
-      fs.ensureSymlink(destinationPath, sourcePath);
+      await fs.ensureSymlink(destinationPath, sourcePath);
       console.log(`Linked directory: ${sourcePath} -> ${destinationPath}`);
     }
   }

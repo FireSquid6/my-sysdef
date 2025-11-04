@@ -11,7 +11,6 @@ const m: ModuleGenerator = () => {
       "HOME": "/home/firesquid"
     },
     files: {
-      "{HOME}/.vimrc": "./dotfiles/vimrc",
       "{HOME}/.bashrc": "./dotfiles/bashrc",
       "{HOME}/.config/betterlockscreen/betterlockscreenrc": "./dotfiles/betterlockscreenrc",
       "{HOME}/.config/dunst/dunstrc": "./dotfiles/dunstrc",
