@@ -1,6 +1,32 @@
 import { ANY_VERSION_STRING, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
 
 // yay provider - installs packages from AUR and official repos globally
+const MAX_AT_ONCE = 5;
+
+function partitionArray<T>(packages: T[], partitionSize: number): T[][] {
+  const partitions: T[][] = [];
+  let currentPartition: T[] = [];
+
+  for (const p of packages) {
+    if (currentPartition.length >= partitionSize) {
+      partitions.push(currentPartition);
+      currentPartition = [];
+    }
+    currentPartition.push(p);
+  }
+
+  partitions.push(currentPartition);
+
+  return partitions;
+}
+
+function stringifyPartition(packages: PackageInfo[]): string {
+  return packages.map(p => {
+    const version = p.version === ANY_VERSION_STRING ? "" : `=${p.version}`;
+    return `${p.name}${version};`
+  })
+    .join(" ");
+}
 
 const provider: ProviderGenerator = (run: Shell) => {
   return {
@@ -12,14 +38,23 @@ const provider: ProviderGenerator = (run: Shell) => {
       }
     },
     async install(packages: PackageInfo[]) {
-      await Promise.all(packages.map(p => {
-        const version = p.version === ANY_VERSION_STRING ? "" : `=${p.version}`;
-        return run(`yay -S --noconfirm ${p.name}${version}`);
-      }));
+      const partitions = partitionArray(packages, MAX_AT_ONCE);
+
+      for (const part of partitions) {
+        const string = stringifyPartition(part);
+        console.log(`Installing ${string}`);
+        await run(`yay -S --noconfirm ${string}`);
+      }
     },
 
     async uninstall(packages: string[]) {
-      await Promise.all(packages.map(p => run(`yay -Rs --noconfirm ${p}`)));
+      const partitions = partitionArray(packages, MAX_AT_ONCE);
+
+      for (const part of partitions) {
+        const string = part.join(" ");
+        console.log(`Uninstalling ${string}`);
+        await run(`yay -Rs --noconfirm ${string}`);
+      }
     },
 
     async getInstalled() {

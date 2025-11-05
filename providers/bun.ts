@@ -1,12 +1,13 @@
-import { ANY_VERSION_STRING, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
-import os from "os";
+import { ANY_VERSION_STRING, errorOut, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
 import fs from "fs";
 import path from "path";
 import { v } from "../sysdef-src/validation";
 
-// bun povider - installs packages globally
 
-const BUN_USER = process.env.SUDO_USER || process.env.USER || "root";
+// getting errors? You need to update BUN_USER to be the user you have bun installed with (bun does a per user installation)
+const BUN_USER = "firesquid"
+const bunBinary = `/home/${BUN_USER}/.bun/bin/bun`;
+const bunPackageJsonPath = `/home/${BUN_USER}/.bun/install/global/package.json`
 
 const packageJsonSchema = v.obj({
   dependencies: v.record(v.string(), v.string()),
@@ -17,9 +18,8 @@ const provider: ProviderGenerator = (run: Shell) => {
   return {
     name: "bun",
     async checkInstallation() {
-      const result = await run(`sudo -u ${BUN_USER} which bun`, true);
-      if (result.code !== 0) {
-        throw new Error("bun is not installed or not in PATH");
+      if (!fs.existsSync(bunBinary)) {
+        errorOut(`Bun binary not found in ${bunBinary}--you may need to edit the provider configuration, see bun.ts`)
       }
     },
     // this should be able to handle the case where a package is requested to be intsalled of a different version! 
@@ -34,23 +34,16 @@ const provider: ProviderGenerator = (run: Shell) => {
       await Promise.all(packages.map(p => run(`sudo -u ${BUN_USER} bun remove -g ${p}`)))
     },
     async getInstalled() {
-      const result = await run(`sudo -u ${BUN_USER} bash -c 'echo $HOME'`, true);
-      if (result.code !== 0) {
-        throw new Error("Failed to get home directory for BUN_USER");
-      }
-      const homedir = result.output.trim();
-      const packagePath = path.join(homedir, ".bun/install/global/package.json");
-
-      if (!fs.existsSync(packagePath)) {
-        throw new Error(`Error getting all installed for bun: couldn't find the package json for bun globals in ${packagePath}.`);
+      if (!fs.existsSync(bunPackageJsonPath)) {
+        throw new Error(`Error getting all installed for bun: couldn't find the package json for bun globals in ${bunPackageJsonPath}.`);
 
       }
 
-      const contents = fs.readFileSync(packagePath).toString();
+      const contents = fs.readFileSync(bunPackageJsonPath).toString();
       const pkg = v.parseSafe(JSON.parse(contents), packageJsonSchema);
 
       if (!pkg) {
-        throw new Error(`Package json file in ${packagePath} was not a valid package.json`)
+        throw new Error(`Package json file in ${bunPackageJsonPath} was not a valid package.json`)
       }
 
 
