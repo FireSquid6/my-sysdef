@@ -3,10 +3,20 @@ import type { Filesystem } from "./connections";
 import type { Lockfile } from "./lockfile";
 import { PackageSet } from "./package-set";
 
+// panic function -- we use this a lot. Better to crash and burn then to
+// fail silently
 export function errorOut(error: string): never {
   console.log(`Fatal error: ${error}`);
   process.exit(1);
+}
 
+
+export function getErrorMessage(e: unknown): string {
+  return e instanceof Error 
+    ? e.message 
+    : typeof e === "string"
+    ? e
+    : `${e}`;
 }
 
 // used to store and fill in variables

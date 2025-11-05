@@ -1,0 +1,5 @@
+providers:
+  - bun
+modules:
+  - core
+
