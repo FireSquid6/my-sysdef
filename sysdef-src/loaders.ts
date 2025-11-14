@@ -9,7 +9,6 @@ export async function loadModules(rootDir: string, dryRun: boolean, modulesList:
   const modulesDirectory = path.join(rootDir, "modules");
   console.log(`\nLOADING MODULES FROM ${modulesDirectory}`);
   const toLoad = new Set(modulesList);
-  console.log(toLoad);
 
   if (!fs.existsSync(modulesDirectory)) {
     errorOut(`No modules directory in ${rootDir}`);
@@ -20,8 +19,13 @@ export async function loadModules(rootDir: string, dryRun: boolean, modulesList:
   for (const fp of fs.readdirSync(modulesDirectory)) {
     const filepath = path.join(modulesDirectory, fp);
     const extension = path.extname(filepath);
+    const basename = path.basename(filepath).split(".")[0]!;
     if (!validExtensions.has(extension)) {
       console.log(`Skipping ${fp}, not a valid extension`);
+      continue;
+    }
+    if (!toLoad.has(basename)) {
+      console.log(`Skipping ${basename}, not loaded in config`);
       continue;
     }
 
@@ -31,10 +35,7 @@ export async function loadModules(rootDir: string, dryRun: boolean, modulesList:
       const generator: ModuleGenerator = mod.default as ModuleGenerator;
       const m = generator(shell);
 
-      if (toLoad.has(m.name)) {
-      console.log(`Loaded ${m.name}`);
-        modules.push(m);
-      }
+      modules.push(m);
     } catch (e) {
       console.log(`Error loading ${fp}:`);
       console.log(e);
@@ -61,7 +62,13 @@ export async function loadProviders(rootDir: string, dryRun: boolean, providersL
   for (const fp of fs.readdirSync(providersDirectory)) {
     const filepath = path.join(providersDirectory, fp);
     const extension = path.extname(filepath);
+    const basename = path.basename(filepath).split(".")[0]!;
     if (!validExtensions.has(extension)) {
+      console.log(`Skipping ${fp}, not a valid extension`);
+      continue;
+    }
+    if (!toLoad.has(basename)) {
+      console.log(`Skipping ${basename}, not loaded in config`);
       continue;
     }
 
@@ -70,10 +77,9 @@ export async function loadProviders(rootDir: string, dryRun: boolean, providersL
 
       const generator: ProviderGenerator = mod.default as ProviderGenerator;
       const provider = generator(shell);
-      if (toLoad.has(provider.name)) {
-        console.log(`Loaded ${fp}`);
-        providers.push(provider);
-      }
+
+      console.log(`Loaded ${fp}`);
+      providers.push(provider);
     } catch (e) {
       console.log(`Error loading ${fp}:`);
       console.log(e);
