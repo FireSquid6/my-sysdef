@@ -23,6 +23,7 @@ export function readConfig(rootDir: string): Config {
 
     const text = fs.readFileSync(filepath).toString();
     const object = YAML.parse(text);
+    console.log(object);
     const config = v.parse(object, configSchema);
 
     return config;

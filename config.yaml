@@ -1,5 +1,6 @@
 providers:
-  - bun
+  - yay
 modules:
-  - core
-
+  - dotfiles
+variables:
+  HOMEDIR: "/home/firesquid"

@@ -50,7 +50,8 @@ export namespace v {
     const valid = validator(object);
 
     if (!valid) {
-      throw new Error("Validation failed!");
+      // TODO - better error handling
+      throw new Error("Validation failed! (TODO: better error handling)");
     }
 
     return object;

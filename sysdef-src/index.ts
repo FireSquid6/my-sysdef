@@ -5,6 +5,7 @@ import { Lockfile } from "./lockfile";
 import { dryFilesystem, normalFilesystem } from "./connections";
 import { syncPackages, runEvents, updateLockfile, syncFiles, getPackageList, type PackageInfo, errorOut } from "./sysdef";
 import { Command } from "@commander-js/extra-typings";
+import { readConfig } from "./configuration";
 
 // defaults to $HOME/sysdef. You could change this if you'd like! 
 function getRootDir() {
@@ -36,9 +37,10 @@ const syncCommand = cli.command("sync")
     const dryRun = options.dryRun ?? false;
     const noRemove = options.safe ?? false;
     const filesOnly = options.filesOnly ?? false;
+    const config = readConfig(rootDir);
 
-    const modules = await loadModules(rootDir, dryRun);
-    const providers = await loadProviders(rootDir, dryRun);
+    const modules = await loadModules(rootDir, dryRun, config.modules);
+    const providers = await loadProviders(rootDir, dryRun, config.providers);
     const store = await loadVariables(rootDir);
 
     for (const p of providers) {
@@ -88,7 +90,8 @@ cli.command("providers")
   .description("Subcommand to list all of the installed providers")
   .action(async () => {
     const rootDir = getRootDir();
-    const providers = await loadProviders(rootDir, false);
+    const config = readConfig(rootDir);
+    const providers = await loadProviders(rootDir, false, config.providers);
 
     for (const p of providers) {
       try {
@@ -105,7 +108,8 @@ cli.command("list-installed")
   .argument("[provider]")
   .action(async (provider) => {
     const rootDir = getRootDir();
-    let providers = await loadProviders(rootDir, false);
+    const config = readConfig(rootDir);
+    let providers = await loadProviders(rootDir, false, config.providers);
 
     if (provider !== undefined && providers.find(p => p.name === provider) === undefined) {
       errorOut(`Provider ${provider} was not found.`);
