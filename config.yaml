@@ -2,5 +2,6 @@ providers:
   - yay
 modules:
   - dotfiles
+  - packages
 variables:
   HOMEDIR: "/home/firesquid"

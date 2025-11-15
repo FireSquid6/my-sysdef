@@ -4,6 +4,7 @@ import fs from "fs";
 
 const validExtensions = new Set([".ts", ".tsx", ".js", ".jsx"]);
 
+// TODO - make this only log on verbose mode
 export async function loadModules(rootDir: string, dryRun: boolean, modulesList: string[]): Promise<Module[]> {
   const modules: Module[] = [];
   const modulesDirectory = path.join(rootDir, "modules");

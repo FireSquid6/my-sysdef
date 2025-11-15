@@ -284,23 +284,24 @@ export async function syncPackages(allPackages: Map<string, PackageInfo[]>, prov
       }
     }
 
-    console.log(`  MANAGING PACKGES FOR: ${provider.name}`);
+    console.log(`\nMANAGING PACKGES FOR: ${provider.name}`);
     // TODO - only log this on verbose mode
-    for (const p of noChange) {
-      console.log(`    OK: ${p.name}:${p.version}`);
-    }
+    console.log(`  OK: ${noChange.length} packages`);
+
     for (const p of toInstall) {
-      console.log(`    INSTALLING: ${p.name}:${p.version}`);
+      console.log(`  INSTALLING: ${p.name}:${p.version}`);
     }
     if (!noRemove) {
       for (const p of toUninstall) {
-        console.log(`    REMOVING: ${p.name}:${p.version}`);
+        console.log(`  REMOVING: ${p.name}:${p.version}`);
       }
     }
     // TOOD - prompt for OK
 
-    await provider.install(toInstall);
-    if (!noRemove) {
+    if (toInstall.length > 0) {
+      await provider.install(toInstall);
+    }
+    if (!noRemove && toUninstall.length > 0) {
       await provider.uninstall(toUninstall.map(p => p.name));
     }
   }
