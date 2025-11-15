@@ -4,6 +4,7 @@ import type { ModuleGenerator } from "../sysdef-src/sysdef";
 
 
 
+// TODO - get vim installation working
 const m: ModuleGenerator = () => {
   return {
     name: "dotfiles",
@@ -42,7 +43,6 @@ const m: ModuleGenerator = () => {
       ],
     }
   }
-
 }
 
 

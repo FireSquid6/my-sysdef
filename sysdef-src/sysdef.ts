@@ -2,6 +2,7 @@ import path from "path";
 import type { Filesystem } from "./connections";
 import type { Lockfile } from "./lockfile";
 import { PackageSet } from "./package-set";
+import { request } from "http";
 
 // panic function -- we use this a lot. Better to crash and burn then to
 // fail silently
@@ -284,7 +285,8 @@ export async function syncPackages(allPackages: Map<string, PackageInfo[]>, prov
     }
 
     console.log(`  MANAGING PACKGES FOR: ${provider.name}`);
-    for (const p of alreadyInstalledInfos) {
+    // TODO - only log this on verbose mode
+    for (const p of noChange) {
       console.log(`    OK: ${p.name}:${p.version}`);
     }
     for (const p of toInstall) {
@@ -295,6 +297,7 @@ export async function syncPackages(allPackages: Map<string, PackageInfo[]>, prov
         console.log(`    REMOVING: ${p.name}:${p.version}`);
       }
     }
+    // TOOD - prompt for OK
 
     await provider.install(toInstall);
     if (!noRemove) {

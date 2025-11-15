@@ -1,4 +1,4 @@
-import { ANY_VERSION_STRING, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
+import { ANY_VERSION_STRING, defaultShell, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
 
 // yay provider - installs packages from AUR and official repos globally
 const MAX_AT_ONCE = 5;
@@ -27,6 +27,10 @@ function stringifyPartition(packages: PackageInfo[]): string {
   })
     .join(" ");
 }
+
+// we use the default shell when getting the list of all installed packages since
+// we want that to happen even in a dry run
+const realShell = defaultShell
 
 const provider: ProviderGenerator = (run: Shell) => {
   return {
@@ -58,7 +62,7 @@ const provider: ProviderGenerator = (run: Shell) => {
     },
 
     async getInstalled() {
-      const result = await run(`yay -Qe`);
+      const result = await realShell(`yay -Qe`);
       const lines = result.text.trim().split('\n').filter(line => line.trim());
       
       return lines.map(line => {

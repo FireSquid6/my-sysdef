@@ -17,9 +17,7 @@ export const dryFilesystem: Filesystem = {
   async exists(filepath) {
     return fs.existsSync(filepath);
   },
-  async ensureSymlink(destination, source) {
-    console.log(`Creating symlink ${source} -> ${destination}`);
-  },
+  async ensureSymlink(destination, source) {},
   async copy(source, destination) {
     console.log(`Would be copying ${source} -> ${destination}`);
   },
