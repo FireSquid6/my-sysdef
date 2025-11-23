@@ -40,6 +40,7 @@ const m: ModuleGenerator = () => {
         // the colon indicates a specific version. This will
         // force typescript version 5.9.3
         "typescript:5.9.3",
+        "claude",
       ],
     }
   }

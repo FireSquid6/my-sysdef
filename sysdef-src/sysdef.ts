@@ -3,6 +3,7 @@ import type { Filesystem } from "./connections";
 import type { Lockfile } from "./lockfile";
 import { PackageSet } from "./package-set";
 import { request } from "http";
+import { promptForOk } from "./prompt";
 
 // panic function -- we use this a lot. Better to crash and burn then to
 // fail silently
@@ -285,7 +286,6 @@ export async function syncPackages(allPackages: Map<string, PackageInfo[]>, prov
     }
 
     console.log(`\nMANAGING PACKGES FOR: ${provider.name}`);
-    // TODO - only log this on verbose mode
     console.log(`  OK: ${noChange.length} packages`);
 
     for (const p of toInstall) {
@@ -296,7 +296,7 @@ export async function syncPackages(allPackages: Map<string, PackageInfo[]>, prov
         console.log(`  REMOVING: ${p.name}:${p.version}`);
       }
     }
-    // TOOD - prompt for OK
+    await promptForOk("The above operations will be performed. Is this ok?");
 
     if (toInstall.length > 0) {
       await provider.install(toInstall);

@@ -23,7 +23,7 @@ function partitionArray<T>(packages: T[], partitionSize: number): T[][] {
 function stringifyPartition(packages: PackageInfo[]): string {
   return packages.map(p => {
     const version = p.version === ANY_VERSION_STRING ? "" : `=${p.version}`;
-    return `${p.name}${version};`
+    return `${p.name}${version}`;
   })
     .join(" ");
 }

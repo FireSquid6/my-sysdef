@@ -59,6 +59,7 @@ file-roller
 firefox
 firewalld
 fish
+fuzzel
 galculator
 garcon
 git
