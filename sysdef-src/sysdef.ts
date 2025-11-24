@@ -338,7 +338,7 @@ export async  function syncFiles(modules: Module[], baseStore: VariableStore, fs
     for (const [directoryPath, directory] of Object.entries(mod.directories)) {
       const destinationPath = store.fillIn(directoryPath);
 
-      const s = path.resolve(path.join("./dotfiles", directory));
+      const s = path.resolve(path.join(rootDir, directory));
       const sourcePath = store.fillIn(s);
       await fs.ensureSymlink(destinationPath, sourcePath);
       console.log(`Linked directory: ${sourcePath} -> ${destinationPath}`);

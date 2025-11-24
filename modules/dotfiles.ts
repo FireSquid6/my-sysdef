@@ -32,7 +32,9 @@ const m: ModuleGenerator = () => {
       // TODO: 
       // "/etc/environment": "./dotfiles/globalenv",
     },
-    directories: {},
+    directories: {
+      "{HOME}/.config/hypr": "./dotfiles/hypr",
+    },
     packages: {
       // we can define the packages per provider in this
       "bun": [
