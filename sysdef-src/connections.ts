@@ -40,6 +40,9 @@ export const normalFilesystem: Filesystem = {
   },
   async ensureSymlink(destination, source) {
     // Remove existing file or symlink if it exists
+    const dirname = path.dirname(destination);
+    fs.mkdirSync(dirname, { recursive: true });
+
     if (fs.existsSync(destination)) {
       const stats = fs.lstatSync(destination);
 
@@ -47,8 +50,11 @@ export const normalFilesystem: Filesystem = {
         fs.rmSync(destination);
       } else if (stats.isSymbolicLink()) {
         fs.unlinkSync(destination);
+
+      } else if (stats.isDirectory()) {
+        errorOut(`Directory present in ${destination}. Remove it (and make sure nothing there needs to be backed up!) before continuing again.`);
       } else {
-        errorOut(`Neither file nor link present in ${destination}. Something is probably not right so we are just stopping`);
+        errorOut(`Neither file nor link present in ${destination}. Something is probably not right so we are just stopping. Fix ${destination} manually and retry.`);
       }
     }
 

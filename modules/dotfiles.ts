@@ -29,6 +29,7 @@ const m: ModuleGenerator = () => {
       "{HOME}/.config/alacritty/alacritty.toml": "./dotfiles/alacritty.toml",
       "{HOME}/.gitconfig": "./dotfiles/gitconfig",
       "{HOME}/.tmux.conf": "./dotfiles/tmux.conf",
+      "{HOME}/.config/fuzzel/fuzzel.ini": "./dotfiles/fuzzel.ini",
       // TODO: 
       // "/etc/environment": "./dotfiles/globalenv",
     },
