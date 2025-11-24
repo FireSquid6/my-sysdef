@@ -1,6 +1,5 @@
 import { ANY_VERSION_STRING, errorOut, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
 import fs from "fs";
-import path from "path";
 import { v } from "../sysdef-src/validation";
 
 
