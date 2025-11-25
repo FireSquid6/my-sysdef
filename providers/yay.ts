@@ -47,7 +47,11 @@ const provider: ProviderGenerator = (run: Shell) => {
       for (const part of partitions) {
         const string = stringifyPartition(part);
         console.log(`Installing ${string}`);
-        await run(`yay -S --noconfirm ${string}`);
+        const result = await run(`yay -S --noconfirm ${string}`, true);
+        if (result.code !== 0) {
+          console.log(`Erorr installing packages: ${part}. See the logs below`);
+          console.log(result.text);
+        }
       }
     },
 

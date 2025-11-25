@@ -83,6 +83,7 @@ hwdetect
 hwinfo
 hypridle
 hyprland
+hyprpicker
 hyprpaper
 hyprshot
 inetutils

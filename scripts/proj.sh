@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
 PROJECT=$1
+TYPE=$2
 
 if [ -z "$PROJECT" ]; then
-  echo "Usage: proj.sh <project>"
+  echo "Usage: proj.sh <project> [action]"
   exit 1
 fi
 
@@ -31,4 +32,11 @@ if [ $? -ne 0 ]; then
   tmux send-keys -t "$PROJECT" "nvim" Enter
 fi
 
-alacritty --command tmux attach-session -t "$PROJECT" &
+
+if [[ "$TYPE" == "window" ]]; then
+  alacritty --command tmux attach-session -t "$PROJECT" &
+fi
+
+if [[ "$TYPE" == "attach" ]]; then
+  tmux attach-session-t "$PROJECT"
+fi
