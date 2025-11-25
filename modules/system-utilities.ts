@@ -4,8 +4,15 @@ import type { ModuleGenerator } from "../sysdef-src/sysdef";
 const m: ModuleGenerator = () => {
   return {
     name: "system-utilities",
-    variables: {},
-    files: {},
+    variables: {
+      "HOME": "/home/firesquid"
+    },
+    files: {
+      "{HOME}/.bashrc": "./dotfiles/bashrc",
+      "{HOME}/.profile": "./dotfiles/profile",
+      "{HOME}/.config/starship.toml": "./dotfiles/starship.toml",
+      "{HOME}/.config/fish/config.fish": "./dotfiles/config.fish"
+    },
     directories: {},
     packages: {
       "yay": [

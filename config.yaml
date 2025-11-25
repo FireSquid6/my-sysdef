@@ -3,7 +3,6 @@ providers:
   # bun provider is still broken
   # - bun
 modules:
-  - dotfiles
   - desktop
   - core
   - audio-media
