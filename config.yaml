@@ -4,6 +4,17 @@ providers:
   # - bun
 modules:
   - dotfiles
-  - packages
+  - desktop
+  - core
+  - audio-media
+  - applications
+  - endeavouros
+  - development
+  - file-management
+  - fonts
+  - hardware
+  - network
+  - system-core
+  - system-utilities
 variables:
   HOMEDIR: "/home/firesquid"
