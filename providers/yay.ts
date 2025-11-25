@@ -1,32 +1,8 @@
-import { ANY_VERSION_STRING, defaultShell, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
+import { defaultShell, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
+import { partitionArray, stringifyPackageParition } from "../sysdef-src/prompt";
 
 // yay provider - installs packages from AUR and official repos globally
 const MAX_AT_ONCE = 5;
-
-function partitionArray<T>(packages: T[], partitionSize: number): T[][] {
-  const partitions: T[][] = [];
-  let currentPartition: T[] = [];
-
-  for (const p of packages) {
-    if (currentPartition.length >= partitionSize) {
-      partitions.push(currentPartition);
-      currentPartition = [];
-    }
-    currentPartition.push(p);
-  }
-
-  partitions.push(currentPartition);
-
-  return partitions;
-}
-
-function stringifyPartition(packages: PackageInfo[]): string {
-  return packages.map(p => {
-    const version = p.version === ANY_VERSION_STRING ? "" : `=${p.version}`;
-    return `${p.name}${version}`;
-  })
-    .join(" ");
-}
 
 // we use the default shell when getting the list of all installed packages since
 // we want that to happen even in a dry run
@@ -45,7 +21,7 @@ const provider: ProviderGenerator = (run: Shell) => {
       const partitions = partitionArray(packages, MAX_AT_ONCE);
 
       for (const part of partitions) {
-        const string = stringifyPartition(part);
+        const string = stringifyPackageParition(part);
         console.log(`Installing ${string}`);
         const result = await run(`yay -S --noconfirm ${string}`, true);
         if (result.code !== 0) {
