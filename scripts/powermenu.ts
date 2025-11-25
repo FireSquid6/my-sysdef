@@ -19,11 +19,6 @@ export const menu: MenuOption[] = [
     type: "shell",
     command: ["hyprland", "dispatch", "exit"],
   },
-  {
-    label: "Lock",
-    type: "shell",
-    command: ["hyprlock"],
-  },
 ]
 
 
