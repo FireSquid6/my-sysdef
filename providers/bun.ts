@@ -4,6 +4,7 @@ import { v } from "../sysdef-src/validation";
 
 
 // getting errors? You need to update BUN_USER to be the user you have bun installed with (bun does a per user installation)
+// you typically use a different installation of bun than the one that comes with sysdef
 const BUN_USER = "firesquid"
 const bunBinary = `/home/${BUN_USER}/.bun/bin/bun`;
 const bunPackageJsonPath = `/home/${BUN_USER}/.bun/install/global/package.json`
@@ -23,14 +24,14 @@ const provider: ProviderGenerator = (run: Shell) => {
     },
     // this should be able to handle the case where a package is requested to be intsalled of a different version! 
     async install(packages: PackageInfo[]) {
-      await Promise.all(packages.map(p => run(`sudo -u ${BUN_USER} bun add -g ${p.name}@${p.version === ANY_VERSION_STRING
+      await Promise.all(packages.map(p => run(`${bunBinary} add -g ${p.name}@${p.version === ANY_VERSION_STRING
         ? "latest"
         : p.version
-      } -E`)));
+      } -E"`)));
     },
 
     async uninstall(packages: string[]) {
-      await Promise.all(packages.map(p => run(`sudo -u ${BUN_USER} bun remove -g ${p}`)))
+      await Promise.all(packages.map(p => run(`${bunBinary} remove -g ${p}"`)))
     },
     async getInstalled() {
       if (!fs.existsSync(bunPackageJsonPath)) {
@@ -55,7 +56,7 @@ const provider: ProviderGenerator = (run: Shell) => {
       });
     },
     async update(packages: string[]) {
-      await Promise.all(packages.map(p => run(`sudo -u ${BUN_USER} bun update -g ${p}`)))
+      await Promise.all(packages.map(p => run(`${bunBinary} update -g ${p}"`)))
     },
   }
 }

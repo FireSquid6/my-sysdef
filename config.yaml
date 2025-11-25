@@ -1,7 +1,6 @@
 providers:
   - yay
-  # bun provider is still broken
-  # - bun
+  - bun
 modules:
   - desktop
   - core
