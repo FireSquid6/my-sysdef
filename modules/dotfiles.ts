@@ -35,6 +35,7 @@ const m: ModuleGenerator = () => {
     },
     directories: {
       "{HOME}/.config/hypr": "./dotfiles/hypr",
+      "{HOME}/.config/nvim": "./neovim",
     },
     packages: {
       // we can define the packages per provider in this
