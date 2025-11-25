@@ -15,6 +15,7 @@ if status is-interactive
 
   export PATH="$PATH:$SCRIPTS_DIR"
   export PATH="$PATH:$HOME/.bun/bin"
+  export PATH="$PATH:$HOME/sysdef/bin"
 
   export ANDROID_HOME="$HOME/Android/Sdk"
   export PATH="$PATH:$ANDROID_HOME/platform-tools"
