@@ -24,10 +24,10 @@ const provider: ProviderGenerator = (run: Shell) => {
     },
     // this should be able to handle the case where a package is requested to be intsalled of a different version! 
     async install(packages: PackageInfo[]) {
-      await Promise.all(packages.map(p => run(`${bunBinary} add -g ${p.name}@${p.version === ANY_VERSION_STRING
+      await Promise.all(packages.map(p => run(`${bunBinary} install -g ${p.name}@${p.version === ANY_VERSION_STRING
         ? "latest"
         : p.version
-      } -E"`, {})));
+      } -E`, {})));
     },
 
     async uninstall(packages: string[]) {

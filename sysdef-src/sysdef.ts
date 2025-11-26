@@ -2,7 +2,6 @@ import path from "path";
 import type { Filesystem } from "./connections";
 import type { Lockfile } from "./lockfile";
 import { PackageSet } from "./package-set";
-import { request } from "http";
 import { promptForOk } from "./prompt";
 
 // panic function -- we use this a lot. Better to crash and burn then to
@@ -148,6 +147,7 @@ export const defaultShell: Shell = async (s, { throwOnError, stdin, displayOutpu
   const code = await p.exited;
 
   if (code !== 0 && !throwOnError) {
+    console.log(output);
     throw new Error(`Process called with ${s} returned exit code ${code}`);
   }
 

@@ -410,8 +410,7 @@ describe("syncFiles", () => {
         fileCalls.push({path, content});
       },
       exists: async () => true,
-      async copy(source, destination) {
-      },
+      async copy(source, destination) {},
 
     };
 
