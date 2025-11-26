@@ -1,9 +1,8 @@
-#!/usr/bin/env bun
-
+#!../bin/bun
 import { runMenu, type MenuOption } from "../lib/custom-menu";
 
 
-export const menu: MenuOption[] = [
+const menu: MenuOption[] = [
   {
     label: "Suspend",
     type: "shell",

@@ -28,7 +28,7 @@ export async function runMenu(options: MenuOption[]) {
   const option = options.find(o => o.label === selected);
 
   if (option === undefined) {
-    errorOut(`Could not find option ${option}`);
+    return;
 
   }
 
