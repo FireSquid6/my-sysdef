@@ -19,3 +19,4 @@ fi
 
 rm -r "$DIRECTORY"
 cp -r "./sysdef-src" "$HOME/source/sysdef/package"
+cp -r ./providers/* "$HOME"/source/sysdef/package/providers

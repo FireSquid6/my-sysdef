@@ -140,7 +140,7 @@ export const defaultShell: Shell = async (s, { throwOnError, stdin, displayOutpu
     const decoded = decoder.decode(chunk);
     output += decoded
     if (displayOutput) {
-      process.stdout.push(decoded, "utf-8");
+      process.stdout.write(chunk);
     }
   }
 
@@ -308,7 +308,9 @@ export async function syncPackages(allPackages: Map<string, PackageInfo[]>, prov
         console.log(`  REMOVING: ${p.name}:${p.version}`);
       }
     }
-    await promptForOk("The above operations will be performed. Is this ok?");
+    if (toInstall.length > 0 || toUninstall.length > 0) {
+      await promptForOk("The above operations will be performed. Is this ok?");
+    }
 
     if (toInstall.length > 0) {
       await provider.install(toInstall);

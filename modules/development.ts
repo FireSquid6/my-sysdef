@@ -35,6 +35,7 @@ const m: ModuleGenerator = () => {
         "nano",
         "nano-syntax-highlighting",
         "perl",
+        "npm",
       ],
       "bun": [
         "@tailwindcss/cli",

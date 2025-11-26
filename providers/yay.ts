@@ -25,10 +25,11 @@ const provider: ProviderGenerator = (run: Shell) => {
       for (const part of partitions) {
         const string = stringifyPackageParition(part);
         console.log(`Installing ${string}`);
-        const result = await run(`yay -S --noconfirm ${string}`, {});
+        const result = await run(`yay -S --noconfirm ${string}`, {
+          displayOutput: true,
+        });
         if (result.code !== 0) {
-          console.log(`Erorr installing packages: ${part}. See the logs below`);
-          console.log(result.stdout);
+          console.log(`Erorr installing packages: ${part}. See the logs above`);
         }
       }
     },
@@ -39,11 +40,12 @@ const provider: ProviderGenerator = (run: Shell) => {
       for (const part of partitions) {
         const string = part.join(" ");
         console.log(`Uninstalling ${string}`);
-        const result = await run(`yay -Rs --noconfirm ${string}`, {});
+        const result = await run(`yay -Rs --noconfirm ${string}`, {
+          displayOutput: true,
+        });
 
         if (result.code !== 0) {
-          console.log(`Erorr uninstalling packages: ${part}. See the logs below`);
-          console.log(result.stdout);
+          console.log(`Erorr uninstalling packages: ${part}. See the logs above`);
         }
       }
     },
