@@ -27,15 +27,15 @@ const provider: ProviderGenerator = (run: Shell) => {
       await Promise.all(packages.map(p => run(`${bunBinary} add -g ${p.name}@${p.version === ANY_VERSION_STRING
         ? "latest"
         : p.version
-      } -E"`)));
+      } -E"`, {})));
     },
 
     async uninstall(packages: string[]) {
-      await Promise.all(packages.map(p => run(`${bunBinary} remove -g ${p}"`)))
+      await Promise.all(packages.map(p => run(`${bunBinary} remove -g ${p}"`, {})))
     },
     async getInstalled() {
       if (!fs.existsSync(bunPackageJsonPath)) {
-        throw new Error(`Error getting all installed for bun: couldn't find the package json for bun globals in ${bunPackageJsonPath}.`);
+        throw new Error(`Error getting all installed for bun: couldn't find the package json for bun globals in ${bunPackageJsonPath}.`, );
 
       }
 
@@ -56,7 +56,7 @@ const provider: ProviderGenerator = (run: Shell) => {
       });
     },
     async update(packages: string[]) {
-      await Promise.all(packages.map(p => run(`${bunBinary} update -g ${p}"`)))
+      await Promise.all(packages.map(p => run(`${bunBinary} update -g ${p}"`, {})))
     },
   }
 }

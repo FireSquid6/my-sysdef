@@ -12,7 +12,7 @@ const provider: ProviderGenerator = (run: Shell) => {
   return {
     name: "apt",
     async checkInstallation() {
-      const result = await run(`which apt`, true);
+      const result = await run(`which apt`, { throwOnError: true });
       if (result.code !== 0) {
         throw new Error("apt is not installed or not in PATH");
       }
@@ -23,10 +23,10 @@ const provider: ProviderGenerator = (run: Shell) => {
       for (const part of partitions) {
         const string = stringifyPackageParition(part);
         console.log(`Installing ${string}`);
-        const result = await run(`sudo apt install -y ${string}`, true);
+        const result = await run(`sudo apt install -y ${string}`, { throwOnError: true });
         if (result.code !== 0) {
           console.log(`Error installing packages: ${part}. See the logs below`);
-          console.log(result.text);
+          console.log(result.stdout);
         }
       }
     },
@@ -37,13 +37,13 @@ const provider: ProviderGenerator = (run: Shell) => {
       for (const part of partitions) {
         const string = part.join(" ");
         console.log(`Uninstalling ${string}`);
-        await run(`sudo apt remove -y ${string}`);
+        await run(`sudo apt remove -y ${string}`, { throwOnError: true });
       }
     },
 
     async getInstalled() {
-      const result = await realShell(`apt list --installed`);
-      const lines = result.text.trim().split('\n').filter(line => line.trim() && !line.startsWith('Listing...'));
+      const result = await realShell(`apt list --installed`, { throwOnError: true });
+      const lines = result.stdout.trim().split('\n').filter(line => line.trim() && !line.startsWith('Listing...'));
       
       return lines.map(line => {
         const match = line.match(/^(\S+)\/\S+\s+(\S+)\s+/);
@@ -62,9 +62,9 @@ const provider: ProviderGenerator = (run: Shell) => {
 
     async update(packages: string[]) {
       if (packages.length === 0) {
-        await run(`sudo apt update && sudo apt upgrade -y`);
+        await run(`sudo apt update && sudo apt upgrade -y`, { throwOnError: true });
       } else {
-        await Promise.all(packages.map(p => run(`sudo apt install -y ${p}`)));
+        await Promise.all(packages.map(p => run(`sudo apt install -y ${p}`, { throwOnError: true })));
       }
     },
   };

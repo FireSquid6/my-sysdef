@@ -403,13 +403,16 @@ describe("syncFiles", () => {
     const fileCalls: Array<{path: string, content: string}> = [];
 
     const mockFilesystem: Filesystem = {
-      ensureSymlink: (dest: string, src: string) => {
+      ensureSymlink: async (dest: string, src: string) => {
         symlinkCalls.push({dest, src});
       },
-      writeFile: (path: string, content: string) => {
+      writeFile: async (path: string, content: string) => {
         fileCalls.push({path, content});
       },
-      exists: () => true
+      exists: async () => true,
+      async copy(source, destination) {
+      },
+
     };
 
     const store = new VariableStore();
@@ -430,7 +433,7 @@ describe("syncFiles", () => {
       }
     ];
 
-    syncFiles(modules, store, mockFilesystem);
+    syncFiles(modules, store, mockFilesystem, "/home/user/sysdef");
 
     expect(symlinkCalls).toHaveLength(2);
     expect(symlinkCalls.find(call => call.dest === "/home/user/.config")).toBeDefined();
