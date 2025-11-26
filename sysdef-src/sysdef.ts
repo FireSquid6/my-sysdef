@@ -140,7 +140,7 @@ export const defaultShell: Shell = async (s, { throwOnError, stdin, displayOutpu
     const decoded = decoder.decode(chunk);
     output += decoded
     if (displayOutput) {
-      process.stdout.write(chunk);
+      console.write(decoded);
     }
   }
 
