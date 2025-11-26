@@ -12,7 +12,9 @@ const provider: ProviderGenerator = (run: Shell) => {
   return {
     name: "yay",
     async checkInstallation() {
-      const result = await run(`which yay`, true);
+      const result = await run(`which yay`, {
+        throwOnError: true
+      });
       if (result.code !== 0) {
         throw new Error("yay is not installed or not in PATH");
       }
@@ -23,10 +25,10 @@ const provider: ProviderGenerator = (run: Shell) => {
       for (const part of partitions) {
         const string = stringifyPackageParition(part);
         console.log(`Installing ${string}`);
-        const result = await run(`yay -S --noconfirm ${string}`, true);
+        const result = await run(`yay -S --noconfirm ${string}`, {});
         if (result.code !== 0) {
           console.log(`Erorr installing packages: ${part}. See the logs below`);
-          console.log(result.text);
+          console.log(result.stdout);
         }
       }
     },
@@ -37,13 +39,18 @@ const provider: ProviderGenerator = (run: Shell) => {
       for (const part of partitions) {
         const string = part.join(" ");
         console.log(`Uninstalling ${string}`);
-        await run(`yay -Rs --noconfirm ${string}`);
+        const result = await run(`yay -Rs --noconfirm ${string}`, {});
+
+        if (result.code !== 0) {
+          console.log(`Erorr uninstalling packages: ${part}. See the logs below`);
+          console.log(result.stdout);
+        }
       }
     },
 
     async getInstalled() {
-      const result = await realShell(`yay -Qe`);
-      const lines = result.text.trim().split('\n').filter(line => line.trim());
+      const result = await realShell(`yay -Qe`, {});
+      const lines = result.stdout.trim().split('\n').filter(line => line.trim());
       
       return lines.map(line => {
         const match = line.match(/^(\S+)\s+(.+)$/);
@@ -61,10 +68,17 @@ const provider: ProviderGenerator = (run: Shell) => {
     },
 
     async update(packages: string[]) {
-      if (packages.length === 0) {
-        await run(`yay -Syu --noconfirm`);
-      } else {
-        await Promise.all(packages.map(p => run(`yay -S --noconfirm ${p}`)));
+      const partitions = partitionArray(packages, MAX_AT_ONCE);
+
+      for (const part of partitions) {
+        const string = part.join(" ");
+        console.log(`Uninstalling ${string}`);
+        const result = await run(`yay -Syu --noconfirm ${string}`, {});
+
+        if (result.code !== 0) {
+          console.log(`Erorr updating packages: ${part}. See the logs below`);
+          console.log(result.stdout);
+        }
       }
     },
   };

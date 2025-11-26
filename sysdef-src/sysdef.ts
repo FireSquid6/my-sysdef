@@ -108,21 +108,30 @@ export interface PackageInfo {
 
 export interface ShellResult {
   code: number;
-  text: string;
+  stdout: string;
 }
 
-export type Shell = (s: string, noThrow?: boolean) => Promise<ShellResult>
+export interface ShellOptions {
+  throwOnError?: boolean,
+  stdin?: string,
+  displayOutput?: boolean,
+}
 
-export const defaultShell: Shell = async (s, noThrow) => {
-  if (noThrow === undefined) {
-    noThrow = false;
-  }
+export type Shell = (s: string, options: ShellOptions) => Promise<ShellResult>
 
+export const defaultShell: Shell = async (s, { throwOnError, stdin, displayOutput }) => {
+
+  const inStream = stdin === undefined ? "inherit" : new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder("utf-8").encode(stdin));
+      controller.close();
+    }
+  })
   const p = Bun.spawn({
     cmd: s.split(" "),
     stdout: "pipe",
     stderr: "inherit",
-    stdin: "ignore",
+    stdin: inStream,
   });
 
 
@@ -131,17 +140,20 @@ export const defaultShell: Shell = async (s, noThrow) => {
   for await (const chunk of p.stdout) {
     const decoded = decoder.decode(chunk);
     output += decoded
+    if (displayOutput) {
+      process.stdout.push(decoded, "utf-8");
+    }
   }
 
   const code = await p.exited;
 
-  if (code !== 0 && !noThrow) {
+  if (code !== 0 && !throwOnError) {
     throw new Error(`Process called with ${s} returned exit code ${code}`);
   }
 
   return {
     code,
-    text: output,
+    stdout: output,
   }
 }
 
@@ -150,7 +162,7 @@ export const dryShell: Shell = async (s) => {
 
   return {
     code: 0,
-    text: "",
+    stdout: "",
   }
 }
 

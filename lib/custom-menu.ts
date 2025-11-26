@@ -40,11 +40,4 @@ export async function runMenu(options: MenuOption[]) {
 }
 
 
-function errorOut(error: string): never {
-  Bun.spawnSync(["notify-send", error]);
-  process.exit(1);
-
-}
-
-
 
