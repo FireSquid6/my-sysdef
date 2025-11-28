@@ -56,7 +56,7 @@ const provider: ProviderGenerator = (run: Shell) => {
       });
     },
     async update(packages: string[]) {
-      await Promise.all(packages.map(p => run(`${bunBinary} update -g ${p}"`, {})))
+      await Promise.all(packages.map(p => run(`${bunBinary} update -g ${p}`, {})))
     },
   }
 }

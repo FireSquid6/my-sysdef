@@ -31,7 +31,6 @@ const m: ModuleGenerator = () => {
         "cloc",
         "lazygit",
         "lazydocker",
-        "claude-code",
         "nano",
         "nano-syntax-highlighting",
         "perl",
@@ -40,7 +39,6 @@ const m: ModuleGenerator = () => {
       "bun": [
         "@tailwindcss/cli",
         "typescript:5.9.3",
-        "claude",
       ],
     }
   }
