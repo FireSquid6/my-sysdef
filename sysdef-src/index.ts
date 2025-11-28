@@ -86,6 +86,21 @@ const syncCommand = cli.command("sync")
     lockfile.serializeToFile(lockfilePath);
   });
 
+cli.command("update-lockfile")
+  .description("Update the lockfile to the current system state")
+  .action(async () => {
+    const rootDir = getRootDir();
+    const config = readConfig(rootDir);
+    const providers = await loadProviders(rootDir, false, config.providers);
+    const lockfile = new Lockfile();
+    const lockfilePath = path.join(rootDir, "sysdef-lock.json");
+
+    lockfile.readFromFile(lockfilePath);
+
+    await updateLockfile(providers, lockfile);
+    lockfile.serializeToFile(lockfilePath);
+  });
+
 cli.command("providers")
   .description("Subcommand to list all of the installed providers")
   .action(async () => {

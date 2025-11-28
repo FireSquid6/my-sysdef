@@ -28,6 +28,7 @@ const m: ModuleGenerator = () => {
         "ristretto",
         "parole",
         "proton-mail",
+        "inkscape",
       ],
     }
   }
