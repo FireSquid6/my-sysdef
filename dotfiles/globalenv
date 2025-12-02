@@ -1,4 +1,4 @@
-BROWSER=firefox
+BROWSER=firefox.desktop
 EDITOR=nvim
 SHELL=fish
 

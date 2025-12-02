@@ -4,4 +4,5 @@
 # Get the directory of this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# This is the actual entrypoint of sysdef
 "$SCRIPT_DIR/bun" run "$SCRIPT_DIR/../sysdef-src/entrypoint.ts" "$@"

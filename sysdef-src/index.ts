@@ -21,6 +21,22 @@ const cli = new Command()
   });
 
 
+
+async function getCredentials() {
+  console.log("Sysdef needs your credentials for commands that require root. These will only be used when necessary.");
+
+  // this will keep the sudo credentials cached so each
+  // successive sudo doesn't require the password
+  const keepAlive = setInterval(async () => {
+    await Bun.spawn(["sudo", "-v"]).exited;
+  }, 4 * 60 * 1000);
+
+  process.on("exit", () => {
+    clearInterval(keepAlive);
+    Bun.spawnSync(["sudo", "-k"]);
+  })
+}
+
 const syncCommand = cli.command("sync")
   .description("Sync all packages, modules, and files")
   .option("-d, --dry-run", "do a dry-run and don't actually run any commands")

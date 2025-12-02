@@ -114,20 +114,28 @@ export interface ShellOptions {
   throwOnError?: boolean,
   stdin?: string,
   displayOutput?: boolean,
+  asRoot?: boolean,
 }
 
-export type Shell = (s: string, options: ShellOptions) => Promise<ShellResult>
+export type Shell = (s: string | string[], options: ShellOptions) => Promise<ShellResult>
 
-export const defaultShell: Shell = async (s, { throwOnError, stdin, displayOutput }) => {
-
+export const defaultShell: Shell = async (s, { throwOnError, stdin, displayOutput, asRoot }) => {
   const inStream = stdin === undefined ? "inherit" : new ReadableStream({
     start(controller) {
       controller.enqueue(new TextEncoder("utf-8").encode(stdin));
       controller.close();
     }
   })
+  
+
+  const cmd = typeof s === "string" ? s.split(" ") : s; 
+
+  if (asRoot === true) {
+    cmd.unshift("sudo");
+  }
+
   const p = Bun.spawn({
-    cmd: s.split(" "),
+    cmd,
     stdout: "pipe",
     stderr: "inherit",
     stdin: inStream,
