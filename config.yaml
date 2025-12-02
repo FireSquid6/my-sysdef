@@ -1,6 +1,7 @@
 providers:
-  - yay
+  #- yay
   - bun
+  - arch-official
 modules:
   - desktop
   - core
