@@ -8,7 +8,7 @@ const m: ModuleGenerator = () => {
     files: {},
     directories: {},
     packages: {
-      "yay": [
+      "arch-official": [
         "thunar",
         "thunar-archive-plugin",
         "thunar-media-tags-plugin",

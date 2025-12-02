@@ -15,7 +15,7 @@ const m: ModuleGenerator = () => {
     },
     directories: {},
     packages: {
-      "yay": [
+      "arch-official": [
         "htop",
         "glances",
         "inxi",

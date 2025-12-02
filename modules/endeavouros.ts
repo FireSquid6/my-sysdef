@@ -8,7 +8,7 @@ const m: ModuleGenerator = () => {
     files: {},
     directories: {},
     packages: {
-      "yay": [
+      "arch-official": [
         "endeavouros-branding",
         "endeavouros-keyring",
         "endeavouros-mirrorlist",
@@ -24,7 +24,7 @@ const m: ModuleGenerator = () => {
         "eos-settings-xfce4",
         "arc-gtk-theme-eos",
         "welcome",
-        "decman",
+        // "decman",
       ],
     }
   }

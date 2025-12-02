@@ -8,7 +8,7 @@ const m: ModuleGenerator = () => {
     files: {},
     directories: {},
     packages: {
-      "yay": [
+      "arch-official": [
         "alsa-firmware",
         "alsa-plugins",
         "alsa-utils",

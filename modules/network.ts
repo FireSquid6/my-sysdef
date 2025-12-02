@@ -8,13 +8,13 @@ const m: ModuleGenerator = () => {
     files: {},
     directories: {},
     packages: {
-      "yay": [
+      "arch-official": [
         "networkmanager",
         "network-manager-applet",
         "networkmanager-openconnect",
         "networkmanager-openvpn",
         "tailscale",
-        "trayscale",
+        // "trayscale",
         "openssh",
         "firewalld",
         "iptables-nft",

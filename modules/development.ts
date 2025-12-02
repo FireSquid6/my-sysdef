@@ -16,7 +16,7 @@ const m: ModuleGenerator = () => {
       "{HOME}/.config/nvim": "./neovim"
     },
     packages: {
-      "yay": [
+      "arch-official": [
         "git",
         "github-cli",
         "go",

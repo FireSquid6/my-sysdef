@@ -13,7 +13,7 @@ const m: ModuleGenerator = () => {
     },
     directories: {},
     packages: {
-      "yay": [
+      "arch-official": [
         "chromium",
         "firefox", 
         "discord",
@@ -21,13 +21,13 @@ const m: ModuleGenerator = () => {
         "spotify-launcher",
         "spotify-player",
         "obsidian",
-        "visual-studio-code-bin",
+        // "visual-studio-code-bin",
         "alacritty",
         "galculator",
         "mousepad",
         "ristretto",
         "parole",
-        "proton-mail",
+        // "proton-mail",
         "inkscape",
       ],
     }

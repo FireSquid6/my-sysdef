@@ -8,7 +8,7 @@ const m: ModuleGenerator = () => {
     files: {},
     directories: {},
     packages: {
-      "yay": [
+      "arch-official": [
         "base",
         "base-devel",
         "linux",

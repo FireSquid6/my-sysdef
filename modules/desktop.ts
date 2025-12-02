@@ -22,7 +22,7 @@ const m: ModuleGenerator = () => {
       "{HOME}/.config/hypr": "./dotfiles/hypr"
     },
     packages: {
-      "yay": [
+      "arch-official": [
         "hyprland",
         "hypridle", 
         "hyprpicker",
@@ -69,6 +69,8 @@ const m: ModuleGenerator = () => {
         "xdg-user-dirs",
         "xdg-user-dirs-gtk",
         "xdg-utils",
+        "kvantum",
+        "sassc",
       ],
     }
   }
