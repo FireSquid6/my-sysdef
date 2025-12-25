@@ -154,7 +154,7 @@ export const defaultShell: Shell = async (s, { throwOnError, stdin, displayOutpu
 
   const code = await p.exited;
 
-  if (code !== 0 && !throwOnError) {
+  if (code !== 0 && throwOnError === true) {
     console.log(output);
     throw new Error(`Process called with ${s} returned exit code ${code}`);
   }
