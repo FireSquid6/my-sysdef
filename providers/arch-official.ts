@@ -58,7 +58,9 @@ const provider: ProviderGenerator = (run: Shell) => {
       const explicitLines = explicitResult.stdout.trim().split('\n').filter(line => line.trim());
 
       // Get foreign/unofficial packages (from AUR, etc.)
-      const foreignResult = await realShell(`pacman -Qm`, {});
+      const foreignResult = await realShell(`pacman -Qm`, {
+        throwOnError: false,
+      });
       const foreignLines = foreignResult.stdout.trim().split('\n').filter(line => line.trim());
 
       // Create a set of foreign package names for quick lookup
