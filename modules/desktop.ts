@@ -19,7 +19,8 @@ const m: ModuleGenerator = () => {
       "{HOME}/.config/betterlockscreen/betterlockscreenrc": "./dotfiles/betterlockscreenrc"
     },
     directories: {
-      "{HOME}/.config/hypr": "./dotfiles/hypr"
+      "{HOME}/.config/hypr": "./dotfiles/hypr",
+      "{HOME}/wallpapers": "./dotfiles/wallpapers",
     },
     packages: {
       "arch-official": [
