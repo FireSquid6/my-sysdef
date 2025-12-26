@@ -1,7 +1,7 @@
 providers:
-  #- yay
-  - bun
-  - arch-official
+  - yay
+  # - bun
+  # - arch-official
 modules:
   - desktop
   - core
@@ -15,5 +15,6 @@ modules:
   - network
   - system-core
   - system-utilities
+  - kotoko
 variables:
   HOMEDIR: "/home/firesquid"
