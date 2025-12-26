@@ -16,17 +16,17 @@ tmux new-window -t home -n notes-terminal -c ~/notes
 
 tmux select-window -t home:notes
 
-tmux new-session -d -t sysdef -c "$SYSTEM_CONFIG_DIR"
+tmux new-session -d -t local-sysdef -c "$SYSTEM_CONFIG_DIR"
 
-tmux rename-window -t sysdef:1 editor
+tmux rename-window -t local-sysdef:1 editor
 
-tmux new-window -t sysdef -n claude -c "$SYSTEM_CONFIG_DIR"
-tmux new-window -t sysdef -n term3 -c "$SYSTEM_CONFIG_DIR"
-tmux new-window -t sysdef -n term4 -c "$SYSTEM_CONFIG_DIR"
+tmux new-window -t local-sysdef -n claude -c "$SYSTEM_CONFIG_DIR"
+tmux new-window -t local-sysdef -n term3 -c "$SYSTEM_CONFIG_DIR"
+tmux new-window -t local-sysdef -n term4 -c "$SYSTEM_CONFIG_DIR"
 
-tmux select-window -t sysdef:claude
-tmux send-keys -t sysdef "claude" Enter
+tmux select-window -t local-sysdef:claude
+tmux send-keys -t local-sysdef "claude" Enter
 
-tmux select-window -t sysdef:editor
-tmux send-keys -t sysdef "nvim" Enter
+tmux select-window -t local-sysdef:editor
+tmux send-keys -t local-sysdef "nvim" Enter
 
