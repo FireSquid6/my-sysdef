@@ -1,5 +1,7 @@
 set fish_greeting
 
+set -e fish_key_bindings default
+
 if status is-interactive
   if not set -q SSH_CONNECTION
 
