@@ -27,6 +27,7 @@ lspconfig.statix.setup({})
 lspconfig.tailwindcss.setup({
   filetypes = { "html", "css", "typescriptreact" },
 })
+lspconfig.jdtls.setup({})
 
 
 local cmp = require("cmp")
