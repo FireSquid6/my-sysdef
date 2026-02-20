@@ -15,12 +15,16 @@ vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 vim.opt.smartindent = false
 
+
 require("options")
 require("plugins")
-require("mappings")
-require("lsp")
 
 vim.cmd 'colorscheme tokyonight-night'
+
+require("mappings")
+require("lsp")
+require("dap-config")
+
 
 
 vim.api.nvim_create_autocmd("FileType", {
