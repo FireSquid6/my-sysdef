@@ -29,7 +29,7 @@ vim.lsp.enable({
 	"gdscript",
 	"gopls",
 	"elixirls",
-	"ccls",
+	"clangd",
 	"arduino_language_server",
 	"bashls",
 	"marksman",

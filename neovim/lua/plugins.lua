@@ -15,53 +15,6 @@ require("lazy").setup({
   {
     "mhinz/vim-startify",
   },
-  {
-    "nvim-telescope/telescope.nvim",
-    tag = "0.1.6",
-    dependencies = { "nvim-lua/plenary.nvim" },
-    keys = {
-      { "<leader>c",   "<cmd>bdelete<cr>",                                  desc = "Close Buffer" },
-      { "<leader>l",   group = "LSP" },
-      { "<leader>f",   group = "Find" },
-      { "<leader>f/",  "<cmd>Telescope current_buffer_fuzzy_find<cr>",      desc = "Search Current Buffer" },
-      { "<leader>fb",  "<cmd>Telescope buffers<cr>",                        desc = "Find Buffers" },
-      { "<leader>fc",  "<cmd>Telescope commands<cr>",                       desc = "Search Commands" },
-      { "<leader>fe",  "<cmd>Telescope diagnostics<cr>",                    desc = "Search Diagnostics" },
-      { "<leader>ff",  "<cmd>Telescope find_files<cr>",                     desc = "Find Files" },
-      { "<leader>fi",  "<cmd>Telescope lsp_incoming_calls<cr>",             desc = "Search Incoming Calls" },
-      { "<leader>fl",  "<cmd>Telescope lsp_document_symbols<cr>",           desc = "Search LSP Symbols" },
-      { "<leader>fm",  "<cmd> Telescope marks<cr>",                         desc = "Search Marks" },
-      { "<leader>fo",  "<cmd>Telescope lsp_outgoing_calls<cr>",             desc = "Search Outgoing Calls" },
-      { "<leader>fr",  "<cmd> Telescope registers<cr>",                     desc = "Search Registers" },
-      { "<leader>fs",  "<cmd>Telescope lsp_dynamic_workspace_symbols<cr>",  desc = "Search LSP Workspace Symbols" },
-      { "<leader>fw",  "<cmd>Telescope live_grep<cr>",                      desc = "Find Words" },
-      { "<leader>g",   "<cmd>LazyGit<cr>",                                  desc = "LazyGit" },
-      { "<leader>q",   "<cmd>q<cr>",                                        desc = "Quit Files" },
-      { "<leader>s",   "<cmd>Telescope spell_suggest<cr>",                  desc = "Spell Suggest" },
-      { "<leader>u",   group = "UI" },
-      { "<leader>ut",  group = "Colorscheme" },
-      { "<leader>utd", "<cmd>colorscheme tokyonight-day<cr>",               desc = "Day Theme" },
-      { "<leader>utn", "<cmd>colorscheme tokyonight-night<cr>",             desc = "Night Theme" },
-      { "<leader>uts", "<cmd>colorscheme tokyonight-storm<cr>",             desc = "Storm Theme" },
-      { "<leader>w",   "<cmd>wa<cr>",                                       desc = "Write Files" },
-      { "<leader>li",  "<cmd>LspInfo<cr>",                                  desc = "Lsp Info" },
-    },
-    config = function()
-      require("telescope").setup({
-        defaults = {
-          layout_config = {
-            prompt_position = "top",
-          },
-          file_ignore_patterns = { "node_modules", ".git" },
-        },
-        pickers = {
-          live_grep = {
-            hidden = true,
-          },
-        },
-      })
-    end,
-  },
 
   "neovim/nvim-lspconfig",
 
@@ -142,6 +95,40 @@ require("lazy").setup({
   },
   {
     "folke/snacks.nvim",
+    lazy = false,
+    keys = {
+      { "<leader>c",   "<cmd>bdelete<cr>",                                                         desc = "Close Buffer" },
+      { "<leader>l",   group = "LSP" },
+      { "<leader>f",   group = "Find" },
+      { "<leader>f/",  function() Snacks.picker.lines() end,                                       desc = "Search Current Buffer" },
+      { "<leader>fb",  function() Snacks.picker.buffers() end,                                     desc = "Find Buffers" },
+      { "<leader>fc",  function() Snacks.picker.commands() end,                                    desc = "Search Commands" },
+      { "<leader>fe",  function() Snacks.picker.diagnostics() end,                                 desc = "Search Diagnostics" },
+      { "<leader>ff",  function() Snacks.picker.files() end,                                       desc = "Find Files" },
+      { "<leader>fi",  function() Snacks.picker.lsp_references() end,                              desc = "Search References" },
+      { "<leader>fl",  function() Snacks.picker.lsp_symbols() end,                                 desc = "Search LSP Symbols" },
+      { "<leader>fm",  function() Snacks.picker.marks() end,                                       desc = "Search Marks" },
+      { "<leader>fr",  function() Snacks.picker.registers() end,                                   desc = "Search Registers" },
+      { "<leader>fs",  function() Snacks.picker.lsp_workspace_symbols() end,                       desc = "Search LSP Workspace Symbols" },
+      { "<leader>fw",  function() Snacks.picker.grep() end,                                        desc = "Find Words" },
+      { "<leader>g",   "<cmd>LazyGit<cr>",                                                         desc = "LazyGit" },
+      { "<leader>q",   "<cmd>q<cr>",                                                               desc = "Quit Files" },
+      { "<leader>s",   function() Snacks.picker.spelling() end,                                    desc = "Spell Suggest" },
+      { "<leader>u",   group = "UI" },
+      { "<leader>ut",  group = "Colorscheme" },
+      { "<leader>utd", "<cmd>colorscheme tokyonight-day<cr>",                                      desc = "Day Theme" },
+      { "<leader>utn", "<cmd>colorscheme tokyonight-night<cr>",                                    desc = "Night Theme" },
+      { "<leader>uts", "<cmd>colorscheme tokyonight-storm<cr>",                                    desc = "Storm Theme" },
+      { "<leader>w",   "<cmd>wa<cr>",                                                              desc = "Write Files" },
+      { "<leader>li",  "<cmd>LspInfo<cr>",                                                         desc = "Lsp Info" },
+    },
+    opts = {
+      picker = {
+        layout = {
+          preset = "telescope",
+        },
+      },
+    },
   },
   {
     "Fildo7525/pretty_hover",
@@ -150,31 +137,8 @@ require("lazy").setup({
   },
   {
     "nvim-treesitter/nvim-treesitter",
-    build = ":TSUpdate",
-    config = function()
-      local configs = require("nvim-treesitter.configs")
-
-      configs.setup({
-        ensure_installed = {
-          "c",
-          "lua",
-          "vim",
-          "vimdoc",
-          "query",
-          "elixir",
-          "heex",
-          "javascript",
-          "html",
-          "tsx",
-          "typescript",
-          "markdown",
-          "markdown_inline",
-        },
-        sync_install = false,
-        highlight = { enable = true },
-        indent = { enable = true },
-      })
-    end,
+    branch = "main",
+    lazy = "false",
   },
 
   "hrsh7th/nvim-cmp",

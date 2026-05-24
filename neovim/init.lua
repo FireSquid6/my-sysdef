@@ -14,6 +14,7 @@ vim.opt.rtp:prepend(lazypath)
 vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 vim.opt.smartindent = false
+vim.opt.autoindent = false
 
 
 require("options")
