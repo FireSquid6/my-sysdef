@@ -15,6 +15,7 @@ Options:
   --no-net           Disable network access (enabled by default)
   --ro-bind PATH     Additional read-only bind mount (repeatable)
   --rw-bind PATH     Additional read-write bind mount (repeatable)
+  --bind PATH        Additional read-write bind mount, shorthand for --rw-bind (repeatable)
   --env KEY=VALUE    Pass an environment variable (repeatable)
   --no-cgroup        Skip systemd-run cgroup wrapper
   -h, --help         Show this help
@@ -48,6 +49,7 @@ while [[ $# -gt 0 ]]; do
     --no-net)    NET=0; shift ;;
     --ro-bind)   EXTRA_RO+=("$2"); shift 2 ;;
     --rw-bind)   EXTRA_RW+=("$2"); shift 2 ;;
+    --bind)      EXTRA_RW+=("$2"); shift 2 ;;
     --env)       EXTRA_ENV+=("$2"); shift 2 ;;
     --no-cgroup) NO_CGROUP=1; shift ;;
     -h|--help)   usage ;;

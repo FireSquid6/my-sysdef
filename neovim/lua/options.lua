@@ -1,3 +1,13 @@
+-- workaround for nvim 0.12.x nil range() bug in markdown treesitter injection
+-- vim.api.nvim_create_autocmd("FileType", {
+--   pattern = "markdown",
+--   callback = function(args)
+--     vim.schedule(function()
+--       vim.treesitter.stop(args.buf)
+--     end)
+--   end,
+-- })
+
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.conceallevel = 0

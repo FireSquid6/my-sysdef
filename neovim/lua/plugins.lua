@@ -167,6 +167,8 @@ require("lazy").setup({
           "html",
           "tsx",
           "typescript",
+          "markdown",
+          "markdown_inline",
         },
         sync_install = false,
         highlight = { enable = true },
@@ -300,30 +302,30 @@ require("lazy").setup({
   {
     "f-person/git-blame.nvim",
   },
-  {
-    "firesquid6/nvim-yati",
-    config = function()
-      require("nvim-treesitter.configs").setup({
-        yati = {
-          enable = true,
-          disable = { "gdscript", "go", "lua", "json", "cpp", },
-          -- Whether to enable lazy mode (recommend to enable this if bad indent happens frequently)
-          default_lazy = true,
-          -- Determine the fallback method used when we cannot calculate indent by tree-sitter
-          --   "auto": fallback to vim auto indent
-          --   "asis": use current indent as-is
-          --   "cindent": see `:h cindent()`
-          -- Or a custom function return the final indent result.
-          default_fallback = "auto",
-          suppress_conflict_warning = false,
-        },
-        indent = {
-          enable = true, -- disable builtin indent module
-          disable = { "html", "javascript", "typescript", "tsx", "python" },
-        },
-      })
-    end,
-  },
+  -- {
+  --   "firesquid6/nvim-yati",
+  --   config = function()
+  --     require("nvim-treesitter.configs").setup({
+  --       yati = {
+  --         enable = true,
+  --         disable = { "gdscript", "go", "lua", "json", "cpp", },
+  --         -- Whether to enable lazy mode (recommend to enable this if bad indent happens frequently)
+  --         default_lazy = true,
+  --         -- Determine the fallback method used when we cannot calculate indent by tree-sitter
+  --         --   "auto": fallback to vim auto indent
+  --         --   "asis": use current indent as-is
+  --         --   "cindent": see `:h cindent()`
+  --         -- Or a custom function return the final indent result.
+  --         default_fallback = "auto",
+  --         suppress_conflict_warning = false,
+  --       },
+  --       indent = {
+  --         enable = true, -- disable builtin indent module
+  --         disable = { "html", "javascript", "typescript", "tsx", "python" },
+  --       },
+  --     })
+  --   end,
+  -- },
   {
     "windwp/nvim-ts-autotag",
     config = function()
@@ -352,35 +354,31 @@ require("lazy").setup({
       require("neoscroll").setup({})
     end,
   },
-  {
-    "davidmh/mdx.nvim",
-    config = true,
-  },
-  {
-    "epwalsh/obsidian.nvim",
-    version = "*",
-    lazy = true,
-    ft = "markdown",
-
-    dependencies = {
-      "nvim-lua/plenary.nvim",
-    },
-    opts = {
-      workspaces = {
-        {
-          name = "notes",
-          path = "~/notes",
-        },
-      },
-      ui = {
-        enable = false,
-      },
-      daily_notes = {
-        folder = "journal",
-        default_tags = { },
-      }
-    },
-  },
+  -- {
+  --   "epwalsh/obsidian.nvim",
+  --   version = "*",
+  --   lazy = true,
+  --   ft = "markdown",
+  --
+  --   dependencies = {
+  --     "nvim-lua/plenary.nvim",
+  --   },
+  --   opts = {
+  --     workspaces = {
+  --       {
+  --         name = "notes",
+  --         path = "~/notes",
+  --       },
+  --     },
+  --     ui = {
+  --       enable = false,
+  --     },
+  --     daily_notes = {
+  --       folder = "journal",
+  --       default_tags = { },
+  --     }
+  --   },
+  -- },
   {
     "hat0uma/csvview.nvim",
     ---@module "csvview"

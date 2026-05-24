@@ -1,34 +1,42 @@
-local lspconfig = require("lspconfig")
 local util = require("lspconfig.util")
 
-lspconfig.pyright.setup({})
-lspconfig.vtsls.setup({})
-lspconfig.rust_analyzer.setup({
-	-- Server-specific settings. See `:help lspconfig-setup`
+vim.lsp.config("rust_analyzer", {
 	settings = {
 		["rust-analyzer"] = {},
 	},
 })
-lspconfig.gdscript.setup({
+
+vim.lsp.config("gdscript", {
 	root_dir = util.root_pattern("project.godot"),
 })
-lspconfig.gopls.setup({})
-lspconfig.elixirls.setup({
-  cmd = { "elixir-ls" },
+
+vim.lsp.config("elixirls", {
+	cmd = { "elixir-ls" },
 })
 
-lspconfig.ccls.setup({
-  root_dir = util.root_pattern(".ccls", ".git", "main.cpp", "flake.nix")
+vim.lsp.config("ccls", {
+	root_dir = util.root_pattern(".ccls", ".git", "main.cpp", "flake.nix"),
 })
-lspconfig.arduino_language_server.setup({})
-lspconfig.bashls.setup({})
-lspconfig.marksman.setup({})
-lspconfig.statix.setup({})
-lspconfig.tailwindcss.setup({
-  filetypes = { "html", "css", "typescriptreact" },
-})
-lspconfig.jdtls.setup({})
 
+vim.lsp.config("tailwindcss", {
+	filetypes = { "html", "css", "typescriptreact" },
+})
+
+vim.lsp.enable({
+	"pyright",
+	"vtsls",
+	"rust_analyzer",
+	"gdscript",
+	"gopls",
+	"elixirls",
+	"ccls",
+	"arduino_language_server",
+	"bashls",
+	"marksman",
+	"statix",
+	"tailwindcss",
+	"jdtls",
+})
 
 local cmp = require("cmp")
 cmp.setup({
@@ -62,7 +70,6 @@ cmp.setup.filetype("gitcommit", {
 	}),
 })
 
--- Use buffer source for `/` and `?` (if you enabled `native_menu`, this won't work anymore).
 cmp.setup.cmdline({ "/", "?" }, {
 	mapping = cmp.mapping.preset.cmdline(),
 	sources = {
@@ -76,7 +83,6 @@ cmp.setup.filetype("markdown", {
   }),
 })
 
--- Use cmdline & path source for ':' (if you enabled `native_menu`, this won't work anymore).
 cmp.setup.cmdline(":", {
 	mapping = cmp.mapping.preset.cmdline(),
 	sources = cmp.config.sources({
