@@ -12,9 +12,6 @@ require("lazy").setup({
 
   "nvim-lua/popup.nvim",
   "nvim-lua/plenary.nvim",
-  {
-    "mhinz/vim-startify",
-  },
 
   "neovim/nvim-lspconfig",
 
@@ -96,38 +93,29 @@ require("lazy").setup({
   {
     "folke/snacks.nvim",
     lazy = false,
-    keys = {
-      { "<leader>c",   "<cmd>bdelete<cr>",                                                         desc = "Close Buffer" },
-      { "<leader>l",   group = "LSP" },
-      { "<leader>f",   group = "Find" },
-      { "<leader>f/",  function() Snacks.picker.lines() end,                                       desc = "Search Current Buffer" },
-      { "<leader>fb",  function() Snacks.picker.buffers() end,                                     desc = "Find Buffers" },
-      { "<leader>fc",  function() Snacks.picker.commands() end,                                    desc = "Search Commands" },
-      { "<leader>fe",  function() Snacks.picker.diagnostics() end,                                 desc = "Search Diagnostics" },
-      { "<leader>ff",  function() Snacks.picker.files() end,                                       desc = "Find Files" },
-      { "<leader>fi",  function() Snacks.picker.lsp_references() end,                              desc = "Search References" },
-      { "<leader>fl",  function() Snacks.picker.lsp_symbols() end,                                 desc = "Search LSP Symbols" },
-      { "<leader>fm",  function() Snacks.picker.marks() end,                                       desc = "Search Marks" },
-      { "<leader>fr",  function() Snacks.picker.registers() end,                                   desc = "Search Registers" },
-      { "<leader>fs",  function() Snacks.picker.lsp_workspace_symbols() end,                       desc = "Search LSP Workspace Symbols" },
-      { "<leader>fw",  function() Snacks.picker.grep() end,                                        desc = "Find Words" },
-      { "<leader>g",   "<cmd>LazyGit<cr>",                                                         desc = "LazyGit" },
-      { "<leader>q",   "<cmd>q<cr>",                                                               desc = "Quit Files" },
-      { "<leader>s",   function() Snacks.picker.spelling() end,                                    desc = "Spell Suggest" },
-      { "<leader>u",   group = "UI" },
-      { "<leader>ut",  group = "Colorscheme" },
-      { "<leader>utd", "<cmd>colorscheme tokyonight-day<cr>",                                      desc = "Day Theme" },
-      { "<leader>utn", "<cmd>colorscheme tokyonight-night<cr>",                                    desc = "Night Theme" },
-      { "<leader>uts", "<cmd>colorscheme tokyonight-storm<cr>",                                    desc = "Storm Theme" },
-      { "<leader>w",   "<cmd>wa<cr>",                                                              desc = "Write Files" },
-      { "<leader>li",  "<cmd>LspInfo<cr>",                                                         desc = "Lsp Info" },
-    },
     opts = {
       picker = {
         layout = {
           preset = "telescope",
         },
       },
+      dashboard = {
+        preset = {
+          header = table.concat({
+            [[     ┌────────────┐]],
+            [[    /             │]],
+            [[┌──┘              │]],
+            [[│   ╔═════════╗   │]],
+            [[└───╚═╗     ╔═╝───┘]],
+            [[   ╔══╝     ╚══╗   ]],
+            [[   ╚═══════════╝   ]],
+            [[▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀]],
+          }, "\n"),
+        },
+      },
+      indent = {},
+      scroll = {},
+      lazygit = {},
     },
   },
   {
@@ -149,13 +137,6 @@ require("lazy").setup({
   "hrsh7th/cmp-path",
   "hrsh7th/cmp-cmdline",
 
-  {
-    "lukas-reineke/indent-blankline.nvim",
-
-    config = function()
-      require("ibl").setup()
-    end,
-  },
   {
     "OlegGulevskyy/better-ts-errors.nvim",
     dependencies = { "MunifTanjim/nui.nvim" },
@@ -188,26 +169,6 @@ require("lazy").setup({
   {
     "mikavilpas/yazi.nvim",
     event = "VeryLazy",
-    dependencies = {
-      -- check the installation instructions at
-      -- https://github.com/folke/snacks.nvim
-      -- "folke/snacks.nvim"
-    },
-    keys = {
-      -- 👇 in this section, choose your own keymappings!
-      {
-        "<leader>e",
-        mode = { "n", "v" },
-        "<cmd>Yazi<cr>",
-        desc = "Open yazi at the current file",
-      },
-      {
-        -- Open in the current working directory
-        "<leader>k",
-        "<cmd>Yazi cwd<cr>",
-        desc = "Open the file manager in nvim's working directory",
-      },
-    },
     ---@type YaziConfig | {}
     opts = {
       -- if you want to open yazi instead of netrw, see below for more info
@@ -222,20 +183,6 @@ require("lazy").setup({
       -- vim.g.loaded_netrw = 1
       vim.g.loaded_netrwPlugin = 1
     end,
-  },
-  {
-    "kdheepak/lazygit.nvim",
-    cmd = {
-      "LazyGit",
-      "LazyGitConfig",
-      "LazyGitCurrentFile",
-      "LazyGitFilter",
-      "LazyGitFilterCurrentFile",
-    },
-    -- optional for floating window border decoration
-    dependencies = {
-      "nvim-lua/plenary.nvim",
-    },
   },
   {
     "windwp/nvim-autopairs",
@@ -312,12 +259,6 @@ require("lazy").setup({
     },
   },
   { "Bilal2453/luvit-meta", lazy = true }, -- optional `vim.uv` typings
-  {
-    "karb94/neoscroll.nvim",
-    config = function()
-      require("neoscroll").setup({})
-    end,
-  },
   -- {
   --   "epwalsh/obsidian.nvim",
   --   version = "*",
