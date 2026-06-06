@@ -90,8 +90,9 @@ BWRAP_ARGS=(
 #   [[ -d "$REAL_HOME/.ssh" ]] && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.ssh" "$REAL_HOME/.ssh")
 # Use --bind instead of --ro-bind if write access is needed.
 BWRAP_ARGS+=(--tmpfs "$REAL_HOME")
-[[ -d "$REAL_HOME/.claude" ]]  && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.claude" "$REAL_HOME/.claude")
+[[ -d "$REAL_HOME/.claude" ]]  && BWRAP_ARGS+=(--bind "$REAL_HOME/.claude" "$REAL_HOME/.claude")
 [[ -d "$REAL_HOME/.config" ]]  && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.config" "$REAL_HOME/.config")
+[[ -f "$REAL_HOME/.claude.json" ]] && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.claude.json" "$REAL_HOME/.claude.json")
 BWRAP_ARGS+=(--bind "$SANDBOX_DIR" "$SANDBOX_DIR")
 
 [[ $NET -eq 0 ]] && BWRAP_ARGS+=(--unshare-net)
