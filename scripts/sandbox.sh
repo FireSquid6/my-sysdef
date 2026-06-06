@@ -61,6 +61,7 @@ done
 [[ ${#CMD[@]} -eq 0 ]] && CMD=(bash)
 
 SANDBOX_DIR="$(pwd)"
+REAL_HOME="$(eval echo ~)"
 
 BWRAP_ARGS=(
   --ro-bind /usr /usr
@@ -70,11 +71,10 @@ BWRAP_ARGS=(
   --proc /proc
   --dev /dev
   --tmpfs /tmp
-  --bind "$SANDBOX_DIR" "$SANDBOX_DIR"
   --unshare-pid
   --clearenv
   --setenv PATH /usr/bin:/bin:/usr/local/bin
-  --setenv HOME "$SANDBOX_DIR"
+  --setenv HOME "$REAL_HOME"
   --setenv TMPDIR /tmp
   --setenv TERM "${TERM:-xterm}"
   --die-with-parent
@@ -83,6 +83,16 @@ BWRAP_ARGS=(
 
 [[ -d /lib ]]   && BWRAP_ARGS+=(--ro-bind /lib /lib)
 [[ -d /lib64 ]] && BWRAP_ARGS+=(--ro-bind /lib64 /lib64)
+[[ -d /opt ]]   && BWRAP_ARGS+=(--ro-bind /opt /opt)
+
+# Home dir exists but is empty (tmpfs), then selectively expose configs (read-only).
+# To expose more dotfiles/dirs, add lines like:
+#   [[ -d "$REAL_HOME/.ssh" ]] && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.ssh" "$REAL_HOME/.ssh")
+# Use --bind instead of --ro-bind if write access is needed.
+BWRAP_ARGS+=(--tmpfs "$REAL_HOME")
+[[ -d "$REAL_HOME/.claude" ]]  && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.claude" "$REAL_HOME/.claude")
+[[ -d "$REAL_HOME/.config" ]]  && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.config" "$REAL_HOME/.config")
+BWRAP_ARGS+=(--bind "$SANDBOX_DIR" "$SANDBOX_DIR")
 
 [[ $NET -eq 0 ]] && BWRAP_ARGS+=(--unshare-net)
 
