@@ -1,3 +1,4 @@
+
 require("lazy").setup({
   {
     "folke/which-key.nvim",
@@ -148,6 +149,12 @@ require("lazy").setup({
     },
   },
 
+  {
+    "folke/sidekick.nvim",
+    -- Always installed, but only loaded/configured from ai-setup.lua
+    lazy = true,
+  },
+
   "nvim-tree/nvim-web-devicons",
   {
     "nvim-lualine/lualine.nvim",
@@ -259,53 +266,6 @@ require("lazy").setup({
     },
   },
   { "Bilal2453/luvit-meta", lazy = true }, -- optional `vim.uv` typings
-  -- {
-  --   "epwalsh/obsidian.nvim",
-  --   version = "*",
-  --   lazy = true,
-  --   ft = "markdown",
-  --
-  --   dependencies = {
-  --     "nvim-lua/plenary.nvim",
-  --   },
-  --   opts = {
-  --     workspaces = {
-  --       {
-  --         name = "notes",
-  --         path = "~/notes",
-  --       },
-  --     },
-  --     ui = {
-  --       enable = false,
-  --     },
-  --     daily_notes = {
-  --       folder = "journal",
-  --       default_tags = { },
-  --     }
-  --   },
-  -- },
-  {
-    "hat0uma/csvview.nvim",
-    ---@module "csvview"
-    ---@type CsvView.Options
-    opts = {
-      parser = { comments = { "#", "//" } },
-      keymaps = {
-        -- Text objects for selecting fields
-        textobject_field_inner = { "if", mode = { "o", "x" } },
-        textobject_field_outer = { "af", mode = { "o", "x" } },
-        -- Excel-like navigation:
-        -- Use <Tab> and <S-Tab> to move horizontally between fields.
-        -- Use <Enter> and <S-Enter> to move vertically between rows and place the cursor at the end of the field.
-        -- Note: In terminals, you may need to enable CSI-u mode to use <S-Tab> and <S-Enter>.
-        jump_next_field_end = { "<Tab>", mode = { "n", "v" } },
-        jump_prev_field_end = { "<S-Tab>", mode = { "n", "v" } },
-        jump_next_row = { "<Enter>", mode = { "n", "v" } },
-        jump_prev_row = { "<S-Enter>", mode = { "n", "v" } },
-      },
-    },
-    cmd = { "CsvViewEnable", "CsvViewDisable", "CsvViewToggle" },
-  },
   {
     "mason-org/mason.nvim",
     opts = {

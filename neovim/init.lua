@@ -53,3 +53,26 @@ vim.api.nvim_create_user_command("Daybook", function()
   vim.cmd("edit " .. path)
 end, {})
 
+-- Skip AI setup if a .noclaude file exists between cwd and the first dir containing a git repo
+local function has_noclaude()
+  local cwd = vim.fn.getcwd()
+  local dir = cwd
+  while true do
+    if vim.fn.filereadable(dir .. "/.noclaude") == 1 then
+      return true
+    end
+    -- Stop once we reach a directory containing a git repo
+    if vim.fn.isdirectory(dir .. "/.git") == 1 or vim.fn.filereadable(dir .. "/.git") == 1 then
+      return false
+    end
+    local parent = vim.fs.dirname(dir)
+    if parent == dir then
+      return false
+    end
+    dir = parent
+  end
+end
+
+if not has_noclaude() then
+  require("ai-setup")
+end

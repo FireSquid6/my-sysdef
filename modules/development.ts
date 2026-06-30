@@ -10,7 +10,8 @@ const m: ModuleGenerator = () => {
     files: {
       "{HOME}/.config/lazygit/config.yml": "./dotfiles/lazygit.yml",
       "{HOME}/.gitconfig": "./dotfiles/gitconfig",
-      "{HOME}/.tmux.conf": "./dotfiles/tmux.conf"
+      "{HOME}/.tmux.conf": "./dotfiles/tmux.conf",
+      "{HOME}/.config/zellij/config.kdl": "./dotfiles/zellij.kdl",
     },
     directories: {
       "{HOME}/.config/nvim": "./neovim"
