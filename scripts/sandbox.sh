@@ -58,7 +58,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ ${#CMD[@]} -eq 0 ]] && CMD=(bash)
+[[ ${#CMD[@]} -eq 0 ]] && CMD=(fish)
 
 SANDBOX_DIR="$(pwd)"
 REAL_HOME="$(eval echo ~)"
@@ -92,7 +92,9 @@ BWRAP_ARGS=(
 BWRAP_ARGS+=(--tmpfs "$REAL_HOME")
 [[ -d "$REAL_HOME/.claude" ]]  && BWRAP_ARGS+=(--bind "$REAL_HOME/.claude" "$REAL_HOME/.claude")
 [[ -d "$REAL_HOME/.config" ]]  && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.config" "$REAL_HOME/.config")
-[[ -f "$REAL_HOME/.claude.json" ]] && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.claude.json" "$REAL_HOME/.claude.json")
+[[ -f "$REAL_HOME/.claude.json" ]] && BWRAP_ARGS+=(--bind "$REAL_HOME/.claude.json" "$REAL_HOME/.claude.json")
+[[ -d "$REAL_HOME/.local/bin" ]] && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.local/bin" "$REAL_HOME/.local/bin")
+[[ -f "$REAL_HOME/.bashrc" ]]    && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.bashrc" "$REAL_HOME/.bashrc")
 BWRAP_ARGS+=(--bind "$SANDBOX_DIR" "$SANDBOX_DIR")
 
 [[ $NET -eq 0 ]] && BWRAP_ARGS+=(--unshare-net)

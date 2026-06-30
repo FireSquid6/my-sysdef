@@ -35,3 +35,21 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+vim.api.nvim_create_user_command("DailyNote", function()
+  local path = os.date(vim.fn.expand("~/notes/journal/%Y-%m-%d.md"))
+  vim.fn.mkdir(vim.fn.expand("~/notes/journal"), "p")
+  vim.cmd("edit " .. path)
+end, {})
+
+vim.api.nvim_create_user_command("Daybook", function()
+  local path = vim.fn.expand("~/notes/daybook/_.md")
+  if vim.fn.filereadable(path) == 0 then
+    local template = vim.fn.expand("~/notes/daybook/template.md")
+    vim.fn.mkdir(vim.fn.expand("~/notes/daybook"), "p")
+    if vim.fn.filereadable(template) == 1 then
+      vim.fn.system({ "cp", template, path })
+    end
+  end
+  vim.cmd("edit " .. path)
+end, {})
+
