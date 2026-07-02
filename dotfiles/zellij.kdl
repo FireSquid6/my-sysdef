@@ -177,6 +177,9 @@ keybinds clear-defaults=true {
         bind "Alt Shift p" { ToggleGroupMarking; }
         bind "Ctrl up" { ScrollUp; }
         bind "Ctrl down" { ScrollDown; }
+        // Ctrl+Alt+Up/Down to scroll page up/down (enters scroll mode automatically)
+        bind "Ctrl Alt up" { PageScrollUp; SwitchToMode "scroll"; }
+        bind "Ctrl Alt down" { PageScrollDown; SwitchToMode "scroll"; }
     }
     shared_except "locked" "renametab" "renamepane" {
         bind "Ctrl g" { SwitchToMode "locked"; }
@@ -207,6 +210,8 @@ keybinds clear-defaults=true {
         bind "r" { SwitchToMode "resize"; }
     }
     shared_among "scroll" "search" {
+        bind "Ctrl Alt up" { PageScrollUp; }
+        bind "Ctrl Alt down" { PageScrollDown; }
         bind "PageDown" { PageScrollDown; }
         bind "PageUp" { PageScrollUp; }
         bind "left" { PageScrollUp; }
