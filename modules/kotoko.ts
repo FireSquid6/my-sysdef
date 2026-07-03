@@ -9,12 +9,12 @@ const m: ModuleGenerator = () => {
     directories: {},
     packages: {
       "arch-official": [
-	"eos-dracut",
-	"os-prober",
-	"intel-ucode",
-	"python-jinja",
-	"ttf-dejavu",
-	"grub",
+        "eos-dracut",
+        "os-prober",
+        "intel-ucode",
+        "python-jinja",
+        "ttf-dejavu",
+        "grub",
       ],
     }
   }
