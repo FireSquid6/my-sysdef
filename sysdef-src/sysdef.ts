@@ -146,6 +146,9 @@ export const defaultShell: Shell = async (s, { throwOnError, stdin, displayOutpu
     stdout: "pipe",
     stderr: "inherit",
     stdin: inStream,
+    // pass the live process.env so runtime-set SUDO_ASKPASS/SYSDEF_SUDO_PASSWORD
+    // (configured by getCredentials) reach sudo -- Bun snapshots env otherwise
+    env: process.env,
   });
 
 

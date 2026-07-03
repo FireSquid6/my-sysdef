@@ -69,7 +69,7 @@ function readPassword(promptText: string): Promise<string> {
       }
       process.stdin.off("data", onData);
       process.stdin.pause();
-      Bun.spawnSync(["stty", "echo"], { stdin: "inherit", stdout: "inherit", stderr: "inherit" });
+      Bun.spawnSync(["stty", "echo"], { stdin: "inherit", stdout: "inherit", stderr: "inherit", env: process.env });
       process.stdout.write("\n");
       resolve(buf.slice(0, nl).replace(/\r$/, ""));
     };
@@ -110,8 +110,9 @@ async function getCredentials() {
   process.env.SUDO_ASKPASS = askpassPath;
   process.env.SYSDEF_SUDO_PASSWORD = password;
 
-  // validate now so a wrong password fails fast rather than mid-install
-  const check = Bun.spawnSync(["sudo", "-A", "-v"]);
+  // validate now so a wrong password fails fast rather than mid-install.
+  // pass the live env so the just-set SUDO_ASKPASS/SYSDEF_SUDO_PASSWORD reach sudo
+  const check = Bun.spawnSync(["sudo", "-A", "-v"], { env: process.env });
   if (check.exitCode !== 0) {
     cleanupCredentials();
     errorOut("Failed to obtain root credentials");
