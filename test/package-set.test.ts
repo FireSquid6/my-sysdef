@@ -27,11 +27,37 @@ describe("PackageSet", () => {
     ];
 
     set.addList(packages);
-    
+
     expect(set.has(packages[0]!)).toBe(true);
     expect(set.has(packages[1]!)).toBe(true);
     expect(set.hasAnyVersion({name: "pkg1", provider: "npm"})).toBe(true);
     expect(set.hasAnyVersion({name: "pkg2", provider: "npm"})).toBe(true);
+  });
+
+  test("has() is version-sensitive", () => {
+    const set = new PackageSet();
+    set.add({ name: "vim", version: "8.2", provider: "apt" });
+
+    expect(set.has({ name: "vim", version: "8.2", provider: "apt" })).toBe(true);
+    // a different version is NOT considered present by has()
+    expect(set.has({ name: "vim", version: "9.0", provider: "apt" })).toBe(false);
+    // ...but hasAnyVersion ignores the version
+    expect(set.hasAnyVersion({ name: "vim", provider: "apt" })).toBe(true);
+  });
+
+  test("distinguishes packages by provider", () => {
+    const set = new PackageSet();
+    set.add({ name: "vim", version: "8.2", provider: "apt" });
+
+    expect(set.hasAnyVersion({ name: "vim", provider: "apt" })).toBe(true);
+    expect(set.hasAnyVersion({ name: "vim", provider: "cargo" })).toBe(false);
+    expect(set.has({ name: "vim", version: "8.2", provider: "cargo" })).toBe(false);
+  });
+
+  test("empty set contains nothing", () => {
+    const set = new PackageSet();
+    expect(set.has({ name: "vim", version: "8.2", provider: "apt" })).toBe(false);
+    expect(set.hasAnyVersion({ name: "vim", provider: "apt" })).toBe(false);
   });
 });
 

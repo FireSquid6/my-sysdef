@@ -91,9 +91,12 @@ export async function loadProviders(rootDir: string, dryRun: boolean, providersL
   return providers;
 }
 
-export async function loadVariables(rootDir: string): Promise<VariableStore> {
+export async function loadVariables(rootDir: string, baseVariables: Record<string, string> = {}): Promise<VariableStore> {
   const variablesFile = path.join(rootDir, "variables");
   const store = new VariableStore();
+  // Global variables from config.yaml form the base; a variables.ts file (loaded
+  // below) may override them.
+  store.insertAll(baseVariables);
   for (const ext of validExtensions) {
     const filepath = `${variablesFile}${ext}`;
     if (!fs.existsSync(filepath)) {

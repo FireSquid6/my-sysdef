@@ -17,6 +17,16 @@ export class Lockfile {
     return undefined;
   }
 
+  // Names of all packages recorded (managed) for a provider. Used to compute the
+  // "managed set" -- sysdef only removes packages it previously installed.
+  getPackages(provider: string): string[] {
+    const providerData = this.data[provider];
+    if (!providerData) {
+      return [];
+    }
+    return Object.keys(providerData);
+  }
+
   setVersion(provider: string, name: string, version: string) {
     if (!this.data[provider]) {
       this.data[provider] = {}

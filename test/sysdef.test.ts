@@ -285,120 +285,172 @@ describe("getPackageList", () => {
 });
 
 describe("syncPackages", () => {
-  test("should install missing packages", async () => {
-    const installedPackages: PackageInfo[] = [];
-    const toInstallPackages: PackageInfo[] = [];
-    const toUninstallPackages: string[] = [];
-
-    const mockProvider: Provider = {
+  // records what the provider was asked to install/uninstall
+  function recordingProvider(installed: PackageInfo[]) {
+    const toInstall: PackageInfo[] = [];
+    const toUninstall: string[] = [];
+    const provider: Provider = {
       name: "npm",
-      install: async (packages) => {
-        toInstallPackages.push(...packages);
-      },
-      uninstall: async (packages) => {
-        toUninstallPackages.push(...packages);
-      },
-      getInstalled: async () => installedPackages,
-      update: async () => {}
+      install: async (packages) => { toInstall.push(...packages); },
+      uninstall: async (packages) => { toUninstall.push(...packages); },
+      getInstalled: async () => installed,
+      update: async () => {},
     };
+    return { provider, toInstall, toUninstall };
+  }
 
-    const requestedPackages = new Map([
-      ["npm", [
-        { name: "package1", version: "1.0.0", provider: "npm" }
-      ]]
-    ]);
+  const managed = (...names: string[]) => new Map([["npm", new Set(names)]]);
+  const noop = async () => {};
 
-    await syncPackages(requestedPackages, [mockProvider], false);
+  test("should install missing packages", async () => {
+    const { provider, toInstall, toUninstall } = recordingProvider([]);
+    const requested = new Map([["npm", [{ name: "package1", version: "1.0.0", provider: "npm" }]]]);
 
-    expect(toInstallPackages).toHaveLength(1);
-    expect(toInstallPackages[0]!.name).toBe("package1");
-    expect(toUninstallPackages).toHaveLength(0);
+    await syncPackages(requested, [provider], false, managed(), noop);
+
+    expect(toInstall).toHaveLength(1);
+    expect(toInstall[0]!.name).toBe("package1");
+    expect(toUninstall).toHaveLength(0);
   });
 
-  test("should uninstall unrequested packages", async () => {
-    const installedPackages: PackageInfo[] = [
-      { name: "package1", version: "1.0.0", provider: "npm" }
-    ];
-    const toInstallPackages: PackageInfo[] = [];
-    const toUninstallPackages: string[] = [];
+  test("removes a managed package that is no longer requested", async () => {
+    const { provider, toInstall, toUninstall } = recordingProvider([
+      { name: "package1", version: "1.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([["npm", []]]);
 
-    const mockProvider: Provider = {
-      name: "npm",
-      install: async (packages) => {
-        toInstallPackages.push(...packages);
-      },
-      uninstall: async (packages) => {
-        toUninstallPackages.push(...packages);
-      },
-      getInstalled: async () => installedPackages,
-      update: async () => {}
-    };
+    // package1 was previously installed BY sysdef (managed)
+    await syncPackages(requested, [provider], false, managed("package1"), noop);
 
-    const requestedPackages = new Map([["npm", []]]);
+    expect(toInstall).toHaveLength(0);
+    expect(toUninstall).toEqual(["package1"]);
+  });
 
-    await syncPackages(requestedPackages, [mockProvider], false);
+  test("NEVER removes a package sysdef did not install (safety)", async () => {
+    const { provider, toInstall, toUninstall } = recordingProvider([
+      { name: "package1", version: "1.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([["npm", []]]);
 
-    expect(toInstallPackages).toHaveLength(0);
-    expect(toUninstallPackages).toHaveLength(1);
-    expect(toUninstallPackages[0]).toBe("package1");
+    // package1 is installed but NOT in the managed set -> must be left alone
+    await syncPackages(requested, [provider], false, managed(), noop);
+
+    expect(toInstall).toHaveLength(0);
+    expect(toUninstall).toHaveLength(0);
+  });
+
+  test("does not remove a managed package that is still requested", async () => {
+    const { provider, toUninstall } = recordingProvider([
+      { name: "package1", version: "1.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([["npm", [{ name: "package1", version: "1.0.0", provider: "npm" }]]]);
+
+    await syncPackages(requested, [provider], false, managed("package1"), noop);
+
+    expect(toUninstall).toHaveLength(0);
+  });
+
+  test("noRemove (--safe) skips uninstalling even managed packages", async () => {
+    const { provider, toUninstall } = recordingProvider([
+      { name: "package1", version: "1.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([["npm", []]]);
+
+    await syncPackages(requested, [provider], true, managed("package1"), noop);
+
+    expect(toUninstall).toHaveLength(0);
   });
 
   test("should handle ANY_VERSION_STRING correctly", async () => {
-    const installedPackages: PackageInfo[] = [
-      { name: "package1", version: "1.0.0", provider: "npm" }
-    ];
-    const toInstallPackages: PackageInfo[] = [];
-    const toUninstallPackages: string[] = [];
-
-    const mockProvider: Provider = {
-      name: "npm",
-      install: async (packages) => {
-        toInstallPackages.push(...packages);
-      },
-      uninstall: async (packages) => {
-        toUninstallPackages.push(...packages);
-      },
-      getInstalled: async () => installedPackages,
-      update: async () => {}
-    };
-
-    const requestedPackages = new Map([
-      ["npm", [
-        { name: "package1", version: ANY_VERSION_STRING, provider: "npm" }
-      ]]
+    const { provider, toInstall, toUninstall } = recordingProvider([
+      { name: "package1", version: "1.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([
+      ["npm", [{ name: "package1", version: ANY_VERSION_STRING, provider: "npm" }]],
     ]);
 
-    await syncPackages(requestedPackages, [mockProvider], false);
+    await syncPackages(requested, [provider], false, managed("package1"), noop);
 
-    expect(toInstallPackages).toHaveLength(0);
-    expect(toUninstallPackages).toHaveLength(0);
+    expect(toInstall).toHaveLength(0);
+    expect(toUninstall).toHaveLength(0);
   });
 });
 
 describe("updateLockfile", () => {
-  test("should update lockfile with installed packages", async () => {
-    const mockLockfile = new Lockfile();
-
-    const mockProvider: Provider = {
+  function providerReturning(installed: PackageInfo[]): Provider {
+    return {
       name: "npm",
       install: async () => {},
       uninstall: async () => {},
-      getInstalled: async () => [
-        { name: "package1", version: "1.0.0", provider: "npm" },
-        { name: "package2", version: "2.0.0", provider: "npm" }
-      ],
-      update: async () => {}
+      getInstalled: async () => installed,
+      update: async () => {},
     };
+  }
 
-    await updateLockfile([mockProvider], mockLockfile);
+  test("records requested packages at their installed version", async () => {
+    const lockfile = new Lockfile();
+    const provider = providerReturning([
+      { name: "package1", version: "1.0.0", provider: "npm" },
+      { name: "package2", version: "2.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([["npm", [
+      { name: "package1", version: ANY_VERSION_STRING, provider: "npm" },
+      { name: "package2", version: "2.0.0", provider: "npm" },
+    ]]]);
 
-    expect(mockLockfile.getVersion("npm", "package1")).toBe("1.0.0");
-    expect(mockLockfile.getVersion("npm", "package2")).toBe("2.0.0");
+    await updateLockfile(requested, [provider], lockfile);
+
+    expect(lockfile.getVersion("npm", "package1")).toBe("1.0.0"); // resolved from install
+    expect(lockfile.getVersion("npm", "package2")).toBe("2.0.0");
+  });
+
+  test("does NOT record installed packages that were not requested", async () => {
+    const lockfile = new Lockfile();
+    const provider = providerReturning([
+      { name: "requested", version: "1.0.0", provider: "npm" },
+      { name: "unmanaged", version: "9.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([["npm", [
+      { name: "requested", version: ANY_VERSION_STRING, provider: "npm" },
+    ]]]);
+
+    await updateLockfile(requested, [provider], lockfile);
+
+    expect(lockfile.getVersion("npm", "requested")).toBe("1.0.0");
+    expect(lockfile.getVersion("npm", "unmanaged")).toBeUndefined();
+  });
+
+  test("drops a previously-managed package that is no longer requested", async () => {
+    const lockfile = new Lockfile();
+    lockfile.setVersion("npm", "old", "1.0.0"); // was managed before
+    const provider = providerReturning([
+      { name: "kept", version: "2.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([["npm", [
+      { name: "kept", version: ANY_VERSION_STRING, provider: "npm" },
+    ]]]);
+
+    await updateLockfile(requested, [provider], lockfile);
+
+    expect(lockfile.getVersion("npm", "kept")).toBe("2.0.0");
+    expect(lockfile.getVersion("npm", "old")).toBeUndefined();
+  });
+
+  test("falls back to the requested version when not readable from install", async () => {
+    const lockfile = new Lockfile();
+    const provider = providerReturning([]); // getInstalled reports nothing
+    const requested = new Map([["npm", [
+      { name: "package1", version: "3.1.4", provider: "npm" },
+    ]]]);
+
+    await updateLockfile(requested, [provider], lockfile);
+
+    expect(lockfile.getVersion("npm", "package1")).toBe("3.1.4");
   });
 });
 
 describe("syncFiles", () => {
-  test("should create symlinks and write files", () => {
+  test("should create symlinks and write files", async () => {
     const symlinkCalls: Array<{dest: string, src: string}> = [];
     const fileCalls: Array<{path: string, content: string}> = [];
 
@@ -410,8 +462,7 @@ describe("syncFiles", () => {
         fileCalls.push({path, content});
       },
       exists: async () => true,
-      async copy(source, destination) {},
-
+      copy: async () => {},
     };
 
     const store = new VariableStore();
@@ -432,7 +483,7 @@ describe("syncFiles", () => {
       }
     ];
 
-    syncFiles(modules, store, mockFilesystem, "/home/user/sysdef");
+    await syncFiles(modules, store, mockFilesystem, "/root/sysdef");
 
     expect(symlinkCalls).toHaveLength(2);
     expect(symlinkCalls.find(call => call.dest === "/home/user/.config")).toBeDefined();
