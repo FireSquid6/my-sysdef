@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, spyOn } from "bun:test";
 import { 
   VariableStore, 
   type PackageInfo, 
@@ -300,13 +300,15 @@ describe("syncPackages", () => {
   }
 
   const managed = (...names: string[]) => new Map([["npm", new Set(names)]]);
+  const untracked = (...names: string[]) => new Map([["npm", new Set(names)]]);
+  const noUntracked = new Map<string, Set<string>>();
   const noop = async () => {};
 
   test("should install missing packages", async () => {
     const { provider, toInstall, toUninstall } = recordingProvider([]);
     const requested = new Map([["npm", [{ name: "package1", version: "1.0.0", provider: "npm" }]]]);
 
-    await syncPackages(requested, [provider], false, managed(), noop);
+    await syncPackages(requested, [provider], false, managed(), noUntracked, noop);
 
     expect(toInstall).toHaveLength(1);
     expect(toInstall[0]!.name).toBe("package1");
@@ -320,7 +322,7 @@ describe("syncPackages", () => {
     const requested = new Map([["npm", []]]);
 
     // package1 was previously installed BY sysdef (managed)
-    await syncPackages(requested, [provider], false, managed("package1"), noop);
+    await syncPackages(requested, [provider], false, managed("package1"), noUntracked, noop);
 
     expect(toInstall).toHaveLength(0);
     expect(toUninstall).toEqual(["package1"]);
@@ -333,7 +335,7 @@ describe("syncPackages", () => {
     const requested = new Map([["npm", []]]);
 
     // package1 is installed but NOT in the managed set -> must be left alone
-    await syncPackages(requested, [provider], false, managed(), noop);
+    await syncPackages(requested, [provider], false, managed(), noUntracked, noop);
 
     expect(toInstall).toHaveLength(0);
     expect(toUninstall).toHaveLength(0);
@@ -345,7 +347,7 @@ describe("syncPackages", () => {
     ]);
     const requested = new Map([["npm", [{ name: "package1", version: "1.0.0", provider: "npm" }]]]);
 
-    await syncPackages(requested, [provider], false, managed("package1"), noop);
+    await syncPackages(requested, [provider], false, managed("package1"), noUntracked, noop);
 
     expect(toUninstall).toHaveLength(0);
   });
@@ -356,7 +358,7 @@ describe("syncPackages", () => {
     ]);
     const requested = new Map([["npm", []]]);
 
-    await syncPackages(requested, [provider], true, managed("package1"), noop);
+    await syncPackages(requested, [provider], true, managed("package1"), noUntracked, noop);
 
     expect(toUninstall).toHaveLength(0);
   });
@@ -369,10 +371,114 @@ describe("syncPackages", () => {
       ["npm", [{ name: "package1", version: ANY_VERSION_STRING, provider: "npm" }]],
     ]);
 
-    await syncPackages(requested, [provider], false, managed("package1"), noop);
+    await syncPackages(requested, [provider], false, managed("package1"), noUntracked, noop);
 
     expect(toInstall).toHaveLength(0);
     expect(toUninstall).toHaveLength(0);
+  });
+
+  test("warns and lists untracked packages when the list is short", async () => {
+    const { provider } = recordingProvider([
+      { name: "managed1", version: "1.0.0", provider: "npm" },
+      { name: "ripgrep", version: "1.0.0", provider: "npm" },
+      { name: "bat", version: "1.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([["npm", [{ name: "managed1", version: "1.0.0", provider: "npm" }]]]);
+
+    const log = spyOn(console, "log").mockImplementation(() => {});
+    let out = "";
+    try {
+      await syncPackages(requested, [provider], false, managed("managed1"), noUntracked, noop);
+      out = log.mock.calls.map(c => c.join(" ")).join("\n");
+    } finally {
+      log.mockRestore();
+    }
+
+    // ripgrep + bat are installed but not managed
+    expect(out).toContain("2 untracked");
+    expect(out).toContain("ripgrep, bat");
+    // a managed package must not be reported as untracked
+    expect(out).not.toContain("managed1,");
+  });
+
+  test("warns with a count only when there are many untracked packages", async () => {
+    const many = Array.from({ length: 20 }, (_, i) => ({
+      name: `pkg${i}`, version: "1.0.0", provider: "npm",
+    }));
+    const { provider } = recordingProvider(many);
+    const requested = new Map([["npm", []]]);
+
+    const log = spyOn(console, "log").mockImplementation(() => {});
+    let out = "";
+    try {
+      await syncPackages(requested, [provider], false, managed(), noUntracked, noop);
+      out = log.mock.calls.map(c => c.join(" ")).join("\n");
+    } finally {
+      log.mockRestore();
+    }
+
+    expect(out).toContain("20 untracked");
+    // over the threshold -> names are not enumerated
+    expect(out).not.toContain("pkg0, pkg1");
+  });
+
+  test("does not warn when every installed package is managed", async () => {
+    const { provider } = recordingProvider([
+      { name: "package1", version: "1.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([["npm", [{ name: "package1", version: "1.0.0", provider: "npm" }]]]);
+
+    const log = spyOn(console, "log").mockImplementation(() => {});
+    let out = "";
+    try {
+      await syncPackages(requested, [provider], false, managed("package1"), noUntracked, noop);
+      out = log.mock.calls.map(c => c.join(" ")).join("\n");
+    } finally {
+      log.mockRestore();
+    }
+
+    expect(out).not.toContain("untracked");
+  });
+
+  test("suppresses explicitly-untracked packages from the warning", async () => {
+    const { provider } = recordingProvider([
+      { name: "ripgrep", version: "1.0.0", provider: "npm" },
+      { name: "bat", version: "1.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([["npm", []]]);
+
+    const log = spyOn(console, "log").mockImplementation(() => {});
+    let out = "";
+    try {
+      // ripgrep is explicitly untracked -> only bat should be reported
+      await syncPackages(requested, [provider], false, managed(), untracked("ripgrep"), noop);
+      out = log.mock.calls.map(c => c.join(" ")).join("\n");
+    } finally {
+      log.mockRestore();
+    }
+
+    expect(out).toContain("1 untracked");
+    expect(out).toContain("bat");
+    expect(out).not.toContain("ripgrep");
+  });
+
+  test("includes a hint pointing at the track command", async () => {
+    const { provider } = recordingProvider([
+      { name: "ripgrep", version: "1.0.0", provider: "npm" },
+    ]);
+    const requested = new Map([["npm", []]]);
+
+    const log = spyOn(console, "log").mockImplementation(() => {});
+    let out = "";
+    try {
+      await syncPackages(requested, [provider], false, managed(), noUntracked, noop);
+      out = log.mock.calls.map(c => c.join(" ")).join("\n");
+    } finally {
+      log.mockRestore();
+    }
+
+    expect(out).toContain("sysdef track ignore-all npm");
+    expect(out).toContain("sysdef track ignore npm");
   });
 });
 

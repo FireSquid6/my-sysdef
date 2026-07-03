@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { loadModules, loadProviders, loadVariables } from "./loaders";
 import { Lockfile } from "./lockfile";
+import { Trackfile } from "./trackfile";
 import { dryFilesystem, normalFilesystem } from "./connections";
 import { syncPackages, runEvents, updateLockfile, syncFiles, getPackageList, type PackageInfo, errorOut, defaultShell, dryShell } from "./sysdef";
 import { Command } from "@commander-js/extra-typings";
@@ -35,6 +36,16 @@ function managedSet(providers: { name: string }[], lockfile: Lockfile): Map<stri
     managed.set(p.name, new Set(lockfile.getPackages(p.name)));
   }
   return managed;
+}
+
+// the set of packages the user has explicitly marked untracked (recorded in the
+// trackfile), per provider. These are suppressed from the untracked warning.
+function untrackedSet(providers: { name: string }[], trackfile: Trackfile): Map<string, Set<string>> {
+  const untracked: Map<string, Set<string>> = new Map();
+  for (const p of providers) {
+    untracked.set(p.name, new Set(trackfile.getUntracked(p.name)));
+  }
+  return untracked;
 }
 
 
@@ -155,6 +166,10 @@ const syncCommand = cli.command("sync")
     const lockfile = new Lockfile();
     lockfile.readFromFile(lockfilePath);
 
+    const trackfilePath = path.join(rootDir, "sysdef-track.json");
+    const trackfile = new Trackfile();
+    trackfile.readFromFile(trackfilePath);
+
     const filesystem = options.dryRun ? dryFilesystem : normalFilesystem;
 
     console.log("\nSYNCING FILES:");
@@ -171,9 +186,16 @@ const syncCommand = cli.command("sync")
     const list = getPackageList(modules, lockfile);
     const map = toProviderMap(list);
 
+    // a package the user now requests (has in a module) should be tracked, so
+    // drop it from the explicitly-untracked list if it was there.
+    for (const p of list) {
+      trackfile.removeUntracked(p.provider, p.name);
+    }
+
     // capture the previously-managed set BEFORE we rewrite the lockfile
     const managed = managedSet(providers, lockfile);
-    await syncPackages(map, providers, noRemove, managed);
+    const explicitlyUntracked = untrackedSet(providers, trackfile);
+    await syncPackages(map, providers, noRemove, managed, explicitlyUntracked);
 
     console.log("\nRUNNING EVENTS:");
     await runEvents(modules, dryRun ? dryShell : defaultShell);
@@ -181,6 +203,7 @@ const syncCommand = cli.command("sync")
     if (!dryRun) {
       await updateLockfile(map, providers, lockfile);
       lockfile.serializeToFile(lockfilePath);
+      trackfile.serializeToFile(trackfilePath);
     }
   });
 
@@ -280,6 +303,124 @@ cli.command("list-installed")
       for (const pkg of packages) {
         console.log(`  ${pkg.name}@${pkg.version}`);
       }
+    }
+  });
+
+const trackCommand = cli.command("track")
+  .description("Manage which installed packages sysdef warns about as untracked")
+  .action(() => {
+    trackCommand.help();
+  });
+
+trackCommand.command("ignore")
+  .description("Mark specific packages untracked so sync stops warning about them")
+  .argument("<provider>", "the provider the packages belong to")
+  .argument("[packages...]", "package names to mark untracked")
+  .action(async (provider, packages) => {
+    const rootDir = getRootDir();
+    const config = readConfig(rootDir);
+    const providers = await loadProviders(rootDir, false, config.providers);
+
+    if (providers.find(p => p.name === provider) === undefined) {
+      errorOut(`Provider ${provider} was not found.`);
+    }
+    if (!packages || packages.length === 0) {
+      errorOut("No packages given. Use `sysdef track ignore-all` to untrack everything for a provider.");
+    }
+
+    const trackfilePath = path.join(rootDir, "sysdef-track.json");
+    const trackfile = new Trackfile();
+    trackfile.readFromFile(trackfilePath);
+
+    for (const name of packages) {
+      trackfile.addUntracked(provider, name);
+    }
+    trackfile.serializeToFile(trackfilePath);
+    console.log(`Marked ${packages.length} package(s) untracked for ${provider}.`);
+  });
+
+trackCommand.command("ignore-all")
+  .description("Mark every currently installed-but-unmanaged package untracked")
+  .argument("[provider]", "only this provider (default: all)")
+  .action(async (provider) => {
+    const rootDir = getRootDir();
+    const config = readConfig(rootDir);
+    let providers = await loadProviders(rootDir, false, config.providers);
+
+    if (provider !== undefined && providers.find(p => p.name === provider) === undefined) {
+      errorOut(`Provider ${provider} was not found.`);
+    }
+    if (provider) {
+      providers = providers.filter(p => p.name === provider);
+    }
+
+    const lockfilePath = path.join(rootDir, "sysdef-lock.json");
+    const lockfile = new Lockfile();
+    lockfile.readFromFile(lockfilePath);
+
+    const trackfilePath = path.join(rootDir, "sysdef-track.json");
+    const trackfile = new Trackfile();
+    trackfile.readFromFile(trackfilePath);
+
+    for (const p of providers) {
+      const managed = new Set(lockfile.getPackages(p.name));
+      const installed = await p.getInstalled();
+      let added = 0;
+      for (const pkg of installed) {
+        if (!managed.has(pkg.name) && !trackfile.isUntracked(p.name, pkg.name)) {
+          trackfile.addUntracked(p.name, pkg.name);
+          added++;
+        }
+      }
+      console.log(`${p.name}: marked ${added} package(s) untracked.`);
+    }
+    trackfile.serializeToFile(trackfilePath);
+  });
+
+trackCommand.command("unignore")
+  .description("Remove packages from the untracked list (re-enable warnings)")
+  .argument("<provider>", "the provider the packages belong to")
+  .argument("[packages...]", "package names to re-track")
+  .action(async (provider, packages) => {
+    const rootDir = getRootDir();
+    const config = readConfig(rootDir);
+    const providers = await loadProviders(rootDir, false, config.providers);
+
+    if (providers.find(p => p.name === provider) === undefined) {
+      errorOut(`Provider ${provider} was not found.`);
+    }
+    if (!packages || packages.length === 0) {
+      errorOut("No packages given.");
+    }
+
+    const trackfilePath = path.join(rootDir, "sysdef-track.json");
+    const trackfile = new Trackfile();
+    trackfile.readFromFile(trackfilePath);
+
+    for (const name of packages) {
+      trackfile.removeUntracked(provider, name);
+    }
+    trackfile.serializeToFile(trackfilePath);
+    console.log(`Removed ${packages.length} package(s) from untracked for ${provider}.`);
+  });
+
+trackCommand.command("list")
+  .description("Show packages explicitly marked untracked")
+  .argument("[provider]", "only this provider (default: all)")
+  .action(async (provider) => {
+    const rootDir = getRootDir();
+    const trackfilePath = path.join(rootDir, "sysdef-track.json");
+    const trackfile = new Trackfile();
+    trackfile.readFromFile(trackfilePath);
+
+    const providerNames = provider ? [provider] : trackfile.getProviders();
+    if (providerNames.length === 0) {
+      console.log("No packages are explicitly untracked.");
+      return;
+    }
+    for (const name of providerNames) {
+      const untracked = trackfile.getUntracked(name);
+      console.log(`${name}: ${untracked.length === 0 ? "(none)" : untracked.join(", ")}`);
     }
   });
 
