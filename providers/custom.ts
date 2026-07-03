@@ -15,7 +15,10 @@ const provider: ProviderGenerator = (run: Shell) => {
 
     },
     async getInstalled() {
-      
+      return [];
+    },
+    async update(packages) {
+
     },
   }
 }

@@ -1,4 +1,4 @@
-import { defaultShell, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
+import { defaultShell, errorOut, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
 import { partitionArray, stringifyPackageParition } from "../sysdef-src/prompt";
 
 // apt provider - installs packages from official Ubuntu/Debian repos globally
@@ -23,10 +23,10 @@ const provider: ProviderGenerator = (run: Shell) => {
       for (const part of partitions) {
         const string = stringifyPackageParition(part);
         console.log(`Installing ${string}`);
-        const result = await run(`sudo apt install -y ${string}`, { throwOnError: true });
+        const result = await run(`apt install -y ${string}`, { throwOnError: true, asRoot: true });
         if (result.code !== 0) {
-          console.log(`Error installing packages: ${part}. See the logs below`);
           console.log(result.stdout);
+          errorOut(`Failed to install apt packages: ${string} (exit code ${result.code})`);
         }
       }
     },
@@ -37,7 +37,11 @@ const provider: ProviderGenerator = (run: Shell) => {
       for (const part of partitions) {
         const string = part.join(" ");
         console.log(`Uninstalling ${string}`);
-        await run(`sudo apt remove -y ${string}`, { throwOnError: true });
+        const result = await run(`apt remove -y ${string}`, { throwOnError: true, asRoot: true });
+        if (result.code !== 0) {
+          console.log(result.stdout);
+          errorOut(`Failed to uninstall apt packages: ${string} (exit code ${result.code})`);
+        }
       }
     },
 
@@ -62,9 +66,23 @@ const provider: ProviderGenerator = (run: Shell) => {
 
     async update(packages: string[]) {
       if (packages.length === 0) {
-        await run(`sudo apt update && sudo apt upgrade -y`, { throwOnError: true });
+        // defaultShell does not run through a shell, so `&&` can't be used --
+        // run the two commands separately.
+        const updated = await run(`apt update`, { throwOnError: true, asRoot: true });
+        if (updated.code !== 0) {
+          errorOut(`Failed to update apt package lists (exit code ${updated.code})`);
+        }
+        const upgraded = await run(`apt upgrade -y`, { throwOnError: true, asRoot: true });
+        if (upgraded.code !== 0) {
+          errorOut(`Failed to upgrade apt packages (exit code ${upgraded.code})`);
+        }
       } else {
-        await Promise.all(packages.map(p => run(`sudo apt install -y ${p}`, { throwOnError: true })));
+        await Promise.all(packages.map(async p => {
+          const result = await run(`apt install -y ${p}`, { throwOnError: true, asRoot: true });
+          if (result.code !== 0) {
+            errorOut(`Failed to update apt package: ${p} (exit code ${result.code})`);
+          }
+        }));
       }
     },
   };

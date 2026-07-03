@@ -1,15 +1,18 @@
-import { ANY_VERSION_STRING, defaultShell, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
-import { partitionArray, stringifyPackageParition } from "../sysdef-src/prompt";
+import { ANY_VERSION_STRING, defaultShell, errorOut, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
+import { partitionArray } from "../sysdef-src/prompt";
 
-// AUR provider - installs packages from the Arch User Repository
+// AUR provider - clones, builds, and installs packages from the Arch User
+// Repository. makepkg must run as a non-root user (it refuses to run as root),
+// so sysdef itself should be run as your normal user; only the final `pacman -U`
+// is elevated.
 const MAX_AT_ONCE = 5;
 
 // we use the default shell when getting the list of all installed packages since
 // we want that to happen even in a dry run
 const realShell = defaultShell
 
-// Fetch, build, and install a package from the AUR
-async function buildAndInstallFromAUR(run: Shell, packageName: string, version: string): Promise<void> {
+// Fetch, build, and install a single package from the AUR.
+async function buildAndInstallFromAUR(run: Shell, packageName: string): Promise<void> {
   const buildDir = `/tmp/aur-builds/${packageName}`;
   const aurUrl = `https://aur.archlinux.org/${packageName}.git`;
 
@@ -20,51 +23,46 @@ async function buildAndInstallFromAUR(run: Shell, packageName: string, version: 
   console.log(`Cloning ${packageName} from AUR...`);
   const cloneResult = await realShell(`git clone ${aurUrl} ${buildDir}`, {
     displayOutput: true,
+    throwOnError: true,
   });
 
   if (cloneResult.code !== 0) {
-    throw new Error(`Failed to clone ${packageName} from AUR`);
+    errorOut(`Failed to clone ${packageName} from the AUR (exit code ${cloneResult.code})`);
   }
 
-  // Checkout specific version if not installing latest
-  if (version !== ANY_VERSION_STRING) {
-    console.log(`Checking out version ${version}...`);
-    const checkoutResult = await realShell(`cd ${buildDir} && git checkout ${version}`, {
-      displayOutput: true,
-    });
-
-    if (checkoutResult.code !== 0) {
-      throw new Error(`Failed to checkout version ${version} for ${packageName}`);
-    }
-  }
-
-  // Build the package with makepkg -s (installs build dependencies)
+  // Build the package with makepkg -s (installs build dependencies).
+  // makepkg refuses to run as root, so this runs as the invoking user.
+  // Use an explicit `bash -c` (array form) so cd/&& are handled by a real shell
+  // -- defaultShell splits string commands on spaces and has no shell.
   console.log(`Building ${packageName}...`);
-  const buildResult = await realShell(`cd ${buildDir} && makepkg -s --noconfirm`, {
+  const buildResult = await realShell(["bash", "-c", `cd ${buildDir} && makepkg -s --noconfirm`], {
     displayOutput: true,
+    throwOnError: true,
   });
 
   if (buildResult.code !== 0) {
-    throw new Error(`Failed to build ${packageName}`);
+    errorOut(`Failed to build ${packageName} from the AUR (exit code ${buildResult.code})`);
   }
 
-  // Find the built package file
-  const findPkgResult = await realShell(`find ${buildDir} -maxdepth 1 -name '*.pkg.tar.zst' -o -name '*.pkg.tar.xz'`, {});
-  const pkgFile = findPkgResult.stdout.trim().split('\n')[0];
+  // Find the built package files (glob needs a real shell too). Exclude the
+  // separate `*-debug-*` packages makepkg may emit.
+  const findPkgResult = await realShell(["bash", "-c", `find ${buildDir} -maxdepth 1 \\( -name '*.pkg.tar.zst' -o -name '*.pkg.tar.xz' \\) ! -name '*-debug-*'`], {});
+  const pkgFiles = findPkgResult.stdout.trim().split('\n').filter(f => f.trim());
 
-  if (!pkgFile) {
-    throw new Error(`Could not find built package for ${packageName}`);
+  if (pkgFiles.length === 0) {
+    errorOut(`Could not find a built package for ${packageName} after makepkg`);
   }
 
-  // Install the package
+  // Install the built package(s) (elevated)
   console.log(`Installing ${packageName}...`);
-  const installResult = await run(`pacman -U --noconfirm ${pkgFile}`, {
+  const installResult = await run(`pacman -U --noconfirm ${pkgFiles.join(" ")}`, {
     displayOutput: true,
     asRoot: true,
+    throwOnError: true,
   });
 
   if (installResult.code !== 0) {
-    throw new Error(`Failed to install ${packageName}`);
+    errorOut(`Failed to install ${packageName} from the AUR (exit code ${installResult.code})`);
   }
 
   // Clean up build directory
@@ -84,13 +82,15 @@ const provider: ProviderGenerator = (run: Shell) => {
       }
     },
     async install(packages: PackageInfo[]) {
-      // Install AUR packages one at a time (can't batch install from source)
-      for (const pkg of packages) {
-        try {
-          await buildAndInstallFromAUR(run, pkg.name, pkg.version);
-        } catch (error) {
-          console.log(`Error installing ${pkg.name}: ${error instanceof Error ? error.message : error}`);
-        }
+      // AUR package versions come from the PKGBUILD; arbitrary version pins are
+      // not supported.
+      const pinned = packages.find(p => p.version !== ANY_VERSION_STRING);
+      if (pinned) {
+        errorOut(`aur cannot install a specific version: got ${pinned.name}:${pinned.version}. The AUR builds whatever the PKGBUILD specifies -- remove the version pin.`);
+      }
+
+      for (const p of packages) {
+        await buildAndInstallFromAUR(run, p.name);
       }
     },
 
@@ -103,17 +103,19 @@ const provider: ProviderGenerator = (run: Shell) => {
         const result = await run(`pacman -Rs --noconfirm ${string}`, {
           displayOutput: true,
           asRoot: true,
+          throwOnError: true,
         });
 
         if (result.code !== 0) {
-          console.log(`Error uninstalling packages: ${part}. See the logs above`);
+          errorOut(`Failed to uninstall aur packages: ${string} (exit code ${result.code})`);
         }
       }
     },
 
     async getInstalled() {
-      // Get foreign/AUR packages
-      const result = await realShell(`pacman -Qm`, {});
+      // Get foreign/AUR packages. throwOnError:true suppresses throwing on a
+      // non-zero exit: `pacman -Qm` exits 1 when there are no foreign packages.
+      const result = await realShell(`pacman -Qm`, { throwOnError: true });
       const lines = result.stdout.trim().split('\n').filter(line => line.trim());
 
       return lines.map(line => {
@@ -131,13 +133,14 @@ const provider: ProviderGenerator = (run: Shell) => {
     },
 
     async update(packages: string[]) {
-      // Update AUR packages one at a time by rebuilding from latest source
-      for (const packageName of packages) {
-        try {
-          await buildAndInstallFromAUR(run, packageName, ANY_VERSION_STRING);
-        } catch (error) {
-          console.log(`Error updating ${packageName}: ${error instanceof Error ? error.message : error}`);
-        }
+      // Rebuild from the AUR to pick up new upstream versions. With no packages
+      // given, rebuild every installed foreign (AUR) package.
+      const toUpdate = packages.length === 0
+        ? (await this.getInstalled()).map(p => p.name)
+        : packages;
+
+      for (const name of toUpdate) {
+        await buildAndInstallFromAUR(run, name);
       }
     },
   };

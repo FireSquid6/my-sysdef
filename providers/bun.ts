@@ -1,13 +1,15 @@
 import { ANY_VERSION_STRING, errorOut, type PackageInfo, type ProviderGenerator, type Shell } from "../sysdef-src/sysdef";
 import fs from "fs";
+import os from "os";
+import path from "path";
 import { v } from "../sysdef-src/validation";
 
 
-// getting errors? You need to update BUN_USER to be the user you have bun installed with (bun does a per user installation)
-// you typically use a different installation of bun than the one that comes with sysdef
-const BUN_USER = "firesquid"
-const bunBinary = `/home/${BUN_USER}/.bun/bin/bun`;
-const bunPackageJsonPath = `/home/${BUN_USER}/.bun/install/global/package.json`
+// bun installs per-user under ~/.bun (overridable with $BUN_INSTALL). Note this
+// is your own bun install, typically different from the bun bundled with sysdef.
+const bunDir = process.env.BUN_INSTALL || path.join(os.homedir(), ".bun");
+const bunBinary = path.join(bunDir, "bin", "bun");
+const bunPackageJsonPath = path.join(bunDir, "install", "global", "package.json");
 
 const packageJsonSchema = v.obj({
   dependencies: v.record(v.string(), v.string()),
@@ -22,21 +24,33 @@ const provider: ProviderGenerator = (run: Shell) => {
         errorOut(`Bun binary not found in ${bunBinary}--you may need to edit the provider configuration, see bun.ts`)
       }
     },
-    // this should be able to handle the case where a package is requested to be intsalled of a different version! 
+    // this should be able to handle the case where a package is requested to be intsalled of a different version!
     async install(packages: PackageInfo[]) {
-      await Promise.all(packages.map(p => run(`${bunBinary} install -g ${p.name}@${p.version === ANY_VERSION_STRING
-        ? "latest"
-        : p.version
-      } -E`, {})));
+      if (packages.length === 0) return;
+      // Install in a single command: concurrent global installs race on the
+      // shared global package.json and clobber each other.
+      const specs = packages
+        .map(p => `${p.name}@${p.version === ANY_VERSION_STRING ? "latest" : p.version}`)
+        .join(" ");
+      const result = await run(`${bunBinary} install -g ${specs} -E`, { throwOnError: true });
+      if (result.code !== 0) {
+        errorOut(`Failed to install bun packages: ${specs} (exit code ${result.code})`);
+      }
     },
 
     async uninstall(packages: string[]) {
-      await Promise.all(packages.map(p => run(`${bunBinary} remove -g ${p}"`, {})))
+      if (packages.length === 0) return;
+      const specs = packages.join(" ");
+      const result = await run(`${bunBinary} remove -g ${specs}`, { throwOnError: true });
+      if (result.code !== 0) {
+        errorOut(`Failed to uninstall bun packages: ${specs} (exit code ${result.code})`);
+      }
     },
     async getInstalled() {
+      // A fresh system has no global package.json until the first global
+      // install creates it -- that means nothing is installed yet.
       if (!fs.existsSync(bunPackageJsonPath)) {
-        throw new Error(`Error getting all installed for bun: couldn't find the package json for bun globals in ${bunPackageJsonPath}.`, );
-
+        return [];
       }
 
       const contents = fs.readFileSync(bunPackageJsonPath).toString();
@@ -56,7 +70,12 @@ const provider: ProviderGenerator = (run: Shell) => {
       });
     },
     async update(packages: string[]) {
-      await Promise.all(packages.map(p => run(`${bunBinary} update -g ${p}`, {})))
+      await Promise.all(packages.map(async p => {
+        const result = await run(`${bunBinary} update -g ${p}`, { throwOnError: true });
+        if (result.code !== 0) {
+          errorOut(`Failed to update bun package: ${p} (exit code ${result.code})`);
+        }
+      }))
     },
   }
 }
