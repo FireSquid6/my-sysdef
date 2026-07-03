@@ -1,12 +1,27 @@
 import { ANY_VERSION_STRING } from "./sysdef";
 import type { PackageInfo } from "./sysdef";
 
-export async function readline(): Promise<string> {
-  for await (const line of console) {
-    return line;
-  }
+// read a single line from stdin via process.stdin data events (the same
+// approach as readPassword in index.ts, minus the echo suppression). The
+// `for await (const line of console)` form does not reliably yield here.
+export function readline(): Promise<string> {
+  return new Promise((resolve) => {
+    const decoder = new TextDecoder();
+    let buf = "";
+    const onData = (chunk: Buffer) => {
+      buf += decoder.decode(chunk);
+      const nl = buf.indexOf("\n");
+      if (nl === -1) {
+        return;
+      }
+      process.stdin.off("data", onData);
+      process.stdin.pause();
+      resolve(buf.slice(0, nl).replace(/\r$/, ""));
+    };
 
-  return "";
+    process.stdin.resume();
+    process.stdin.on("data", onData);
+  });
 }
 
 export async function promptForOk(prompt: string): Promise<void> {
