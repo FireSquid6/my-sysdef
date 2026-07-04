@@ -9,24 +9,10 @@ const m: ModuleGenerator = () => {
     directories: {},
     packages: {
       "arch-official": [
-        "networkmanager",
-        "network-manager-applet",
-        "networkmanager-openconnect",
-        "networkmanager-openvpn",
         "tailscale",
-        // "trayscale",
         "openssh",
         "firewalld",
-        "iptables-nft",
-        "iwd",
-        "wpa_supplicant",
-        "netctl",
-        "dnsmasq",
-        "nss-mdns",
-        "nfs-utils",
-        "xl2tpd",
         "waypipe",
-        "modemmanager",
       ],
     }
   }
