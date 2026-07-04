@@ -27,7 +27,6 @@ const m: ModuleGenerator = () => {
         "python-pyqt6",
         "neovim",
         "vim",
-        "vi",
         "meld",
         "cloc",
         "lazygit",

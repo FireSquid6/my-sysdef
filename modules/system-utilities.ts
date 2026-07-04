@@ -17,18 +17,10 @@ const m: ModuleGenerator = () => {
     packages: {
       "arch-official": [
         "htop",
-        "glances",
-        "inxi",
-        "plocate",
-        "rsync",
         "wget",
         "tmux",
         "fish",
         "starship",
-        "duf",
-        "tldr",
-        "pv",
-        "sudo",
         "less",
         "which",
         "bash-completion",
@@ -43,9 +35,6 @@ const m: ModuleGenerator = () => {
         "dmidecode",
         "ethtool",
         "hdparm",
-        "lsscsi",
-        "sg3_utils",
-        "smartmontools",
         "sysfsutils",
         "usbutils",
         "usb_modeswitch",
@@ -61,8 +50,6 @@ const m: ModuleGenerator = () => {
         "pacman-contrib",
         "pkgfile",
         "rebuild-detector",
-        "reflector",
-        "reflector-simple",
       ],
     }
   }

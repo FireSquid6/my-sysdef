@@ -21,13 +21,7 @@ const m: ModuleGenerator = () => {
         "spotify-launcher",
         "spotify-player",
         "obsidian",
-        // "visual-studio-code-bin",
         "alacritty",
-        "galculator",
-        "mousepad",
-        "ristretto",
-        "parole",
-        // "proton-mail",
         "inkscape",
       ],
     }
