@@ -35,6 +35,10 @@ const m: ModuleGenerator = () => {
         "nano-syntax-highlighting",
         "perl",
         "npm",
+        "docker",
+        "docker-compose",
+        "jdk25-openjdk",
+        "maven",
       ],
       "bun": [
         "@tailwindcss/cli",

@@ -35,6 +35,7 @@ const m: ModuleGenerator = () => {
         "rofi",
         "wofi",
         "xdg-desktop-portal-hyprland",
+        "sddm",
       ],
     }
   }

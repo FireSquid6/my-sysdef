@@ -27,6 +27,7 @@ const m: ModuleGenerator = () => {
         "diffutils",
         "direnv",
         "unrar",
+        "7zip",
         "unzip",
         "xclip",
         "wmctrl",
