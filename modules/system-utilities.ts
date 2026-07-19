@@ -19,6 +19,7 @@ const m: ModuleGenerator = () => {
         "htop",
         "wget",
         "tmux",
+        "zellij",
         "fish",
         "starship",
         "less",
