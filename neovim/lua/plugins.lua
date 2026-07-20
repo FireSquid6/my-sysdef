@@ -154,7 +154,7 @@ require("lazy").setup({
     -- Always installed, but only loaded/configured from ai-setup.lua
     config = {
       nes = { enabled = false },
-    }
+    },
     lazy = true,
   },
 

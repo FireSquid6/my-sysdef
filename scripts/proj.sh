@@ -23,18 +23,11 @@ if [ $? -ne 0 ]; then
 
   # Only create claude window if .noclaude file doesn't exist
   if [ ! -f ~/source/"$PROJECT"/.noclaude ]; then
-    tmux new-window -t "$PROJECT" -n claude -c ~/source/"$PROJECT"
+    tmux new-window -t "$PROJECT" -n ai -c ~/source/"$PROJECT"
   fi
 
   tmux new-window -t "$PROJECT" -n term3 -c ~/source/"$PROJECT"
   tmux new-window -t "$PROJECT" -n term4 -c ~/source/"$PROJECT"
-
-
-  # Only start claude if .noclaude file doesn't exist
-  if [ ! -f ~/source/"$PROJECT"/.noclaude ]; then
-    tmux select-window -t "$PROJECT":claude
-    tmux send-keys -t "$PROJECT" "claude" Enter
-  fi
 
   tmux select-window -t "$PROJECT":editor
   tmux send-keys -t "$PROJECT" "nvim" Enter
