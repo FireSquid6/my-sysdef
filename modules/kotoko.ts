@@ -9,7 +9,6 @@ const m: ModuleGenerator = () => {
     directories: {},
     packages: {
       "arch-official": [
-        "eos-dracut",
         "os-prober",
         "intel-ucode",
         "python-jinja",

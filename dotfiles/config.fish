@@ -24,4 +24,5 @@ if status is-interactive
   export PATH="$PATH:$HOME/.local/bin"
 
   export PATH="$PATH:$HOME/.autosmith/bin"
+  export PATH="$PATH:$HOME/.fly/bin"
 end

@@ -5,3 +5,7 @@ export PATH="$PATH:$SCRIPTS_DIR"
 eval "$(direnv hook bash)"
 
 alias e='NVIM_APPNAME=ink-nvim nvim'
+
+# Added by flyctl installer
+export FLYCTL_INSTALL="/home/firesquid/.fly"
+export PATH="$FLYCTL_INSTALL/bin:$PATH"
