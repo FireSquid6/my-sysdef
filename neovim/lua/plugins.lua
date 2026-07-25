@@ -149,15 +149,6 @@ require("lazy").setup({
     },
   },
 
-  {
-    "folke/sidekick.nvim",
-    -- Always installed, but only loaded/configured from ai-setup.lua
-    config = {
-      -- don't put anything here, it isn't used
-    },
-    lazy = true,
-  },
-
   "nvim-tree/nvim-web-devicons",
   {
     "nvim-lualine/lualine.nvim",
