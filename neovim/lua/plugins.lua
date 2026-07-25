@@ -153,7 +153,7 @@ require("lazy").setup({
     "folke/sidekick.nvim",
     -- Always installed, but only loaded/configured from ai-setup.lua
     config = {
-      nes = { enabled = false },
+      -- don't put anything here, it isn't used
     },
     lazy = true,
   },

@@ -9,6 +9,9 @@ require("sidekick").setup({
       backend = "zellij",
       enabled = true,
     },
+    nes = { 
+      enabled = false,
+    },
   },
 })
 
