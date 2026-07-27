@@ -32,7 +32,7 @@ vim.lsp.enable({
 	"clangd",
 	"arduino_language_server",
 	"bashls",
-	"marksman",
+  -- "marksman",
 	"statix",
 	"tailwindcss",
 	"jdtls",
