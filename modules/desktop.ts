@@ -25,7 +25,8 @@ const m: ModuleGenerator = () => {
     packages: {
       "arch-official": [
         "hyprland",
-        "hypridle", 
+        "hypridle",
+        "hyprlock",
         "hyprpicker",
         "hyprpaper",
         "hyprshot",

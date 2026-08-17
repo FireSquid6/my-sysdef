@@ -282,4 +282,9 @@ require("lazy").setup({
       "theHamsta/nvim-dap-virtual-text",
     },
   },
+  {
+    "nickjvandyke/opencode.nvim",
+    version = "*",
+    event = "VeryLazy",
+  }
 })
