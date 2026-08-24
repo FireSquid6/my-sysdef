@@ -36,7 +36,6 @@ vim.lsp.enable({
 	"statix",
 	"tailwindcss",
 	"jdtls",
-  "copilot"
 })
 
 local cmp = require("cmp")
