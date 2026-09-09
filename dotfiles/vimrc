@@ -1,0 +1,158 @@
+let mapleader = ' '
+let maplocalleader = ','
+
+set number
+set relativenumber
+set conceallevel=0
+set tabstop=2
+set shiftwidth=2
+set expandtab
+set nosmartindent
+set noautoindent
+set ignorecase
+set linebreak
+set numberwidth=4
+set backupcopy=yes
+set mouse=
+set timeout
+set timeoutlen=200
+set laststatus=2
+
+if has('termguicolors')
+  set termguicolors
+endif
+
+highlight clear
+if exists('syntax_on')
+  syntax reset
+endif
+let g:colors_name = 'tokyonight-night'
+set background=dark
+
+highlight Normal guifg=#c0caf5 guibg=#1a1b26 ctermfg=189 ctermbg=235
+highlight Cursor guifg=#1a1b26 guibg=#c0caf5 ctermfg=235 ctermbg=189
+highlight CursorLine guibg=#292e42 ctermbg=237 cterm=NONE gui=NONE
+highlight CursorColumn guibg=#292e42 ctermbg=237
+highlight CursorLineNr guifg=#ff9e64 guibg=NONE gui=bold ctermfg=215 ctermbg=NONE cterm=bold
+highlight LineNr guifg=#3b4261 guibg=NONE ctermfg=60 ctermbg=NONE
+highlight SignColumn guifg=#3b4261 guibg=#1a1b26 ctermfg=60 ctermbg=235
+highlight ColorColumn guibg=#15161e ctermbg=234
+highlight VertSplit guifg=#15161e guibg=NONE ctermfg=234 ctermbg=NONE
+highlight StatusLine guifg=#a9b1d6 guibg=#16161e ctermfg=146 ctermbg=234
+highlight StatusLineNC guifg=#3b4261 guibg=#16161e ctermfg=60 ctermbg=234
+highlight TabLine guifg=#3b4261 guibg=#16161e ctermfg=60 ctermbg=234
+highlight TabLineFill guibg=#15161e ctermbg=234
+highlight TabLineSel guifg=#15161e guibg=#7aa2f7 ctermfg=234 ctermbg=111
+highlight Pmenu guifg=#c0caf5 guibg=#16161e ctermfg=189 ctermbg=234
+highlight PmenuSel guibg=#343a55 ctermbg=60
+highlight PmenuSbar guibg=#1f1f29 ctermbg=235
+highlight PmenuThumb guibg=#3b4261 ctermbg=60
+highlight Visual guibg=#283457 ctermbg=24
+highlight Search guifg=#c0caf5 guibg=#3d59a1 ctermfg=189 ctermbg=61
+highlight IncSearch guifg=#15161e guibg=#ff9e64 ctermfg=234 ctermbg=215
+highlight MatchParen guifg=#ff9e64 guibg=NONE gui=bold ctermfg=215 ctermbg=NONE cterm=bold
+highlight Folded guifg=#7aa2f7 guibg=#3b4261 ctermfg=111 ctermbg=60
+highlight FoldColumn guifg=#565f89 guibg=#1a1b26 ctermfg=60 ctermbg=235
+highlight NonText guifg=#545c7e guibg=NONE ctermfg=60 ctermbg=NONE
+highlight SpecialKey guifg=#545c7e guibg=NONE ctermfg=60 ctermbg=NONE
+highlight Directory guifg=#7aa2f7 guibg=NONE ctermfg=111 ctermbg=NONE
+highlight Title guifg=#7aa2f7 guibg=NONE gui=bold ctermfg=111 ctermbg=NONE cterm=bold
+highlight ErrorMsg guifg=#db4b4b guibg=NONE ctermfg=167 ctermbg=NONE
+highlight WarningMsg guifg=#e0af68 guibg=NONE ctermfg=179 ctermbg=NONE
+highlight MoreMsg guifg=#7aa2f7 guibg=NONE ctermfg=111 ctermbg=NONE
+highlight Question guifg=#7aa2f7 guibg=NONE ctermfg=111 ctermbg=NONE
+highlight WildMenu guibg=#283457 ctermbg=24
+highlight DiffAdd guibg=#243e4a ctermbg=23
+highlight DiffChange guibg=#1f2231 ctermbg=235
+highlight DiffDelete guibg=#4a272f ctermbg=52
+highlight DiffText guibg=#394b70 ctermbg=60
+highlight SpellBad guibg=NONE guisp=#db4b4b gui=undercurl ctermbg=NONE cterm=underline
+highlight SpellCap guibg=NONE guisp=#e0af68 gui=undercurl ctermbg=NONE cterm=underline
+highlight SpellLocal guibg=NONE guisp=#0db9d7 gui=undercurl ctermbg=NONE cterm=underline
+highlight SpellRare guibg=NONE guisp=#1abc9c gui=undercurl ctermbg=NONE cterm=underline
+highlight Comment guifg=#565f89 guibg=NONE gui=italic ctermfg=60 ctermbg=NONE cterm=italic
+highlight Constant guifg=#ff9e64 guibg=NONE ctermfg=215 ctermbg=NONE
+highlight String guifg=#9ece6a guibg=NONE ctermfg=149 ctermbg=NONE
+highlight Character guifg=#9ece6a guibg=NONE ctermfg=149 ctermbg=NONE
+highlight Identifier guifg=#bb9af7 guibg=NONE ctermfg=141 ctermbg=NONE
+highlight Function guifg=#7aa2f7 guibg=NONE ctermfg=111 ctermbg=NONE
+highlight Statement guifg=#bb9af7 guibg=NONE ctermfg=141 ctermbg=NONE
+highlight Keyword guifg=#7dcfff guibg=NONE gui=italic ctermfg=117 ctermbg=NONE cterm=italic
+highlight Operator guifg=#89ddff guibg=NONE ctermfg=117 ctermbg=NONE
+highlight PreProc guifg=#7dcfff guibg=NONE ctermfg=117 ctermbg=NONE
+highlight Type guifg=#2ac3de guibg=NONE ctermfg=80 ctermbg=NONE
+highlight Special guifg=#2ac3de guibg=NONE ctermfg=80 ctermbg=NONE
+highlight Underlined guibg=NONE gui=underline ctermbg=NONE cterm=underline
+highlight Error guifg=#db4b4b guibg=NONE ctermfg=167 ctermbg=NONE
+highlight Todo guifg=#1a1b26 guibg=#e0af68 ctermfg=235 ctermbg=179
+
+highlight link Delimiter Special
+highlight link Number Constant
+highlight link Boolean Constant
+highlight link Float Constant
+highlight link Conditional Statement
+highlight link Repeat Statement
+highlight link Label Statement
+highlight link Exception Statement
+highlight link Include PreProc
+highlight link Define PreProc
+highlight link Macro PreProc
+highlight link PreCondit PreProc
+highlight link StorageClass Type
+highlight link Structure Type
+highlight link Typedef Type
+highlight link Tag Special
+highlight link SpecialChar Special
+highlight link SpecialComment Special
+highlight link Debug Special
+
+if exists('+signcolumn')
+  set signcolumn=yes
+endif
+
+if has('clipboard')
+  set clipboard=unnamed
+endif
+
+nnoremap <silent> <Esc> :nohlsearch<CR><Esc>
+inoremap <silent> <Esc> <C-o>:nohlsearch<CR><Esc>
+
+nnoremap <C-h> <C-w>h
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+nnoremap <C-l> <C-w>l
+inoremap <C-h> <C-w>h
+inoremap <C-j> <C-w>j
+inoremap <C-k> <C-w>k
+inoremap <C-l> <C-w>l
+
+if has('terminal')
+  tnoremap <C-n> <C-\><C-n>
+  tnoremap <C-h> <C-\><C-n><C-w>h
+  tnoremap <C-j> <C-\><C-n><C-w>j
+  tnoremap <C-k> <C-\><C-n><C-w>k
+  tnoremap <C-l> <C-\><C-n><C-w>l
+endif
+
+xnoremap <leader>c "+y
+nnoremap <leader>p "+p
+
+nnoremap <leader>c :bdelete<CR>
+nnoremap <leader>q :quit<CR>
+nnoremap <leader>w :wall<CR>
+nnoremap <leader>s z=
+
+nnoremap <leader>f/ /
+nnoremap <leader>fb :buffers<CR>:buffer<Space>
+nnoremap <leader>fc :command<CR>
+nnoremap <leader>ff :find<Space>
+nnoremap <leader>fm :marks<CR>
+nnoremap <leader>fr :registers<CR>
+nnoremap <leader>fw :grep<Space>
+nnoremap <leader>e :Explore<CR>
+nnoremap <leader>k :Explore<CR>
+
+augroup user_markdown
+  autocmd!
+  autocmd FileType markdown setlocal spell
+augroup END

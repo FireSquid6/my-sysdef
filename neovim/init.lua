@@ -36,8 +36,17 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 vim.api.nvim_create_user_command("DailyNote", function()
-  local path = os.date(vim.fn.expand("~/notes/journal/%Y-%m-%d.md"))
+  local date = os.date("%Y-%m-%d")
+  local path = vim.fn.expand("~/notes/journal/" .. date .. ".md")
   vim.fn.mkdir(vim.fn.expand("~/notes/journal"), "p")
+  if vim.fn.filereadable(path) == 0 then
+    local template = vim.fn.expand("~/notes/templates/daily-note-template.md")
+    if vim.fn.filereadable(template) == 1 then
+      local content = table.concat(vim.fn.readfile(template), "\n")
+      local filled = vim.fn.substitute(content, "{{date}}", date, "g")
+      vim.fn.writefile(vim.split(filled, "\n"), path)
+    end
+  end
   vim.cmd("edit " .. path)
 end, {})
 
