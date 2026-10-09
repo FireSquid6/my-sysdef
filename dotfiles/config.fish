@@ -15,6 +15,7 @@ if status is-interactive
 
   direnv hook fish | source
 
+  fish_add_path --prepend --global "$HOME/.opencode/bin"
   export PATH="$PATH:$SCRIPTS_DIR"
   export PATH="$PATH:$HOME/.bun/bin"
   export PATH="$PATH:$HOME/sysdef/bin"

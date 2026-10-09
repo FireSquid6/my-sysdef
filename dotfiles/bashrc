@@ -1,3 +1,6 @@
+# OpenCode V2 must precede the package-managed V1 binary in every Bash shell.
+case ":$PATH:" in *":$HOME/.opencode/bin:"*) ;; *) export PATH="$HOME/.opencode/bin:$PATH" ;; esac
+
 [[ $- == *i* ]] || return
 
 export PATH="$PATH:$SCRIPTS_DIR"
@@ -9,3 +12,6 @@ alias e='NVIM_APPNAME=ink-nvim nvim'
 # Added by flyctl installer
 export FLYCTL_INSTALL="/home/firesquid/.fly"
 export PATH="$FLYCTL_INSTALL/bin:$PATH"
+
+# Hermes Agent command
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac

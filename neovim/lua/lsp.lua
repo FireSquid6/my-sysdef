@@ -1,5 +1,17 @@
 local util = require("lspconfig.util")
 
+vim.lsp.config("pyright", {
+	on_init = function(client)
+		local python_path = client.root_dir and (client.root_dir .. "/.venv/bin/python")
+		if python_path and vim.fn.executable(python_path) == 1 then
+			client.settings = vim.tbl_deep_extend("force", client.settings or {}, {
+				python = { pythonPath = python_path },
+			})
+			client:notify("workspace/didChangeConfiguration", { settings = nil })
+		end
+	end,
+})
+
 vim.lsp.config("rust_analyzer", {
 	settings = {
 		["rust-analyzer"] = {},
