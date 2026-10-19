@@ -16,6 +16,7 @@ const m: ModuleGenerator = () => {
       "{HOME}/.config/waybar/config.jsonc": "./dotfiles/waybar.jsonc",
       "{HOME}/.config/waybar/style.css": "./dotfiles/waybar.css",
       "{HOME}/.config/fuzzel/fuzzel.ini": "./dotfiles/fuzzel.ini",
+      "{HOME}/.config/swaylock/config": "./dotfiles/swaylock/config",
       "{HOME}/.config/betterlockscreen/betterlockscreenrc": "./dotfiles/betterlockscreenrc"
     },
     directories: {
@@ -26,7 +27,7 @@ const m: ModuleGenerator = () => {
       "arch-official": [
         "hyprland",
         "hypridle",
-        "hyprlock",
+        "swaylock",
         "hyprpicker",
         "hyprpaper",
         "hyprshot",
