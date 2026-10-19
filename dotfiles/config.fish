@@ -25,4 +25,5 @@ if status is-interactive
 
   export PATH="$PATH:$HOME/.autosmith/bin"
   export PATH="$PATH:$HOME/.fly/bin"
+  fish_add_path --prepend "$HOME/.opencode/bin"
 end

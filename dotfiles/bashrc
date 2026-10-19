@@ -9,3 +9,6 @@ alias e='NVIM_APPNAME=ink-nvim nvim'
 # Added by flyctl installer
 export FLYCTL_INSTALL="/home/firesquid/.fly"
 export PATH="$FLYCTL_INSTALL/bin:$PATH"
+
+# opencode
+export PATH=/home/firesquid/.opencode/bin:$PATH
