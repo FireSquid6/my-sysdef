@@ -94,6 +94,7 @@
     "ctrl-tab": "tty-repo.cycle"
   },
   "mod:source-picker": {
+    "tab": "source-picker.complete",
     "ctrl-tab": "source-picker.cycle-machine"
   },
   "terminal": {

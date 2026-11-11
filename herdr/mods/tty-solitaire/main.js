@@ -2,7 +2,7 @@ import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { shared, setShared, props, closeOverlay, openOverlay } from "herdr";
-import { newGame, draw, move, won, validSave, red } from "./engine.js";
+import { newGame, draw, move, won, validSave, red, canAutoComplete, autoComplete } from "./engine.js";
 
 const clone = value => JSON.parse(JSON.stringify(value));
 const PALETTE = { background:'#10142b', foreground:'#fff1c1', accent:'#57e8ff', border:'#394574', chrome:'#191f3d', hover:'#293960', selected:'#334273', dim:'#9ca9cf' };
@@ -66,6 +66,15 @@ export default class Solitaire extends View {
     this.message = draw(this.game) ? "Draw one · empty stock recycles the waste." : "No cards to draw.";
     this.save(); cx.notify();
   }
+  complete(cx) {
+    if (this.closed || this.confirmReset) return;
+    const transferred = autoComplete(this.game);
+    if (transferred) {
+      this.selected = null; this.cursor = { area: "foundations", index: 0 };
+      this.message = "All cards home!"; this.save();
+    } else this.message = "Autocomplete needs every card face-up in the tableau and an empty stock/waste.";
+    cx.notify();
+  }
   activate(location, cx) {
     if (this.confirmReset || this.closed) return;
     this.handle.focus();
@@ -99,17 +108,18 @@ export default class Solitaire extends View {
       } else if (key === "n") this.confirmReset = false;
       cx.stop_propagation(); cx.notify(); return;
     }
-    if (!["h", "j", "k", "l", "left", "right", "up", "down", "enter", "space", " ", "d", "r"].includes(key)) return;
+    if (!["h", "j", "k", "l", "left", "right", "up", "down", "enter", "space", " ", "d", "r", "a"].includes(key)) return;
     cx.stop_propagation();
-    if (e.is_held && ["enter", "space", " ", "d", "r"].includes(key)) return;
+    if (e.is_held && ["enter", "space", " ", "d", "r", "a"].includes(key)) return;
     if (key === "r") this.confirmReset = true;
     else if (key === "d") this.takeDraw(cx);
+    else if (key === "a") this.complete(cx);
     else if (["enter", "space", " "].includes(key)) this.activate(this.cursor, cx);
     else this.navigate(key);
     cx.notify();
   }
   render(cx) {
-    const t = PALETTE, game = this.game;
+    const t = PALETTE, game = this.game, readyToComplete = canAutoComplete(game);
     const button = (id, text, fn) => div().id(id).px(8).py(4).bg(t.chrome).border_2().border_color(t.border).cursor_pointer()
       .hover(s => s.bg(t.hover)).on_click((_e, cx) => { this.handle.focus(); fn(cx); }).child(text);
     const tile = (location, card, text, height = 52) => {
@@ -138,6 +148,7 @@ export default class Solitaire extends View {
       .child(h_flex().flex_none().justify_between().items_center()
         .child(div().font_semibold().text_color(t.accent).child("SOLITAIRE · draw one"))
         .child(button("solitaire-arcade", "Arcade", () => this.arcade()))
+        .when(readyToComplete && !this.confirmReset, el => el.child(button("solitaire-autocomplete", "Autocomplete [A]", cx => this.complete(cx))))
         .child(button("solitaire-restart", "Restart", cx => { this.confirmReset = true; cx.notify(); }))
         .child(button("solitaire-close", "Save & close", () => this.dismiss())))
       .child(h_flex().flex_none().gap(10)
@@ -151,7 +162,7 @@ export default class Solitaire extends View {
         .children(pile.length ? pile.map((card, i) => tile({ area: "tableau", index, card: i }, card, card.faceUp ? rankLabel(card) : "", i === pile.length - 1 ? 64 : 20)) :
           [tile({ area: "tableau", index, card: -1 }, null, "King only")]))))
       .child(v_flex().flex_none().gap(5)
-        .child(div().font_semibold().text_color(t.accent).child(this.confirmReset ? "Restart? Discard this deal?" : won(game) ? "YOU WIN!" : this.message))
+        .child(div().font_semibold().text_color(t.accent).child(this.confirmReset ? "Restart? Discard this deal?" : won(game) ? "YOU WIN!" : readyToComplete ? "All cards exposed! Click Autocomplete or press A to finish." : this.message))
         .when(Boolean(this.confirmReset), el => el.child(h_flex().gap(8)
           .child(button("solitaire-confirm", "Yes · new deal", cx => this.press({ key: "y" }, cx)))
           .child(button("solitaire-cancel", "No · keep game", cx => this.press({ key: "n" }, cx)))))

@@ -4,11 +4,13 @@ Managed by `modules/pi.ts` (enabled in local `config.yaml`).
 
 | Pi path | Repository source |
 | --- | --- |
+| `~/.pi/agent/AGENTS.md` | `pi/AGENTS.md` |
 | `~/.pi/agent/settings.json` | `pi/settings.json` |
 | `~/.pi/agent/subagents.json` | `pi/subagents.json` |
 | `~/.pi/agent/agent-tool-description.md` | `pi/agent-tool-description.md` |
 | `~/.pi/agent/extensions/` | `pi/extensions/` |
 | `~/.pi/agent/themes/` | `pi/themes/` |
+| `~/.pi/agent/skills/herdr-orchestration/` | `pi/skills/herdr-orchestration/` |
 
 The module honors `PI_CODING_AGENT_DIR` when set.
 
@@ -33,7 +35,7 @@ Run `/reload` after installing this extension on every host that will run Pi:
 
 - Pi 1.5.2-compatible APIs/CLI, Node.js, Git, and `herdr-core` on participating hosts; Herdr's older `herdr-app` GUI/control protocol used by this repo's project picker.
 - Install/sync this sysdef Pi extension on destination hosts too, and `/reload` existing agents before sending updates. No credentials or machine settings are copied.
-- The Pi host must be able to reach the GUI host through Herdr Core, and the GUI host must have configured connections to destination hosts. Destination hosts need their own origin access, Pi model credentials, Neovim, and Fish.
+- The Pi host must be able to reach the GUI host through Herdr Core, and the GUI host must have configured connections to destination hosts. Destination hosts need their own origin access, Pi model credentials, Neovim, and a configured Herdr shell. Blank terminal tabs use Herdr's default shell rather than hardcoding Fish.
 - A local GUI is preferred. Otherwise the extension discovers an unambiguous GUI among connected saved machines. Set `BRANCHFORK_GUI_HOST=<saved-machine-name>` in Pi's environment to choose a GUI explicitly. For a remote Pi whose GUI host is not saved/reachable from that Pi host, add/connect that host first; an incoming GUI connection alone is not assumed to provide reverse routing.
 - `HERDR_APP_HOME`, `XDG_CONFIG_HOME`, and `PI_CODING_AGENT_DIR` are honored on the host doing the operation. Core exec and interactive shell environments should agree on these locations.
 
@@ -123,6 +125,17 @@ Tests: `bun test pi/tests/plan.test.js`. They use the installed Pi package's rea
 extension loader. For non-managed installations, set `PI_TEST_PACKAGE_DIR` to the
 package directory containing `dist/core/extensions/loader.js`; tests are skipped
 with a warning if no installation is available.
+
+## Herdr orchestration skill
+
+Run `/reload`, then use `/skill:herdr-orchestration` to coordinate agents through
+Herdr Core's `hc` CLI. Pi can also load it automatically for relevant requests.
+It covers discovery, safe messaging, bounded delegation, remote agents, result
+verification, and cleanup. The skill reads `hc --skill` for current CLI behavior.
+Only this individual skill is linked; other local and package skills are preserved.
+Requires `hc` to be installed separately. No agents are launched during sync.
+
+Tests: `bun test test/pi-skills.test.ts`.
 
 ## Delegation policy
 

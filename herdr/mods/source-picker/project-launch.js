@@ -68,7 +68,7 @@ export async function launchProject({ folder, machine = "", name, agentArgv = ["
     if (typeof space !== "string" || !space || typeof agentTab !== "string" || !agentTab) throw new Error("Missing new space/tab IDs in space.new response");
     for (const name of ["editor", "term1", "term2"]) {
       if (existing?.tabNames?.includes(name)) continue;
-      const tab = await invoke(name, "tab.new", { name, space, folder, argv: name === "editor" ? ["nvim"] : [machine ? "fish" : "/usr/bin/fish"], ...noFocus });
+      const tab = await invoke(name, "tab.new", { name, space, folder, ...(name === "editor" ? { argv: ["nvim"] } : {}), ...noFocus });
       if (typeof tab?.tab !== "string" || !tab.tab) throw new Error(`Missing tab ID in ${name} response`);
       tabs.push(tab.tab);
     }

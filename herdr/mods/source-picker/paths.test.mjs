@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parsePath, matchingDirectories } from "./paths.js";
+import { parsePath, resolvePath, matchingDirectories } from "./paths.js";
 const home = "/home/test";
 
 test("default and home paths", () => {
@@ -13,10 +13,21 @@ test("absolute, relative, spaces and parent traversal", () => {
   assert.deepEqual(parsePath("source/../Documents/", home), { folder: home + "/Documents", filter: "" });
   assert.deepEqual(parsePath("~/source/..", home), { folder: home, filter: "" });
 });
-test("reject paths outside home", () => {
-  for (const path of ["/etc/", "~/../../", home + "-other/"]) {
-    assert.throws(() => parsePath(path, home), /inside your home/);
+test("rejects outside-home suggestions and exact paths, including traversal and lookalike prefixes", () => {
+  for (const value of ["/etc/", "~/../../", "/archive/projects/de", home + "-other/", "~/../other", "/"]) {
+    assert.throws(() => resolvePath(value, home), /inside your home/);
+    assert.throws(() => parsePath(value, home), /inside your home/);
   }
+});
+test("opening resolves the entire entered path, not its suggestion parent", () => {
+  for (const [value, expected] of [
+    ["~/source/project", home + "/source/project"],
+    ["~/source/project/", home + "/source/project"],
+    ["source/my project", home + "/source/my project"],
+    ["~", home], [home + "/", home], [home + "/source/../Documents//", home + "/Documents"],
+    ["~/source/..", home],
+  ]) assert.equal(resolvePath(value, home), expected);
+  assert.throws(() => resolvePath("", home), /Enter a directory/);
 });
 test("matching keeps case-insensitive substring behavior", () => {
   assert.deepEqual(matchingDirectories(["Alpha", "myALPHA", "beta"], "aLp"), ["Alpha", "myALPHA"]);

@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { newGame, draw, move, won, validSave, red, SUITS } from "../mods/tty-solitaire/engine.js";
+import { newGame, draw, move, won, validSave, red, SUITS, canAutoComplete, autoComplete } from "../mods/tty-solitaire/engine.js";
+import { exposedGame } from "./solitaire-fixtures.mjs";
 const source = await readFile(new URL("../mods/tty-solitaire/main.js", import.meta.url), "utf8");
 function harness(saved) {
   const state = { "solitaire.game": saved }, nodes = new Map(), actions = [], texts = [], elements = [];
@@ -23,7 +24,7 @@ function harness(saved) {
   const deps = { reportContext() {}, View: class {}, div: element, h_flex: element, v_flex: element,
     shared: key => state[key], setShared: (key, value) => { state[key] = value; }, props: () => ({ overlay: "solitaire" }),
     closeOverlay: id => actions.push(["close", id]), openOverlay: options => actions.push(["open", options]),
-    newGame, draw, move, won, validSave, red };
+    newGame, draw, move, won, validSave, red, canAutoComplete, autoComplete };
   const Solitaire = new Function(...Object.keys(deps), source.replace(/^import .*;$/gm, "").replace("export default class", "return class"))(...Object.values(deps));
   const view = new Solitaire(); view.init({}, cx);
   return { view, cx, state, nodes, actions, texts, elements, key(key) { view.press({ key }, cx); }, click(id) { view.render(cx); assert.ok(nodes.has(id), id); nodes.get(id).click({}, cx); } };
@@ -137,6 +138,32 @@ test("cream cards render all four pixel suits, compact ranks and patterned stock
   assert.ok(h.elements.some(el => el.w?.[0] === 1 && el.h?.[0] === 1));
 });
 
+test("autocomplete appears only for exposed games, supports mouse and keyboard, and persists the win", () => {
+  for (const action of [h => h.key("a"), h => h.click("solitaire-autocomplete")]) {
+    const h = harness(exposedGame(9)); h.view.render(h.cx);
+    assert.ok(h.nodes.has("solitaire-autocomplete"));
+    h.view.selected = { area: "tableau", index: 0, card: 0 };
+    action(h);
+    assert.equal(won(h.view.game), true); assert.equal(h.view.selected, null);
+    assert.equal(validSave(h.state["solitaire.game"]), true);
+    assert.equal(won(harness(h.state["solitaire.game"]).view.game), true);
+  }
+  const h = harness(); h.view.render(h.cx);
+  assert.equal(h.nodes.has("solitaire-autocomplete"), false);
+  const snapshot = structuredClone(h.view.game); h.key("a");
+  assert.deepEqual(h.view.game, snapshot);
+  assert.match(h.view.message, /every card face-up/);
+});
+test("autocomplete ignores confirmation, held keys, modifiers, and closed views", () => {
+  const h = harness(exposedGame());
+  const snapshot = structuredClone(h.view.game);
+  h.view.press({ key: "a", is_held: true }, h.cx);
+  h.view.press({ key: "a", modifiers: { control: true } }, h.cx);
+  h.key("r"); h.view.complete(h.cx);
+  assert.deepEqual(h.view.game, snapshot);
+  h.key("n"); h.view.close(); h.view.complete(h.cx);
+  assert.deepEqual(h.view.game, snapshot);
+});
 test("overlay uses a focusable, appropriately sized modal", async () => {
   const mod = JSON.parse(await readFile(new URL("../mods/tty-solitaire/mod.json", import.meta.url), "utf8"));
   assert.equal(mod.focusable, true); assert.equal(mod.overlay.frame, "none"); assert.equal(mod.overlay.modal, true);

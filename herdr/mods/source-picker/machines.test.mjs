@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { launchProject } from "./project-launch.js";
 const source = await readFile(new URL("./main.js", import.meta.url), "utf8");
-import { parsePath, matchingDirectories } from "./paths.js";
-const helpers = { parsePath, matchingDirectories };
+import { parsePath, resolvePath, matchingDirectories } from "./paths.js";
+const helpers = { parsePath, resolvePath, matchingDirectories };
 
 function setup(overrides = {}) {
   const tasks = [];
@@ -12,11 +12,11 @@ function setup(overrides = {}) {
   const dependencies = {
     launchProject, reportContext() {}, View: class {}, ...helpers, home: () => "/home/local", spaces: () => [], machines: () => [{ name: null }, { name: "remote" }],
     ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
-    InputState: { new: options => ({ text: options.value, on() {}, focus() {}, value() { return this.text; }, set_value(value) { this.text = value; } }) },
+    InputState: { new: options => ({ text: options.value, handlers: {}, on(event, fn) { this.handlers[event] = fn; }, focus() {}, value() { return this.text; }, set_value(value) { this.text = value; } }) },
     readdir: async () => [{ name: "local-project", isDirectory: () => true }],
     exec: async (_cmd, args) => ({ code: 0, stdout: args[1].includes("$HOME") ? "/srv/remote-home" : "remote-project\0" }),
-    run() {}, props: () => ({ overlay: "source-picker" }), closeOverlay() {}, ...overrides,
-    nextCommand: () => new Promise(() => {}),
+    run() {}, props: () => ({ overlay: "source-picker" }), closeOverlay() {},
+    nextCommand: () => new Promise(() => {}), ...overrides,
   };
   const Picker = new Function(...Object.keys(dependencies), source.replace(/^import .*;$/gm, "").replace("export default class", "return class"))(...Object.values(dependencies));
   const view = new Picker();
@@ -24,6 +24,99 @@ function setup(overrides = {}) {
   const settle = async () => { await new Promise(setImmediate); };
   return { view, cx, settle, tasks };
 }
+
+test("Enter submits the exact typed path even with a highlighted child", async () => {
+  const { view, cx, settle } = setup();
+  view.init({}, cx); await settle();
+  view.input.set_value("~/source/");
+  view.directories = ["unwanted-child"]; view.at = 0;
+  const opened = []; view.open = value => opened.push(value);
+  view.input.handlers.submit({}, cx);
+  assert.deepEqual(opened, ["~/source/"]);
+  view.input.set_value("~/source/nonmatching");
+  view.loading = true; view.pathError = true;
+  view.input.handlers.submit({}, cx);
+  assert.equal(opened[1], "~/source/nonmatching");
+});
+
+test("Tab keybinding sends a completion command even when the input owns focus", async () => {
+  const keys = JSON.parse(await readFile(new URL("../../keys.json", import.meta.url), "utf8"));
+  assert.equal(keys["mod:source-picker"].tab, "source-picker.complete");
+  let deliver;
+  const { view, cx, settle } = setup({
+    nextCommand: () => new Promise(resolve => { deliver = resolve; }),
+  });
+  view.init({}, cx); await settle();
+  view.directories = ["first-match", "second-match"]; view.at = 1;
+  deliver("complete"); await settle();
+  assert.equal(view.input.value(), "~/source/first-match/");
+  assert.equal(view.folder, "/home/local/source/first-match");
+  assert.equal(view.opening, false);
+  // No matches: Tab leaves the input unchanged, without creating a workspace.
+  view.directories = [];
+  deliver("complete"); await settle();
+  assert.equal(view.input.value(), "~/source/first-match/");
+});
+
+for (const machine of ["", "remote"]) test(`${machine || "local"} exact path reuses a workspace only on the same machine`, async () => {
+  const calls = [], checked = [], closed = [];
+  const { view, cx, settle } = setup({
+    spaces: () => [
+      { id: "outside-home", machine, folder: "/archive/unrelated" },
+      { id: "wrong-machine", machine: machine ? "" : "remote", folder: "/home/user/projects/example" },
+      { id: "existing", machine, folder: "/home/user/projects/example/" },
+    ],
+    exec: async (cmd, args, options) => {
+      assert.equal(cmd, "sh"); assert.equal(options.on ?? "", machine);
+      assert.equal(args[1], '[ -d "$1" ]'); checked.push(args[3]);
+      return { code: 0, stdout: "" };
+    },
+    run: (...args) => calls.push(args), closeOverlay: id => closed.push(id),
+  });
+  Object.assign(view, { machine, homes: new Map([[machine, "/home/user"]]) });
+  view.open("/home/user/projects/example", cx); await settle();
+  assert.deepEqual(checked, ["/home/user/projects/example"]);
+  assert.deepEqual(calls, [["space.select", { id: "existing" }]]);
+  assert.deepEqual(closed, ["source-picker"]);
+  assert.equal(view.opening, false);
+});
+
+for (const machine of ["", "remote"]) test(`${machine || "local"} nonexistent paths and files do not open suggestions`, async () => {
+  for (const missing of [false, true]) {
+    const calls = [];
+    const { view, cx, settle } = setup({
+      exec: async (cmd, args, options) => {
+        calls.push(cmd); assert.equal(options.on ?? "", machine);
+        assert.equal(args[3], missing ? "/home/user/projects/missing" : "/home/user/projects/file");
+        return { code: 1, stdout: "" };
+      },
+      run: () => calls.push("run"), closeOverlay: () => calls.push("close"),
+    });
+    Object.assign(view, { machine, homes: new Map([[machine, "/home/user"]]), directories: ["suggestion"], input: { value: () => "" }, scroll: { scroll_to_item() {} } });
+    // Avoid directory refresh IO in this focused validation test.
+    view.updatePath = () => {};
+    view.open(missing ? "/home/user/projects/missing" : "/home/user/projects/file", cx); await settle();
+    assert.match(view.error, /Could not open project/);
+    assert.equal(view.opening, false);
+    assert.deepEqual(calls, ["sh"]);
+  }
+});
+
+for (const machine of ["", "remote"]) test(`${machine || "local"} Enter refuses paths outside that machine's home before opening`, async () => {
+  const calls = [];
+  const { view, cx, settle } = setup({
+    exec: async () => { calls.push("exec"); return { code: 0, stdout: "" }; },
+    run: () => calls.push("run"), closeOverlay: () => calls.push("close"),
+  });
+  Object.assign(view, { machine, homes: new Map([[machine, "/home/user"]]) });
+  view.updatePath = () => {};
+  for (const value of ["/etc", "~/../other", "/home/user-other/project"]) {
+    view.open(value, cx); await settle();
+    assert.match(view.error, /inside your home/);
+    assert.equal(view.opening, false);
+  }
+  assert.deepEqual(calls, []);
+});
 
 test("project picker border follows Ctrl+Tab machines, including the local hostname", async () => {
   const { view, cx, settle } = setup({
@@ -64,20 +157,20 @@ for (const machine of ["", "remote"]) test(`${machine || "local"} project opens 
   const { view, cx, settle } = setup({
     run: (...args) => selections.push(args), closeOverlay: id => closed.push(id),
     exec: async (command, args) => {
+    if (command === "sh") return { code: 0, stdout: "" };
     assert.equal(command, "herdr-app");
     calls.push([args[1], JSON.parse(args[2])]);
     return { code: 0, stdout: JSON.stringify({ space: "remote/sp1", tab: "remote/tb1" }) };
   } });
-  Object.assign(view, { machine, folder: "/srv/user/source", loading: false, pathError: false });
-  view.open("project", cx); await settle();
+  Object.assign(view, { machine, homes: new Map([[machine, "/srv/user"]]), folder: "/srv/user/source", loading: false, pathError: false });
+  view.open("/srv/user/source/project", cx); await settle();
   assert.equal(calls.length, 4);
   assert.deepEqual(selections, [["tab.select", { id: "remote/tb1" }]]);
   assert.deepEqual(closed, ["source-picker"]);
   assert.equal(calls[0][1].machine, machine);
   assert.equal(calls[0][1].tab, "agent");
   assert.deepEqual(calls.map(([, args]) => args.name), ["project", "editor", "term1", "term2"]);
-  const shell = machine ? "fish" : "/usr/bin/fish";
-  assert.deepEqual(calls.map(([, args]) => args.argv), [["pi"], ["nvim"], [shell], [shell]]);
+  assert.deepEqual(calls.map(([, args]) => args.argv), [["pi"], ["nvim"], undefined, undefined]);
   for (const [, args] of calls) assert.equal(args.folder, "/srv/user/source/project");
   for (const [, args] of calls.slice(1)) assert.equal(args.space, "remote/sp1");
 });
@@ -85,8 +178,8 @@ for (const machine of ["", "remote"]) test(`${machine || "local"} project opens 
 test("picker delegates project setup to the shared launcher", async () => {
   const calls = [];
   const { view, cx, settle } = setup({ launchProject: async (...args) => calls.push(args) });
-  Object.assign(view, { machine: "remote", folder: "/srv/source", loading: false });
-  view.open("project", cx); await settle();
+  Object.assign(view, { machine: "remote", homes: new Map([["remote", "/srv"]]), folder: "/srv/source", loading: false });
+  view.open("/srv/source/project", cx); await settle();
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0][0], { name: "project", folder: "/srv/source/project", machine: "remote", agentArgv: ["pi"] });
   assert.equal(typeof calls[0][1].exec, "function");

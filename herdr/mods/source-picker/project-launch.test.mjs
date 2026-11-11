@@ -30,7 +30,7 @@ for (const machine of ["", "remote"]) test(`external caller uses same launcher w
     assert.equal(args.folder, options.folder);
   }
   for (const [, args] of calls.slice(1)) assert.equal(args.space, result.space);
-  assert.deepEqual(calls.slice(1).map(([, args]) => args.argv), [["nvim"], [machine ? "fish" : "/usr/bin/fish"], [machine ? "fish" : "/usr/bin/fish"]]);
+  assert.deepEqual(calls.slice(1).map(([, args]) => args.argv), [["nvim"], undefined, undefined]);
 });
 
 test("default external focus selects agent only after all four tabs exist", async () => {

@@ -70,6 +70,60 @@ test("persistence restores independent snapshots of ready, active, won and lost 
   }
 });
 
+test("variable sizes and densities preserve safe placement, neighbors and outcomes", () => {
+  for (const size of [5, 6, 9, 12, 16]) for (const mines of [1, Math.floor(size * size / 3), size * size - 1]) {
+    for (const first of [0, Math.floor(size * size / 2), size * size - 1]) {
+      const game = newGame(size, mines);
+      assert.equal(game.cells.length, size * size); assert.ok(validSave(game));
+      assert.equal(toggleFlag(game, size * size), false);
+      assert.equal(reveal(game, size * size), false);
+      reveal(game, first, rng(first));
+      assert.ok(game.cells[first].revealed && !game.cells[first].mine);
+      assert.equal(game.cells.filter(c => c.mine).length, mines);
+      game.cells.forEach((c, i) => assert.equal(c.count, neighbors(i, size).filter(n => game.cells[n].mine).length));
+      assert.deepEqual(neighbors(0, size), [1, size, size + 1]);
+      assert.ok(validSave(game)); assert.deepEqual(restoreGame(game), game);
+      if (game.status === "playing") {
+        const lost = copy(game); reveal(lost, lost.cells.findIndex(c => c.mine));
+        assert.equal(lost.status, "lost"); assert.ok(validSave(lost));
+      }
+      game.cells.forEach((c, i) => { if (!c.mine) reveal(game, i); });
+      assert.equal(game.status, "won"); assert.ok(validSave(game));
+    }
+  }
+});
+
+test("legacy v1 saves migrate without losing progress in every lifecycle state", () => {
+  const ready = newGame(); toggleFlag(ready, 80);
+  const playing = newGame(); reveal(playing, 40, rng());
+  const won = copy(playing); won.cells.forEach((c, i) => { if (!c.mine) reveal(won, i); });
+  const lost = copy(playing); reveal(lost, lost.cells.findIndex(c => c.mine));
+  for (const game of [ready, playing, won, lost]) {
+    game.cursor = 80;
+    const legacy = copy(game); delete legacy.size; delete legacy.mines;
+    assert.ok(validSave(legacy)); assert.deepEqual(restoreGame(legacy), game);
+    assert.equal('size' in legacy, false);
+  }
+});
+
+test("dimensions are validated strictly before creating or restoring boards", () => {
+  for (const [size, mines] of [[4, 1], [17, 1], [5.5, 2], [Infinity, 1], [1e12, 1], ['9', 10], [9, '10'], [9, 0], [5, 25], [9, 1.1], [9, NaN], [null, 1]]) {
+    assert.throws(() => newGame(size, mines), RangeError);
+    const saved = { ...newGame(), size, mines };
+    assert.equal(validSave(saved), false); assert.deepEqual(restoreGame(saved), newGame());
+  }
+  for (const field of ['size', 'mines']) {
+    const saved = newGame(); delete saved[field];
+    assert.equal(validSave(saved), false);
+    saved[field] = undefined; assert.equal(validSave(saved), false);
+    saved[field] = null; assert.equal(validSave(saved), false);
+  }
+  const game = newGame(16, 40); reveal(game, 100, rng());
+  for (const change of [g => g.mines++, g => g.size--, g => g.cursor = 256, g => g.cells[100].count ^= 1, g => g.cells[100].flagged = true]) {
+    const bad = copy(game); change(bad); assert.equal(validSave(bad), false);
+  }
+});
+
 test("validation rejects malformed, inconsistent and impossible persistence", () => {
   const active = newGame(); reveal(active, 40, rng());
   const invalid = [null, false, [], {}, { ...newGame(), cells: Array(81) }];

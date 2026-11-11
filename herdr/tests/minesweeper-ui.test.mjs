@@ -104,6 +104,80 @@ test("pixel board uses a fixed retro palette, sprites and colored numbers withou
   assert.ok(h.nodes.some(n => n.styles.w?.[0] === 2 && n.styles.h?.[0] === 2 && n.styles.bg?.[0] === '#ff788e'));
 });
 
+test("setup keyboard editing is isolated, bounded, cancellable and repeat-safe", () => {
+  const h = harness(engine.newGame(16, 255)); h.press('f');
+  const snapshot = structuredClone(h.view.game), writes = h.writes;
+  h.press('r', true); assert.equal(h.view.confirmReset, false);
+  h.view.press({ ...event('r'), modifiers: { control: true } }, h.cx);
+  assert.equal(h.view.confirmReset, false);
+  h.press('r'); assert.deepEqual(h.view.pending, { size: 16, mines: 255 });
+  h.press('h'); assert.deepEqual(h.view.pending, { size: 15, mines: 224 });
+  h.press('j'); h.press('h'); assert.equal(h.view.pending.mines, 223);
+  h.press('k'); h.press('l'); assert.equal(h.view.pending.size, 16);
+  h.press('y', true); h.press('enter', true); h.press('r', true);
+  for (const modifier of ['control', 'platform', 'alt', 'shift']) h.view.press({ ...event('enter'), modifiers: { [modifier]: true } }, h.cx);
+  assert.equal(h.view.confirmReset, true);
+  assert.deepEqual(h.view.game, snapshot); assert.equal(h.writes, writes);
+  h.press('n'); assert.deepEqual(h.view.game, snapshot); assert.equal(h.writes, writes);
+  h.press('r'); assert.deepEqual(h.view.pending, { size: 16, mines: 255 });
+  for (let i = 0; i < 30; i++) h.press('h');
+  assert.equal(h.view.pending.size, 5); assert.equal(h.view.pending.mines, 24);
+  h.press('j'); for (let i = 0; i < 30; i++) h.press('h');
+  assert.equal(h.view.pending.mines, 1);
+  h.press('l'); h.press('enter');
+  assert.deepEqual(h.view.game, engine.newGame(5, 2));
+  h.press('enter', true); assert.equal(h.view.game.status, 'ready');
+  for (let i = 0; i < 20; i++) { h.press('right'); h.press('down'); }
+  assert.equal(h.view.game.cursor, 24);
+});
+
+test("setup mouse buttons, presets and saved settings survive reopen", () => {
+  const h = harness(); h.render(); h.click('minesweeper-restart'); h.render();
+  h.click('minesweeper-size-plus'); h.click('minesweeper-size-minus');
+  h.click('minesweeper-mines-plus'); h.click('minesweeper-mines-minus');
+  assert.deepEqual(h.view.pending, { size: 9, mines: 10 });
+  for (const [preset, size, mines] of [['beginner', 9, 10], ['intermediate', 12, 24], ['expert', 16, 40]]) {
+    h.click(`minesweeper-preset-${preset}`); assert.deepEqual(h.view.pending, { size, mines });
+  }
+  h.click('minesweeper-cancel'); assert.deepEqual(h.view.game, engine.newGame());
+  h.render(); h.click('minesweeper-restart'); h.render();
+  h.click('minesweeper-preset-expert'); h.click('minesweeper-confirm');
+  assert.deepEqual(h.state['minesweeper.game'], engine.newGame(16, 40));
+  h.view.close();
+  const reopened = harness(h.state['minesweeper.game']); reopened.press('r');
+  assert.deepEqual(reopened.view.pending, { size: 16, mines: 40 });
+  reopened.press('n'); reopened.render();
+  reopened.click('minesweeper-cell-255', 'right');
+  assert.equal(reopened.view.game.cells[255].flagged, true);
+  reopened.click('minesweeper-cell-128', 'left');
+  assert.ok(reopened.view.game.cells[128].revealed);
+});
+
+test("largest board fits the board area with compact readable pixel graphics and dynamic HUD", () => {
+  const h = harness(engine.newGame(16, 40));
+  h.view.game.cells[0].flagged = true;
+  h.view.game.cells[1].revealed = true; h.view.game.cells[1].count = 8;
+  h.render();
+  const cells = h.nodes.filter(n => /^minesweeper-cell-/.test(n.nodeId));
+  assert.equal(cells.length, 256);
+  for (const cell of cells) {
+    assert.equal(cell.styles.w[0], 15); assert.equal(cell.styles.h[0], 15);
+    assert.ok(cell.styles.w[0] * 16 <= 252);
+  }
+  assert.ok(h.nodes.some(n => n.childNodes.includes('MINES 39/40 · FLAGS 1 · SAFE 1/216')));
+  assert.ok(h.nodes.some(n => n.nodeId === 'minesweeper-number-8' && n.styles.text_size[0] === 12));
+  assert.ok(h.nodes.some(n => n.styles.w?.[0] === 1 && n.styles.h?.[0] === 1 && n.styles.bg?.[0] === '#57e8ff'));
+  h.press('r'); h.render(); assert.equal(h.nodes.filter(n => /^minesweeper-cell-/.test(n.nodeId)).length, 0);
+});
+
+test("closing during setup saves current game, not unconfirmed settings", () => {
+  const h = harness(engine.newGame(12, 24)); h.press('f');
+  const snapshot = structuredClone(h.view.game);
+  h.press('r'); h.press('h'); h.press('j'); h.press('l'); h.press('escape');
+  assert.deepEqual(h.state['minesweeper.game'], snapshot);
+  assert.deepEqual(harness(h.state['minesweeper.game']).view.game, snapshot);
+});
+
 test("terminal boards render and modal manifest matches arcade dimensions", async () => {
   for (const status of ["won", "lost"]) {
     const game = engine.newGame(); engine.reveal(game, 0, () => 0.999999);

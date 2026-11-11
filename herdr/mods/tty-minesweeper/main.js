@@ -2,7 +2,7 @@ import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { shared, setShared, props, closeOverlay, openOverlay } from "herdr";
-import { SIZE, MINES, newGame, restoreGame, reveal, toggleFlag } from "./engine.js";
+import { newGame, restoreGame, reveal, toggleFlag } from "./engine.js";
 
 const PALETTE = { background:'#10142b', foreground:'#fff1c1', accent:'#57e8ff', border:'#394574', chrome:'#191f3d', hover:'#293960', selected:'#334273', dim:'#9ca9cf' };
 const SPRITES = {
@@ -11,9 +11,9 @@ const SPRITES = {
   wrong: ['1000001', '0100010', '0010100', '0001000', '0010100', '0100010', '1000001'],
 };
 const NUMBER_COLORS = ['#fff1c1', '#57e8ff', '#80efac', '#ff788e', '#b9a0ff', '#ffc16b', '#71e2d0', '#ffffff', '#9ca9cf'];
-function sprite(kind, color) {
+function sprite(kind, color, pixel = 2) {
   return v_flex().id(`minesweeper-sprite-${kind}`).flex_none().children(SPRITES[kind].map(row =>
-    h_flex().flex_none().children([...row].map(bit => div().w(2).h(2).flex_none().when(bit === '1', el => el.bg(color))))));
+    h_flex().flex_none().children([...row].map(bit => div().w(pixel).h(pixel).flex_none().when(bit === '1', el => el.bg(color))))));
 }
 
 export default class Minesweeper extends View {
@@ -35,10 +35,27 @@ export default class Minesweeper extends View {
     openOverlay({ mod: "tty-arcade", frame: "none", kind: "dialog", modal: true, width: 480, height: 340 });
   }
 
-  restart(cx) {
-    if (this.closed) return;
-    this.game = newGame(); this.confirmReset = false; this.save(); cx.notify();
+  setup(cx) {
+    if (this.closed || this.confirmReset) return;
+    this.pending = { size: this.game.size, mines: this.game.mines };
+    this.setupField = "size"; this.confirmReset = true; cx.notify();
   }
+
+  adjust(field, delta, cx) {
+    if (!this.confirmReset || this.closed) return;
+    this.setupField = field;
+    if (field === "size") this.pending.size = Math.max(5, Math.min(16, this.pending.size + delta));
+    this.pending.mines = Math.max(1, Math.min(this.pending.size ** 2 - 1, this.pending.mines + (field === "mines" ? delta : 0)));
+    cx.notify();
+  }
+
+  restart(cx) {
+    if (this.closed || !this.confirmReset) return;
+    this.game = newGame(this.pending.size, this.pending.mines);
+    this.confirmReset = false; this.pending = null; this.save(); cx.notify();
+  }
+
+  cancel(cx) { this.confirmReset = false; this.pending = null; cx.notify(); }
 
   play(index, flag, cx) {
     if (this.closed || this.confirmReset) return;
@@ -51,28 +68,31 @@ export default class Minesweeper extends View {
     if (this.closed) return;
     const key = String(e.key).toLowerCase();
     if (key === "escape") { cx.stop_propagation(); this.dismiss(); return; }
-    if (e.modifiers?.control || e.modifiers?.platform || e.modifiers?.alt) return;
+    if (e.modifiers?.control || e.modifiers?.platform || e.modifiers?.alt || e.modifiers?.shift) return;
     if (this.confirmReset) {
       cx.stop_propagation();
-      if (!e.is_held && key === "y") this.restart(cx);
-      else if (key === "n") { this.confirmReset = false; cx.notify(); }
+      if (e.is_held) return;
+      if (key === "y" || key === "enter") this.restart(cx);
+      else if (key === "n") this.cancel(cx);
+      else if (["j", "k", "down", "up"].includes(key)) { this.setupField = ["j", "down"].includes(key) ? "mines" : "size"; cx.notify(); }
+      else if (["h", "l", "left", "right"].includes(key)) this.adjust(this.setupField, ["h", "left"].includes(key) ? -1 : 1, cx);
       return;
     }
     const moves = { h: [-1, 0], left: [-1, 0], l: [1, 0], right: [1, 0], k: [0, -1], up: [0, -1], j: [0, 1], down: [0, 1] };
     if (moves[key]) {
-      const [dx, dy] = moves[key], i = this.game.cursor;
-      this.game.cursor = Math.max(0, Math.min(SIZE - 1, Math.floor(i / SIZE) + dy)) * SIZE + Math.max(0, Math.min(SIZE - 1, i % SIZE + dx));
+      const [dx, dy] = moves[key], i = this.game.cursor, size = this.game.size;
+      this.game.cursor = Math.max(0, Math.min(size - 1, Math.floor(i / size) + dy)) * size + Math.max(0, Math.min(size - 1, i % size + dx));
       this.save();
     } else if (["enter", "space", " ", "f"].includes(key)) {
       if (!e.is_held) this.play(this.game.cursor, key === "f", cx);
     } else if (key === "r") {
-      if (!e.is_held) this.confirmReset = true;
+      if (!e.is_held) this.setup(cx);
     } else return;
     cx.stop_propagation(); cx.notify();
   }
 
   render(cx) {
-    const t = PALETTE, game = this.game, ended = ["won", "lost"].includes(game.status);
+    const t = PALETTE, game = this.game, size = game.size, cellSize = Math.min(28, Math.floor(252 / size)), compact = cellSize < 24, ended = ["won", "lost"].includes(game.status);
     const flags = game.cells.filter(c => c.flagged).length;
     const revealed = game.cells.filter(c => c.revealed && !c.mine).length;
     const status = game.status === "won" ? "You win! All safe squares revealed." : game.status === "lost" ? "Mine hit! Game over." : game.status === "ready" ? "Reveal to begin · first reveal is safe." : "Numbers count adjacent mines.";
@@ -84,28 +104,37 @@ export default class Minesweeper extends View {
       .child(h_flex().flex_none().items_center().justify_between()
         .child(div().font_semibold().text_color(t.accent).child("MINESWEEPER"))
         .child(button("minesweeper-back", "Back to arcade", () => this.back())))
-      .child(div().p(4).bg(t.chrome).border_2().border_color(t.border).child(`MINES ${MINES - flags}/${MINES} · FLAGS ${flags} · SAFE ${revealed}/71`))
-      .child(v_flex().flex_none().gap(0).children(Array.from({ length: SIZE }, (_, y) => h_flex().flex_none().children(Array.from({ length: SIZE }, (_, x) => {
-        const index = y * SIZE + x, cell = game.cells[index], showMine = cell.mine && (ended || cell.revealed);
-        const graphic = showMine ? sprite('mine', '#ff788e') : cell.flagged ? sprite(ended && !cell.mine ? 'wrong' : 'flag', ended && !cell.mine ? '#ff788e' : t.accent) : cell.revealed && cell.count ? div().id(`minesweeper-number-${cell.count}`).text_color(NUMBER_COLORS[cell.count]).font_semibold().text_size(18).child(String(cell.count)) : div();
-        return div().id(`minesweeper-cell-${index}`).w(28).h(28).flex_none().flex().items_center().justify_center()
+      .child(div().p(4).bg(t.chrome).border_2().border_color(t.border).child(`MINES ${game.mines - flags}/${game.mines} · FLAGS ${flags} · SAFE ${revealed}/${size * size - game.mines}`))
+      .when(!this.confirmReset, el => el.child(v_flex().flex_none().gap(0).children(Array.from({ length: size }, (_, y) => h_flex().flex_none().children(Array.from({ length: size }, (_, x) => {
+        const index = y * size + x, cell = game.cells[index], showMine = cell.mine && (ended || cell.revealed);
+        const graphic = showMine ? sprite('mine', '#ff788e', compact ? 1 : 2) : cell.flagged ? sprite(ended && !cell.mine ? 'wrong' : 'flag', ended && !cell.mine ? '#ff788e' : t.accent, compact ? 1 : 2) : cell.revealed && cell.count ? div().id(`minesweeper-number-${cell.count}`).text_color(NUMBER_COLORS[cell.count]).font_semibold().text_size(compact ? 12 : 18).child(String(cell.count)) : div();
+        return div().id(`minesweeper-cell-${index}`).w(cellSize).h(cellSize).flex_none().flex().items_center().justify_center()
           .border_2().border_color(game.cursor === index ? t.accent : t.border)
           .bg(cell.revealed ? t.background : game.cursor === index ? t.selected : t.chrome)
           .cursor_pointer().hover(s => s.bg(t.hover))
           .on_mouse_down("left", (_e, cx) => { cx.stop_propagation(); this.play(index, false, cx); })
           .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.play(index, true, cx); })
-          .child(v_flex().size_full().border_2().border_color(cell.revealed ? t.background : t.dim)
-            .child(div().h(cell.revealed ? 0 : 2).bg(t.foreground).flex_none())
+          .child(v_flex().size_full().when(!compact, el => el.border_2()).border_color(cell.revealed ? t.background : t.dim)
+            .child(div().h(cell.revealed || compact ? 0 : 2).bg(t.foreground).flex_none())
             .child(h_flex().flex_1().items_center().justify_center().child(graphic))
-            .child(div().h(cell.revealed ? 0 : 2).bg(t.background).flex_none()));
-      })))))
+            .child(div().h(cell.revealed || compact ? 0 : 2).bg(t.background).flex_none()));
+      }))))))
       .child(div().text_color(t.accent).font_semibold().child(status))
-      .when(this.confirmReset, el => el.child(h_flex().gap(8).items_center()
-        .child(div().child("Discard this game?"))
-        .child(button("minesweeper-confirm", "Restart", cx => this.restart(cx)))
-        .child(button("minesweeper-cancel", "Cancel", cx => { this.confirmReset = false; cx.notify(); }))))
+      .when(this.confirmReset, el => el.child(v_flex().gap(8)
+        .child(div().text_color(t.accent).child("New game · discard current progress on Start"))
+        .children([['size', 'Size'], ['mines', 'Bombs']].map(([field, label]) => h_flex().gap(8).items_center()
+          .child(div().text_color(this.setupField === field ? t.accent : t.foreground).child(`${label}: ${this.pending[field]}`))
+          .child(button(`minesweeper-${field}-minus`, "-", cx => this.adjust(field, -1, cx)))
+          .child(button(`minesweeper-${field}-plus`, "+", cx => this.adjust(field, 1, cx)))))
+        .child(v_flex().gap(4).children([['Beginner', 9, 10], ['Intermediate', 12, 24], ['Expert', 16, 40]].map(([label, size, mines]) =>
+          button(`minesweeper-preset-${label.toLowerCase()}`, `${label} ${size}/${mines}`, cx => { this.pending = { size, mines }; cx.notify(); }))))
+        .child(div().child("j/k: select · h/l: adjust"))
+        .child(div().child("y/Enter: start · n: cancel"))
+        .child(h_flex().gap(8)
+          .child(button("minesweeper-confirm", "Start", cx => this.restart(cx)))
+          .child(button("minesweeper-cancel", "Cancel", cx => this.cancel(cx))))))
       .when(!this.confirmReset, el => el.child(h_flex().gap(8)
-        .child(button("minesweeper-restart", "Restart", cx => { this.confirmReset = true; cx.notify(); }))
+        .child(button("minesweeper-restart", "New game", cx => this.setup(cx)))
         .child(button("minesweeper-close", "Save & close", () => this.dismiss()))))
       .child(div().text_color(t.dim).child("X: wrong flag"));
   }

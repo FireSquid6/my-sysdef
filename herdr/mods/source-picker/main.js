@@ -4,7 +4,7 @@ import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, ScrollHandle } from "gpui-base";
 import { readdir } from "fs/promises";
 import { home, machines, spaces, theme, run, exec, props, closeOverlay, nextCommand } from "herdr";
-import { parsePath, matchingDirectories } from "./paths.js";
+import { parsePath, resolvePath, matchingDirectories } from "./paths.js";
 import { launchProject } from "./project-launch.js";
 
 export default class SourcePicker extends View {
@@ -28,7 +28,7 @@ export default class SourcePicker extends View {
       this.updatePath(cx);
     });
     this.input.on("submit", (_e, cx) => {
-      if (!this.loading && !this.pathError) this.open(this.rows()[this.at] ?? (!this.filter ? "." : null), cx);
+      this.open(this.input.value(), cx);
     });
     this.input.focus();
 
@@ -43,9 +43,22 @@ export default class SourcePicker extends View {
     });
     cx.spawn(async cx => {
       for (;;) {
-        if (await nextCommand() === "cycle-machine") this.cycleMachine(cx);
+        const command = await nextCommand();
+        if (command === "cycle-machine") this.cycleMachine(cx);
+        else if (command === "complete") this.complete(this.rows()[0], cx);
       }
     });
+  }
+
+  async machineHome(machine) {
+    let root = this.homes.get(machine);
+    if (!root) {
+      const result = await exec("sh", ["-c", 'printf "%s" "$HOME"'], { on: machine });
+      if (result.code !== 0 || !result.stdout.startsWith("/")) throw new Error(result.stderr || "Could not determine this machine's home directory");
+      root = result.stdout;
+      this.homes.set(machine, root);
+    }
+    return root;
   }
 
   updatePath(cx) {
@@ -60,13 +73,7 @@ export default class SourcePicker extends View {
     cx.notify();
     cx.spawn(async (cx) => {
       try {
-        let root = this.homes.get(machine);
-        if (!root) {
-          const result = await exec("sh", ["-c", 'printf "%s" "$HOME"'], { on: machine });
-          if (result.code !== 0 || !result.stdout.startsWith("/")) throw new Error(result.stderr || "Could not determine this machine's home directory");
-          root = result.stdout;
-          this.homes.set(machine, root);
-        }
+        const root = await this.machineHome(machine);
         if (request !== this.request) return;
         this.homeRoot = root;
         const path = parsePath(value, root);
@@ -119,10 +126,18 @@ export default class SourcePicker extends View {
     return matchingDirectories(this.directories, this.filter);
   }
 
-  open(name, cx) {
+  complete(name, cx) {
     if (!name || this.opening || this.loading || this.pathError) return;
-    const folder = name === "." ? this.folder : `${this.folder}/${name}`;
-    const projectName = folder.split("/").pop();
+    const folder = resolvePath(`${this.folder}/${name}`, this.homeRoot);
+    const root = this.homeRoot;
+    const value = folder === root ? "~" : folder.startsWith(root + "/") ? "~" + folder.slice(root.length) : folder;
+    this.input.set_value(value + "/");
+    this.updatePath(cx);
+    this.input.focus();
+  }
+
+  open(value, cx) {
+    if (this.opening) return;
     const machine = this.machine;
     this.opening = true;
     this.error = null;
@@ -131,23 +146,35 @@ export default class SourcePicker extends View {
     // the space just created, regardless of focus changes during setup.
     cx.spawn(async (cx) => {
       try {
+        const root = await this.machineHome(machine);
+        const folder = resolvePath(value, root);
+        const directory = await exec("sh", ["-c", '[ -d "$1" ]', "source-picker", folder], machine ? { on: machine } : {});
+        if (directory.code !== 0) throw new Error(`Not an accessible directory: ${folder}`);
+        const existing = spaces().find(space => (space.machine ?? "") === machine && space.folder && space.folder.replace(/\/+$/, "") === folder);
+        if (existing) {
+          run("space.select", { id: existing.id });
+          closeOverlay(props().overlay);
+          return;
+        }
+        const projectName = folder.split("/").pop() || "/";
         await launchProject({ name: projectName, folder, machine, agentArgv: ["pi"] }, {
           exec,
           selectTab: id => run("tab.select", { id }),
         });
         closeOverlay(props().overlay);
       } catch (error) {
-        this.error = String(error);
-        // The launcher retains partial resources and reports their IDs.
+        this.error = `Could not open project: ${String(error)}`;
+        // The shared launcher retains partial resources and reports their IDs.
+      } finally {
+        this.opening = false;
+        // Edits made during creation must become active before a retry.
+        if (this.error) {
+          const failure = this.error;
+          this.updatePath(cx);
+          this.error = failure;
+        }
+        cx.notify();
       }
-      this.opening = false;
-      // Edits made during creation must become active before a retry.
-      if (this.error) {
-        const failure = this.error;
-        this.updatePath(cx);
-        this.error = failure;
-      }
-      cx.notify();
     });
   }
 
@@ -168,10 +195,6 @@ export default class SourcePicker extends View {
           closeOverlay(props().overlay);
         } else if (e.key === "tab" && e.modifiers.control) {
           this.cycleMachine(cx);
-        } else if (e.key === "tab" && !e.modifiers.shift && rows[this.at] && !this.opening && !this.loading && !this.pathError) {
-          const folder = `${this.folder}/${rows[this.at]}/`;
-          this.input.set_value("~" + folder.slice(this.homeRoot.length));
-          this.updatePath(cx);
         } else if ((e.key === "down" || e.key === "up") && rows.length) {
           this.at = (this.at + (e.key === "down" ? 1 : rows.length - 1)) % rows.length;
           this.scroll.scroll_to_item(this.at);
@@ -192,9 +215,9 @@ export default class SourcePicker extends View {
           .h(34).flex_none().px(10).items_center().rounded(0).cursor_pointer()
           .when(index === this.at, (el) => el.bg(t.selected))
           .hover((el) => el.bg(t.hover))
-          .on_click((_e, cx) => this.open(name, cx))
+          .on_click((_e, cx) => this.complete(name, cx))
           .child(div().truncate().child(name)))))
       .child(div().text_color(t.dim).text_size(11)
-        .child(`${rows.length} directories`));
+        .child(`${rows.length} directories · Tab Complete · Enter Open path · Ctrl+Tab Machine`));
   }
 }
