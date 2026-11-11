@@ -5,6 +5,7 @@ import { v_flex, h_flex, InputState, Input, ScrollHandle } from "gpui-base";
 import { readdir } from "fs/promises";
 import { home, machines, spaces, theme, run, exec, props, closeOverlay, nextCommand } from "herdr";
 import { parsePath, matchingDirectories } from "./paths.js";
+import { launchProject } from "./project-launch.js";
 
 export default class SourcePicker extends View {
   init(_props, cx) {
@@ -123,33 +124,21 @@ export default class SourcePicker extends View {
     const folder = name === "." ? this.folder : `${this.folder}/${name}`;
     const projectName = folder.split("/").pop();
     const machine = this.machine;
-    const argv = [machine ? "fish" : "/usr/bin/fish"];
     this.opening = true;
     this.error = null;
     cx.notify();
     // run() doesn't return IDs. Use the app CLI so every new tab targets
     // the space just created, regardless of focus changes during setup.
     cx.spawn(async (cx) => {
-      let created = false;
       try {
-        const command = async (name, args) => {
-          const result = await exec("herdr-app", ["do", name, JSON.stringify(args)]);
-          if (result.code !== 0) throw new Error(result.stderr || result.stdout);
-          const value = JSON.parse(result.stdout);
-          if (value.error) throw new Error(value.error);
-          return value;
-        };
-        const project = await command("space.new", { name: projectName, folder, machine, tab: "agent", argv: ["pi"] });
-        created = true;
-        if (!project.space || !project.tab) throw new Error("Missing new space/tab IDs");
-        for (const tab of ["editor", "term1", "term2"]) {
-          await command("tab.new", { name: tab, space: project.space, folder, argv: tab === "editor" ? ["nvim"] : argv });
-        }
-        run("tab.select", { id: project.tab });
+        await launchProject({ name: projectName, folder, machine, agentArgv: ["pi"] }, {
+          exec,
+          selectTab: id => run("tab.select", { id }),
+        });
         closeOverlay(props().overlay);
       } catch (error) {
-        this.error = `${created ? "Project created, but tab setup failed" : "Could not open project"}: ${String(error)}`;
-        // Keep any successfully created tabs; don't destroy user processes.
+        this.error = String(error);
+        // The launcher retains partial resources and reports their IDs.
       }
       this.opening = false;
       // Edits made during creation must become active before a retry.

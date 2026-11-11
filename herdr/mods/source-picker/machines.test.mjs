@@ -1,15 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { launchProject } from "./project-launch.js";
 const source = await readFile(new URL("./main.js", import.meta.url), "utf8");
-const paths = await readFile(new URL("./paths.js", import.meta.url), "utf8");
-const helpers = await import("data:text/javascript," + encodeURIComponent(paths));
+import { parsePath, matchingDirectories } from "./paths.js";
+const helpers = { parsePath, matchingDirectories };
 
 function setup(overrides = {}) {
   const tasks = [];
   const cx = { notify() {}, focus_handle() { return {}; }, timer: { after() {} }, spawn(fn) { tasks.push(fn(cx)); } };
   const dependencies = {
-    reportContext() {}, View: class {}, ...helpers, home: () => "/home/local", spaces: () => [], machines: () => [{ name: null }, { name: "remote" }],
+    launchProject, reportContext() {}, View: class {}, ...helpers, home: () => "/home/local", spaces: () => [], machines: () => [{ name: null }, { name: "remote" }],
     ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
     InputState: { new: options => ({ text: options.value, on() {}, focus() {}, value() { return this.text; }, set_value(value) { this.text = value; } }) },
     readdir: async () => [{ name: "local-project", isDirectory: () => true }],
@@ -59,8 +60,10 @@ test("cycling resets path, excludes temporary machines, and wraps back to local"
 });
 
 for (const machine of ["", "remote"]) test(`${machine || "local"} project opens agent, editor, and two blank terminals`, async () => {
-  const calls = [];
-  const { view, cx, settle } = setup({ exec: async (command, args) => {
+  const calls = [], selections = [], closed = [];
+  const { view, cx, settle } = setup({
+    run: (...args) => selections.push(args), closeOverlay: id => closed.push(id),
+    exec: async (command, args) => {
     assert.equal(command, "herdr-app");
     calls.push([args[1], JSON.parse(args[2])]);
     return { code: 0, stdout: JSON.stringify({ space: "remote/sp1", tab: "remote/tb1" }) };
@@ -68,6 +71,8 @@ for (const machine of ["", "remote"]) test(`${machine || "local"} project opens 
   Object.assign(view, { machine, folder: "/srv/user/source", loading: false, pathError: false });
   view.open("project", cx); await settle();
   assert.equal(calls.length, 4);
+  assert.deepEqual(selections, [["tab.select", { id: "remote/tb1" }]]);
+  assert.deepEqual(closed, ["source-picker"]);
   assert.equal(calls[0][1].machine, machine);
   assert.equal(calls[0][1].tab, "agent");
   assert.deepEqual(calls.map(([, args]) => args.name), ["project", "editor", "term1", "term2"]);
@@ -75,6 +80,29 @@ for (const machine of ["", "remote"]) test(`${machine || "local"} project opens 
   assert.deepEqual(calls.map(([, args]) => args.argv), [["pi"], ["nvim"], [shell], [shell]]);
   for (const [, args] of calls) assert.equal(args.folder, "/srv/user/source/project");
   for (const [, args] of calls.slice(1)) assert.equal(args.space, "remote/sp1");
+});
+
+test("picker delegates project setup to the shared launcher", async () => {
+  const calls = [];
+  const { view, cx, settle } = setup({ launchProject: async (...args) => calls.push(args) });
+  Object.assign(view, { machine: "remote", folder: "/srv/source", loading: false });
+  view.open("project", cx); await settle();
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0][0], { name: "project", folder: "/srv/source/project", machine: "remote", agentArgv: ["pi"] });
+  assert.equal(typeof calls[0][1].exec, "function");
+  assert.equal(typeof calls[0][1].selectTab, "function");
+});
+
+test("picker leaves overlay open and reports retained resources when shared launch fails", async () => {
+  const { view, cx, settle } = setup({
+    launchProject: async () => { throw new Error("Space remote/sp1 retained; term1 failed: offline"); },
+    run() { assert.fail("must not select on failure"); },
+    closeOverlay() { assert.fail("must not close on failure"); },
+  });
+  view.init({}, cx); await settle();
+  view.open("local-project", cx); await settle();
+  assert.equal(view.opening, false);
+  assert.match(view.error, /remote\/sp1 retained; term1 failed: offline/);
 });
 
 test("a slow previous machine cannot overwrite the newly selected machine", async () => {
