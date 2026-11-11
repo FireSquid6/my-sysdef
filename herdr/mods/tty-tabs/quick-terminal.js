@@ -1,6 +1,11 @@
 import { home, machines, focused, exec, run, shared, setShared, openOverlay, closeOverlay, notify } from "herdr";
 
 export class QuickTerminal {
+  machineColor(machine) {
+    const host = (machine || this.localHostname || "").split(".")[0];
+    return ({ deisslaptop: "#bb9af7", "minibox-one": "#9ece6a", desktop: "#f7768e" })[host] ?? "accent";
+  }
+
   hide() {
     this.wantOpen = false;
     const active = shared("quick.window");
@@ -51,12 +56,19 @@ export class QuickTerminal {
           const args = ["run", "--json", "--bg", "--keep", "--no-parent", "--no-notify", "--outlive-parent", "--label", "herdr.quick=tty"];
           if (machine) args.push("--on", machine);
           else args.push("--cwd", home());
-          args.push("--", machine ? "fish" : "/usr/bin/fish");
+          // No command: let the target core choose that user's default shell.
           const result = await exec("hc", args);
           if (result.code !== 0) throw new Error(result.stderr || result.stdout);
           terminal = JSON.parse(result.stdout).address;
           if (!terminal) throw new Error("No terminal address returned");
           setShared("quick.terminals", { ...(shared("quick.terminals") ?? {}), [machine]: terminal });
+        }
+        // Herdr names the local machine ""; resolve its actual hostname once.
+        if (!machine && this.localHostname === undefined) {
+          try {
+            const result = await exec("sh", ["-c", "hostname"]);
+            if (result.code === 0) this.localHostname = result.stdout.trim();
+          } catch { /* Unknown hosts retain the theme's accent border. */ }
         }
         if (!this.wantOpen) return;
         if (previous && shared("quick.window")?.id !== previous.id) return;
@@ -64,7 +76,7 @@ export class QuickTerminal {
         if (current) closeOverlay(current.id);
         const id = openOverlay({ kind: "dialog", frame: "none", width: 0.75, height: 0.6,
           layout: { id: "quick-root", type: "column", background: "background", radius: 0,
-            border: { width: 1, color: "accent" }, font: "JetBrains Mono", ui_font: "JetBrains Mono", terminal_padding: [8, 10],
+            border: { width: 1, color: this.machineColor(machine) }, font: "JetBrains Mono", ui_font: "JetBrains Mono", terminal_padding: [8, 10],
             children: [
               { id: "quick-title", type: "block", size: { px: 32 }, content: { mod: "quick-terminal", props: { machine, terminal } } },
               { id: "quick-shell", type: "block", content: { terminal } },

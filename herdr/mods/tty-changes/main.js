@@ -77,6 +77,7 @@ export default class Changes extends View {
     const { cwd, on } = location(), context = key();
     if (context !== this.context) {
       this.context = context; this.root = null; this.files = []; this.open = null; this.branch = null; this.upstream = null; this.divergence = ""; this.remoteDiff = false;
+      this.ahead = 0; this.behind = 0; this.hasConflicts = false;
       this.setLines([]); this.message = ""; this.input.set_value(""); this.error = null; this.note = null; this.watched = null; this.closed = false; this.limited = false;
     }
     if (!cwd) return;
@@ -119,6 +120,12 @@ export default class Changes extends View {
         this.branch = branch.code === 0 ? branch.stdout.trim() : `detached ${head.stdout.trim().slice(0, 7)}`;
         this.upstream = upstream.code === 0 ? upstream.stdout.trim() : null;
         this.divergence = ahead !== undefined ? `↑${ahead} ↓${behind}` : "";
+        this.ahead = Number(ahead) || 0; this.behind = Number(behind) || 0;
+        // Check all entries, including files beyond the display limit.
+        this.hasConflicts = entries.some(entry => {
+          const xy = entry.slice(0, 2);
+          return xy.includes("U") || xy === "AA" || xy === "DD";
+        });
         this.watch(root, cx);
         if (this.open && !files.some((f) => f.path === this.open)) { this.open = null; if (!this.remoteDiff) this.setLines([]); }
         // The first file's diff shows until you pick another.
@@ -289,20 +296,36 @@ export default class Changes extends View {
         .child(div().id("commit-message").flex_1().min_w(0).h(32).px(10).flex().items_center().rounded(0).border_1().border_color(this.typing ? t.accent : t.border).cursor_text().on_mouse_down("left", (_e, cx) => cx.stop_propagation()).child(Input.new(this.input).h_full().text_size(12).text_color(t.foreground)))
         .child(div().id("commit").h(32).px(14).flex().items_center().rounded(0).border_1().border_color(this.focusArea === "commit" ? t.accent : t.border).bg(enabled ? t.solid : t.raised).text_color(enabled ? t.solid_foreground : t.dim).text_size(12).when(enabled, (e) => e.cursor_pointer()).on_click((_e, cx) => this.commit(cx)).child(this.busy && !this.syncAction ? "Committing…" : "Commit")))
       .child(v_flex().flex_none().p(10).gap(6).border_t(1).border_color(t.border)
-        .child(div().text_size(11).truncate().text_color(t.muted).child(this.root ? `${this.branch || "…"} · ${this.upstream || "No upstream"} ${this.divergence || ""}` : "No repository"))
+        .child(div().text_size(11).truncate().text_color(this.branchColor(t.muted)).child(this.root ? `${this.branch || "…"} · ${this.upstream || "No upstream"} ${this.divergence || ""}` : "No repository"))
         .child(h_flex().gap(8).children(["push", "pull", "diff"].map(action => {
           const available = Boolean(this.root && this.upstream && !this.busy && !this.loading && this.context === key());
           return div().id(`remote-${action}`).flex_1().h(28).flex().items_center().justify_center().border_1().border_color(this.focusArea === action ? t.accent : t.border).bg(t.raised)
             .text_color(available ? t.foreground : t.dim).when(available, e => e.cursor_pointer().hover(s => s.bg(t.hover)))
             .on_click((_e, cx) => this.sync(action, cx)).child(this.syncAction === action ? `${action}…` : action[0].toUpperCase() + action.slice(1));
         })))
-        .child(div().text_size(10).text_color(t.dim).child(`${this.focusArea || "files"}`)));
+        .child(div().text_size(10).text_color(t.dim).child(`${this.focusArea || "files"} · p Pull · Shift+P Push · Shift+D Diff`)));
+  }
+
+  branchColor(fallback) {
+    if (!this.root) return fallback;
+    if (this.hasConflicts || (this.ahead > 0 && this.behind > 0)) return "#f7768e";
+    if (this.ahead > 0 || this.files.length > 0) return "#9ece6a";
+    if (this.behind > 0) return "#bb9af7";
+    return fallback;
   }
 
   navigate(e, cx) {
     if (e.key === "tab" && e.modifiers.control && !e.modifiers.shift && !e.modifiers.alt && !e.modifiers.platform) { this.cycleFocus(false, cx); cx.stop_propagation(); return; }
-    if (e.modifiers.alt || e.modifiers.control || e.modifiers.platform) return;
+    if (this.typing || e.modifiers.alt || e.modifiers.control || e.modifiers.platform) return;
     const key = e.key;
+    const letter = key.toLowerCase();
+    const shifted = e.modifiers.shift || key !== letter;
+    const action = letter === "p" ? (shifted ? "push" : "pull") : letter === "d" && shifted ? "diff" : null;
+    if (action) {
+      this.count = "";
+      this.sync(action, cx);
+      cx.stop_propagation(); cx.notify(); return;
+    }
     if (key === "escape") {
       if (this.remoteDiff) this.closeRemoteDiff(cx);
       else { this.focusArea = "files"; this.inDiff = false; this.handle.focus(); }

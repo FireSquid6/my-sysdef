@@ -3,14 +3,15 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 const source = await readFile(new URL("../mods/tty-tabs/quick-terminal.js", import.meta.url), "utf8");
 
-function setup(customExec) {
+function setup(customExec, machineNames = ["remote"]) {
   const state = new Map(), calls = [], overlays = [], closed = [], errors = [], tasks = [];
   let focus = { terminal: "core-terminal" }, sequence = 0;
   const dependencies = {
-    home: () => "/home/test", machines: () => [{ name: null }, { name: "remote" }], focused: () => focus,
+    home: () => "/home/test", machines: () => [{ name: null }, ...machineNames.map(name => ({ name }))], focused: () => focus,
     shared: key => state.get(key), setShared: (key, value) => state.set(key, value),
     exec: async (command, args) => {
       calls.push([command, args]);
+      if (command === "sh" && args[1] === "hostname") return { code: 0, stdout: "deisslaptop\n" };
       if (customExec) return customExec(command, args);
       return { code: 0, stdout: JSON.stringify(args[0] === "get" ? { state: "live" } : { address: args.includes("--on") ? "remote/t2" : "t1" }) };
     },
@@ -24,11 +25,12 @@ function setup(customExec) {
   return { controller, cx, settle, state, calls, overlays, closed, errors, focus: terminal => { focus = { terminal }; } };
 }
 
-test("Alt+S creates local Fish in home; hiding and reopening reuses it", async () => {
+test("Alt+S creates the user's default shell in home; hiding and reopening reuses it", async () => {
   const s = setup(); s.controller.toggle(s.cx); await s.settle();
   const launch = s.calls.find(([, args]) => args[0] === "run")[1];
   assert.equal(launch[launch.indexOf("--cwd") + 1], "/home/test");
-  assert.equal(launch.at(-1), "/usr/bin/fish"); assert.equal(launch.includes("--on"), false);
+  assert.equal(launch.at(-1), "/home/test");
+  assert.equal(launch.includes("--"), false); assert.equal(launch.includes("--on"), false);
   assert.equal(s.overlays[0].frame, "none");
   assert.equal(s.overlays[0].kind, "dialog");
   s.controller.toggle(s.cx); assert.deepEqual(s.closed, ["overlay-1"]);
@@ -42,10 +44,21 @@ test("Ctrl+Tab switches machines, using remote home, then reuses local shell", a
   s.controller.cycle(s.cx); await s.settle();
   const launch = s.calls.filter(([, args]) => args[0] === "run")[1][1];
   assert.equal(launch[launch.indexOf("--on") + 1], "remote"); assert.equal(launch.includes("--cwd"), false);
-  assert.equal(launch.at(-1), "fish"); assert.equal(s.state.get("quick.window").machine, "remote");
+  assert.equal(launch.at(-1), "remote"); assert.equal(launch.includes("--"), false);
+  assert.equal(s.state.get("quick.window").machine, "remote");
   s.focus("remote/t2"); s.controller.cycle(s.cx); await s.settle();
   assert.equal(s.state.get("quick.window").terminal, "t1");
   assert.equal(s.calls.filter(([, args]) => args[0] === "run").length, 2);
+});
+
+test("scratchpad border follows the selected machine through a full Ctrl+Tab cycle", async () => {
+  const s = setup(undefined, ["minibox-one", "desktop", "unknown"]);
+  s.controller.toggle(s.cx); await s.settle();
+  assert.equal(s.overlays.at(-1).layout.border.color, "#bb9af7");
+  for (const color of ["#9ece6a", "#f7768e", "accent", "#bb9af7"]) {
+    s.controller.cycle(s.cx); await s.settle();
+    assert.equal(s.overlays.at(-1).layout.border.color, color);
+  }
 });
 
 test("outside popup Ctrl+Tab is forwarded to the focused terminal", async () => {

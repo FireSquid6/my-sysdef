@@ -32,6 +32,14 @@ export default class SourcePicker extends View {
     this.input.focus();
 
     this.updatePath(cx);
+    // The local machine is represented by an empty name in Herdr's model.
+    cx.spawn(async cx => {
+      try {
+        const result = await exec("sh", ["-c", "hostname"]);
+        if (result.code === 0) this.localHostname = result.stdout.trim();
+      } catch { /* Keep the theme border if hostname lookup is unavailable. */ }
+      cx.notify();
+    });
     cx.spawn(async cx => {
       for (;;) {
         if (await nextCommand() === "cycle-machine") this.cycleMachine(cx);
@@ -154,13 +162,18 @@ export default class SourcePicker extends View {
     });
   }
 
+  machineColor(fallback) {
+    const host = (this.machine || this.localHostname || "").split(".")[0];
+    return ({ deisslaptop: "#bb9af7", "minibox-one": "#9ece6a", desktop: "#f7768e" })[host] ?? fallback;
+  }
+
   render() {
     const t = theme();
     const rows = this.rows();
     const message = this.error ?? (this.opening ? "Creating project tabs…" : this.loading ? "Loading directories…"
       : !rows.length ? "No matching directories." : null);
     return v_flex().id("source-picker").track_focus(this.handle)
-      .w_full().h_full().min_h(0).p(18).gap(12).bg(t.popover).border_1().border_color(t.border).text_color(t.foreground).text_size(13)
+      .w_full().h_full().min_h(0).p(18).gap(12).bg(t.popover).border_1().border_color(this.machineColor(t.border)).text_color(t.foreground).text_size(13)
       .on_key_down((e, cx) => {
         if (e.key === "escape") {
           closeOverlay(props().overlay);

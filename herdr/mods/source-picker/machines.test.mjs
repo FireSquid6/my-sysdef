@@ -9,7 +9,7 @@ function setup(overrides = {}) {
   const tasks = [];
   const cx = { notify() {}, focus_handle() { return {}; }, timer: { after() {} }, spawn(fn) { tasks.push(fn(cx)); } };
   const dependencies = {
-    View: class {}, ...helpers, home: () => "/home/local", spaces: () => [], machines: () => [{ name: null }, { name: "remote" }],
+    reportContext() {}, View: class {}, ...helpers, home: () => "/home/local", spaces: () => [], machines: () => [{ name: null }, { name: "remote" }],
     ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
     InputState: { new: options => ({ text: options.value, on() {}, focus() {}, value() { return this.text; }, set_value(value) { this.text = value; } }) },
     readdir: async () => [{ name: "local-project", isDirectory: () => true }],
@@ -23,6 +23,20 @@ function setup(overrides = {}) {
   const settle = async () => { await new Promise(setImmediate); };
   return { view, cx, settle, tasks };
 }
+
+test("project picker border follows Ctrl+Tab machines, including the local hostname", async () => {
+  const { view, cx, settle } = setup({
+    machines: () => [{ name: null }, { name: "minibox-one" }, { name: "desktop" }, { name: "unknown" }],
+    exec: async (_cmd, args) => ({ code: 0, stdout: args[1] === "hostname" ? "deisslaptop.example.net\n" : args[1].includes("$HOME") ? "/srv/home" : "project\0" }),
+  });
+  view.init({}, cx); await settle();
+  assert.equal(view.machineColor("border"), "#bb9af7");
+  for (const color of ["#9ece6a", "#f7768e", "border", "#bb9af7"]) {
+    view.cycleMachine(cx); await settle();
+    assert.equal(view.machineColor("border"), color);
+  }
+  assert.ok(source.includes("border_color(this.machineColor(t.border))"));
+});
 
 test("defaults to current space's machine and resolves that machine's ~/source", async () => {
   const { view, cx, settle } = setup({ spaces: () => [{ active: true, machine: "remote" }] });
