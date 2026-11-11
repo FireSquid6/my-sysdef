@@ -20,7 +20,7 @@ const SPRITES = {
 };
 const GAMES = [
   { name: "TETRIS", sprite: "blocks", mod: "tty-tetris", detail: "STACK BLOCKS / CHASE THE HIGH SCORE", width: 620, height: 600 },
-  { name: "MINESWEEPER", sprite: "mine", mod: "tty-minesweeper", detail: "TEN MINES / ONE SAFE FIRST MOVE", width: 480, height: 520 },
+  { name: "MINESWEEPER", sprite: "mine", mod: "tty-minesweeper", detail: "CUSTOM GRIDS / ONE SAFE FIRST MOVE", width: 480, height: 520 },
   { name: "SOLITAIRE", sprite: "cards", mod: "tty-solitaire", detail: "DRAW ONE / BUILD FOUR FOUNDATIONS", width: 900, height: 720 },
 ];
 

@@ -16,6 +16,31 @@ export function newGame(random = Math.random) {
   return { version: 1, stock, waste: [], foundations: [[], [], [], []], tableau, moves: 0 };
 }
 export function won(game) { return game.foundations.every(pile => pile.length === 13); }
+// Once every card is exposed in the playing area, only foundation cleanup
+// remains. Hidden cards or a remaining stock/waste still require actual play.
+export function canAutoComplete(game) {
+  return validSave(game) && !won(game) && game.stock.length === 0 && game.waste.length === 0 &&
+    game.tableau.every(pile => pile.every(card => card.faceUp));
+}
+export function autoComplete(game) {
+  if (!canAutoComplete(game)) return 0;
+  let transferred = 0;
+  // In a valid, fully exposed descending tableau the lowest outstanding rank
+  // is always accessible. Use the normal move rules rather than teleporting
+  // cards so that foundation order and the move counter remain correct.
+  for (;;) {
+    let progressed = false;
+    for (let index = 0; index < game.tableau.length; index++) {
+      if (!game.tableau[index].length) continue;
+      for (let foundation = 0; foundation < game.foundations.length; foundation++) {
+        if (move(game, { area: "tableau", index }, { area: "foundations", index: foundation })) {
+          transferred++; progressed = true; break;
+        }
+      }
+    }
+    if (!progressed || won(game)) return transferred;
+  }
+}
 export function draw(game) {
   if (won(game)) return false;
   if (game.stock.length) {

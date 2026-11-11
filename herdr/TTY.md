@@ -155,16 +155,22 @@ Checks: `node --test tests/tetris-*.test.mjs` and
 
 ### Minesweeper
 
-A 9×9 board contains ten mines. The first revealed square is always safe;
-empty squares flood-fill their neighbors. Reveal all 71 safe squares to win.
+The default board is 9×9 with ten mines. New-game setup lets you choose a
+square board from 5×5 to 16×16 and a bomb count from one to all but one cell.
+Presets include Beginner (9×9 / 10), Intermediate (12×12 / 24), and Expert
+(16×16 / 40). The first revealed square is always safe; empty squares flood-fill
+their neighbors. Reveal every safe square to win.
 
 - h/j/k/l or arrows: move the cursor; Enter/Space: reveal; f: toggle a flag.
 - Left click reveals a square; right click toggles its flag.
-- r: request a new game; y confirms and n cancels.
+- r / New game: open setup; j/k selects size or bombs, h/l adjusts.
+- Setup also has mouse controls and presets. Enter/y starts; n cancels without
+  changing your current board. Shrinking the board clamps the bomb count.
 - Escape: save and close. Back to arcade saves and returns to the chooser.
 
-Progress is stored locally as `minesweeper.game`. A loss shows all mines (`*`)
-and marks incorrect flags (`X`).
+Progress, board size, and bomb count are stored locally as `minesweeper.game`.
+Existing 9×9 saves remain compatible. A loss shows pixel mines and marks
+incorrect flags with a pixel X.
 
 ### Solitaire
 
@@ -177,6 +183,9 @@ turn face up automatically.
 - h/l or Left/Right: choose a pile; j/k or Down/Up: choose a tableau card.
 - Enter/Space: select a card or move the selected card/stack to the current pile.
 - d: draw from stock; r: request a new deal, then y/n to confirm/cancel.
+- Once stock and waste are empty and every tableau card is face-up, click
+  **Autocomplete [A]** or press a to finish the legal foundation moves instantly.
+  Autocomplete does not reveal hidden cards or play through the stock for you.
 - Escape: save and close. Arcade saves and returns to the chooser.
 
 Progress is stored locally as `solitaire.game`. Complete all four foundations
