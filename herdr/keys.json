@@ -1,5 +1,6 @@
 {
   "global": {
+    "ctrl-alt-t": "mod.open:tty-arcade",
     "alt-1": "tab.select:1",
     "alt-2": "tab.select:2",
     "alt-3": "tab.select:3",
@@ -74,6 +75,9 @@
   },
   "mod:tty-changes": {
     "ctrl-tab": "tty-changes.cycle"
+  },
+  "mod:tty-tetris": {
+    "ctrl-tab": "tty-tetris.cycle"
   },
   "mod:tty-repo": {
     "ctrl-tab": "tty-repo.cycle"

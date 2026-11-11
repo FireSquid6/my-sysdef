@@ -69,6 +69,87 @@ Socket discovery uses Python 3 and Linux `/proc` on the file's machine;
 otherwise the preview remains available. Neovim needs its normal listening
 server (enabled by default); no configuration changes are required.
 
+## Arcade
+
+Ctrl+Alt+T opens the arcade menu in any layout (replacing the direct Tetris
+shortcut). Ctrl+Shift+T remains **new tab**. Choose Tetris, Minesweeper, or
+Solitaire with a click, 1–3, or j/k / arrow keys followed by Enter. Escape closes
+the menu. Each game has an Arcade button to return to the chooser, and saves
+its progress when closed.
+
+The entire arcade has a fixed, independent retro palette rather than inheriting
+the TTY theme: a block-pixel marquee and game sprites, beveled Tetris blocks,
+raised mine tiles and pixel flags/mines, and pixel-suit playing cards with
+patterned backs. Theme changes to the workspace do not recolor these games.
+
+### Tetris
+
+Choose Tetris from the arcade menu. Escape always closes it
+and pauses/saves the game. Reopening restores the board paused; press p (or your
+configured pause key) to resume. Closing through the shortcut, hot reload, and
+normal app quit use the same pause/save hook. The timer is cancelled on close;
+held keys never carry across reopening. Best score and controls also persist.
+
+Default controls (arrow-key alternatives are available):
+
+- h/l: move left/right; j: soft drop; k: clockwise rotation; z: counterclockwise.
+- Space: hard drop; c: hold/swap; p: pause/resume.
+- r: new game, followed by y to confirm or n to cancel (remains paused).
+- s or F2: Settings. F2 is an unchangeable recovery shortcut.
+
+In Settings, j/k or Ctrl+Tab selects a row; Enter captures a new key/chord.
+Backspace restores the selected default; d restores all defaults; q/F2 returns
+to the paused game. Conflicting/reserved bindings are rejected. The starting
+level row uses h/l (levels 1–15) and applies to the next new game. Settings save
+automatically to namespaced Herdr shared state (`tetris.settings` and
+`tetris.startLevel`), rather than assuming custom app-settings keys are supported.
+The launch shortcut itself can be changed in `keys.json`.
+
+This is an original Guideline-style single-player Marathon implementation,
+using https://tetris.wiki/Tetris_Guideline as a reference: 10×20 visible cells
+plus 20 hidden rows, SRS kicks, seven-bag randomization, five-piece preview,
+hold, ghost, 500 ms lock delay with at most 15 move resets, Worlds-style gravity,
+20× soft drop, level progression every 10 lines, T-spins/minis, back-to-back,
+combos, and perfect-clear scoring. Movement repeats after 167 ms at 33 ms
+intervals. Standard piece colors use bright arcade tones and beveled pixel tiles. Logos,
+music, multiplayer/garbage, Sprint, and Ultra are not included; this is not a
+claim of complete official Guideline compliance.
+
+Checks: `node --test tests/tetris-*.test.mjs` and
+`herdr-app check /home/firesquid/sysdef/herdr/mods/tty-tetris`.
+
+### Minesweeper
+
+A 9×9 board contains ten mines. The first revealed square is always safe;
+empty squares flood-fill their neighbors. Reveal all 71 safe squares to win.
+
+- h/j/k/l or arrows: move the cursor; Enter/Space: reveal; f: toggle a flag.
+- Left click reveals a square; right click toggles its flag.
+- r: request a new game; y confirms and n cancels.
+- Escape: save and close. Back to arcade saves and returns to the chooser.
+
+Progress is stored locally as `minesweeper.game`. A loss shows all mines (`*`)
+and marks incorrect flags (`X`).
+
+### Solitaire
+
+Draw-one Klondike: build each foundation from Ace to King in one suit. Tableau
+stacks descend in alternating colors; only a King can fill an empty column.
+Select a face-up card (or stack) and then its destination. Newly exposed cards
+turn face up automatically.
+
+- Click the stock to draw; an empty stock recycles the waste.
+- h/l or Left/Right: choose a pile; j/k or Down/Up: choose a tableau card.
+- Enter/Space: select a card or move the selected card/stack to the current pile.
+- d: draw from stock; r: request a new deal, then y/n to confirm/cancel.
+- Escape: save and close. Arcade saves and returns to the chooser.
+
+Progress is stored locally as `solitaire.game`. Complete all four foundations
+to win.
+
+Arcade checks: `node --test tests/arcade.test.mjs tests/tetris-*.test.mjs tests/minesweeper*.test.mjs tests/solitaire*.test.mjs`
+from this directory; `herdr-app check` can validate each `mods/tty-*` game.
+
 ## GitHub Repo panel
 
 Alt+R opens and focuses Repo alongside Files and Changes. The sections are

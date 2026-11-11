@@ -12,6 +12,13 @@ To use another config location, set `HERDR_APP_HOME` to the same absolute path
 when running both sysdef and Herdr. Windows symlink creation may require
 Developer Mode or elevated permissions; this setup has only been tested on Linux.
 
+## Arcade
+
+Press **Ctrl+Alt+T** to choose Tetris, Minesweeper, or Klondike Solitaire.
+**Ctrl+Shift+T** still opens a new tab. The menu supports mouse selection,
+j/k or arrow navigation, and 1–3 quick launch. Games save progress locally
+when closed. See [TTY.md](TTY.md#arcade) for game controls.
+
 ## Shared versus local
 
 Git includes settings, keybindings, program overrides, custom themes, cloned

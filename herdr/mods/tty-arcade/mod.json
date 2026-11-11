@@ -1,0 +1,12 @@
+{
+  "place": "none",
+  "title": "Arcade",
+  "focusable": true,
+  "overlay": {
+    "frame": "none",
+    "kind": "dialog",
+    "modal": true,
+    "width": 480,
+    "height": 340
+  }
+}
