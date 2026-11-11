@@ -1,0 +1,14 @@
+{
+  "lastChangelogVersion": "1.5.2",
+  "deviceId": "5d3f3235-3caf-4468-96d7-e42bb435684e",
+  "theme": "tokyonight-night",
+  "defaultProvider": "openai",
+  "defaultModel": "gpt-6.1-sol",
+  "packages": [
+    "npm:@plannotator/pi-extension",
+    "npm:@tintinweb/pi-subagents"
+  ],
+  "extensionChangelogVersions": {
+    "{\"source\":\"npm:@tintinweb/pi-subagents\",\"scope\":\"user\"}": "0.23.2"
+  }
+}

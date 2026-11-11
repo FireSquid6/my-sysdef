@@ -1,6 +1,7 @@
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, ScrollHandle } from "gpui-base";
-import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings } from "herdr";
+import { spaces, panes, focused, run, openOverlay, theme, window, shared, setShared, layout, settings, nextCommand } from "herdr";
+import { QuickTerminal } from "./quick-terminal.js";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -12,10 +13,39 @@ function find(node, id) {
 }
 
 export default class Tabs extends View {
-  init() {
+  init(_props, cx) {
     this.pressed = null;
     this.scroll = ScrollHandle.new();
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
+    this.terminals = new Map();
+    this.request = Date.now();
+    this.quick = new QuickTerminal();
+    cx.spawn(async cx => {
+      for (;;) {
+        const command = await nextCommand();
+        if (command === "quick") this.quick.toggle(cx);
+        else if (command === "quick-cycle") this.quick.cycle(cx);
+        else if (command === "files" || command === "changes") {
+          run("layout.select", { stack: "panel-body", child: command });
+          run("layout.show", { id: "panel" });
+          setShared("keyboard.panel", { id: command, token: ++this.request });
+        } else if (command === "terminal") {
+          this.quick.hide();
+          const f = focused();
+          const all = panes().filter(p => p.terminal);
+          const candidates = all.filter(p => p.tab === f?.tab);
+          const saved = this.terminals.get(f?.tab);
+          const pane = candidates.find(p => p.terminal === saved) ?? candidates[0]
+            ?? all.find(p => p.terminal === this.lastTerminal) ?? all[0];
+          if (pane) {
+            setShared("keyboard.panel", null);
+            if (pane.tab !== f?.tab) run("tab.select", { id: pane.tab });
+            run("pane.focus", { terminal: pane.terminal });
+          }
+        }
+        cx.notify();
+      }
+    });
   }
 
   // The side panel is remembered per space: switching shows that space's choice
@@ -47,6 +77,11 @@ export default class Tabs extends View {
   }
 
   render() {
+    const f = focused();
+    if (f?.terminal && f.terminal !== shared("quick.window")?.terminal) {
+      this.terminals.set(f.tab, f.terminal);
+      this.lastTerminal = f.terminal;
+    }
     const t = theme();
     const space = spaces().find(p => p.active);
     const shown = space?.tabs ?? [];

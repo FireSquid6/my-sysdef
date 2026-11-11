@@ -48,7 +48,7 @@
     "ctrl-o": "mod.open:source-picker",
     "alt-o": "mod.open:source-picker",
     "ctrl-shift-t": "tab.new",
-    "ctrl-shift-k": "mod.open:picker",
+    "alt-shift-enter": "mod.open:picker",
     "ctrl-shift-p": "app.palette",
     "ctrl-,": "app.settings",
     "ctrl-shift-o": "pane.split:right",
@@ -61,10 +61,18 @@
     "shift-f2": "space.rename"
   },
   "layout:tty": {
-    "ctrl-shift-k": "mod.open:tty-picker",
+    "alt-s": "tty-tabs.quick",
+    "ctrl-tab": "tty-tabs.quick-cycle",
+    "alt-f": "tty-tabs.files",
+    "alt-c": "tty-tabs.changes",
+    "alt-enter": "tty-tabs.terminal",
+    "alt-shift-enter": "mod.open:tty-picker",
     "ctrl-?": "mod.open:tty-help",
     "ctrl-shift-/": "mod.open:tty-help",
     "ctrl-shift-?": "mod.open:tty-help"
+  },
+  "mod:source-picker": {
+    "ctrl-tab": "source-picker.cycle-machine"
   },
   "terminal": {
     "ctrl-backspace": "send:\u0017",

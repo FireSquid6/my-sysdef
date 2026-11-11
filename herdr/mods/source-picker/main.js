@@ -1,13 +1,16 @@
-// A fresh directory listing on every open; no recursive scan or network access.
+// A fresh directory listing on the selected machine; never a recursive scan.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, ScrollHandle } from "gpui-base";
 import { readdir } from "fs/promises";
-import { home, theme, run, exec, props, closeOverlay } from "herdr";
+import { home, machines, spaces, theme, run, exec, props, closeOverlay, nextCommand } from "herdr";
 import { parsePath, matchingDirectories } from "./paths.js";
 
 export default class SourcePicker extends View {
   init(_props, cx) {
-    this.folder = `${home()}/source`;
+    this.machine = spaces().find(space => space.active)?.machine ?? "";
+    this.homes = new Map([["", home()]]);
+    this.homeRoot = this.homes.get(this.machine);
+    this.folder = null;
     this.directories = [];
     this.filter = "";
     this.at = 0;
@@ -27,6 +30,11 @@ export default class SourcePicker extends View {
     this.input.focus();
     cx.timer.after(600, () => this.input.focus());
     this.updatePath(cx);
+    cx.spawn(async cx => {
+      for (;;) {
+        if (await nextCommand() === "cycle-machine") this.cycleMachine(cx);
+      }
+    });
   }
 
   updatePath(cx) {
@@ -36,43 +44,64 @@ export default class SourcePicker extends View {
     this.error = null;
     this.pathError = false;
     const request = ++this.request;
-    let path;
-    try {
-      path = parsePath(this.input.value(), home());
-    } catch (error) {
-      this.pathError = true;
-      this.loadedFolder = null;
-      this.directories = [];
-      this.loading = false;
-      this.error = String(error);
-      cx.notify();
-      return;
-    }
-    this.filter = path.filter;
-    if (this.folder === path.folder && this.loadedFolder === path.folder) {
-      cx.notify();
-      return;
-    }
-    this.folder = path.folder;
-    this.loadedFolder = null;
-    this.directories = [];
+    const machine = this.machine, value = this.input.value();
     this.loading = true;
     cx.notify();
     cx.spawn(async (cx) => {
       try {
-        const entries = await readdir(path.folder, { withFileTypes: true });
+        let root = this.homes.get(machine);
+        if (!root) {
+          const result = await exec("sh", ["-c", 'printf "%s" "$HOME"'], { on: machine });
+          if (result.code !== 0 || !result.stdout.startsWith("/")) throw new Error(result.stderr || "Could not determine this machine's home directory");
+          root = result.stdout;
+          this.homes.set(machine, root);
+        }
         if (request !== this.request) return;
-        this.directories = entries.filter((entry) => entry.isDirectory())
-          .map((entry) => entry.name).sort((a, b) => a.localeCompare(b));
-        this.loadedFolder = path.folder;
+        this.homeRoot = root;
+        const path = parsePath(value, root);
+        const loadedKey = JSON.stringify([machine, path.folder]);
+        this.folder = path.folder;
+        this.filter = path.filter;
+        if (this.loadedKey === loadedKey) return;
+        this.loadedKey = null;
+        this.directories = [];
+        let directories;
+        if (machine) {
+          const script = '[ -d "$1" ] || exit 1; for p in "$1"/* "$1"/.[!.]* "$1"/..?*; do [ -d "$p" ] || continue; printf "%s\\0" "${p##*/}"; done; exit 0';
+          const result = await exec("sh", ["-c", script, "source-picker", path.folder], { on: machine });
+          if (result.code !== 0) throw new Error(result.stderr || "Cannot list this directory");
+          directories = result.stdout.split("\0").filter(Boolean);
+        } else {
+          const entries = await readdir(path.folder, { withFileTypes: true });
+          directories = entries.filter(entry => entry.isDirectory()).map(entry => entry.name);
+        }
+        if (request !== this.request) return;
+        this.directories = directories.sort((a, b) => a.localeCompare(b));
+        this.loadedKey = loadedKey;
       } catch (error) {
         if (request !== this.request) return;
+        this.loadedKey = null;
+        this.directories = [];
         this.pathError = true;
         this.error = `Could not read directory: ${String(error)}`;
+      } finally {
+        if (request === this.request) { this.loading = false; cx.notify(); }
       }
-      this.loading = false;
-      cx.notify();
     });
+  }
+
+  cycleMachine(cx) {
+    if (this.opening) return;
+    const names = [...new Set(["", ...machines().filter(machine => !machine.temporary).map(machine => machine.name ?? ""), this.machine])];
+    const machine = names[(names.indexOf(this.machine) + 1) % names.length];
+    if (machine === this.machine) return;
+    this.machine = machine;
+    this.homeRoot = this.homes.get(machine);
+    this.loadedKey = null;
+    this.directories = [];
+    this.input.set_value("~/source/");
+    this.updatePath(cx);
+    this.input.focus();
   }
 
   rows() {
@@ -83,6 +112,8 @@ export default class SourcePicker extends View {
     if (!name || this.opening || this.loading || this.pathError) return;
     const folder = name === "." ? this.folder : `${this.folder}/${name}`;
     const projectName = folder.split("/").pop();
+    const machine = this.machine;
+    const argv = [machine ? "fish" : "/usr/bin/fish"];
     this.opening = true;
     this.error = null;
     cx.notify();
@@ -98,11 +129,11 @@ export default class SourcePicker extends View {
           if (value.error) throw new Error(value.error);
           return value;
         };
-        const project = await command("space.new", { name: projectName, folder, machine: "", tab: "editor", argv: ["/usr/bin/fish"] });
+        const project = await command("space.new", { name: projectName, folder, machine, tab: "agent", argv: ["pi"] });
         created = true;
         if (!project.space || !project.tab) throw new Error("Missing new space/tab IDs");
-        for (const tab of ["agent", "term1", "term2"]) {
-          await command("tab.new", { name: tab, space: project.space, folder, argv: ["/usr/bin/fish"] });
+        for (const tab of ["editor", "term1", "term2"]) {
+          await command("tab.new", { name: tab, space: project.space, folder, argv: tab === "editor" ? ["nvim"] : argv });
         }
         run("tab.select", { id: project.tab });
         closeOverlay(props().overlay);
@@ -131,9 +162,11 @@ export default class SourcePicker extends View {
       .on_key_down((e, cx) => {
         if (e.key === "escape") {
           closeOverlay(props().overlay);
-        } else if (e.key === "tab" && rows[this.at] && !this.opening) {
+        } else if (e.key === "tab" && e.modifiers.control) {
+          this.cycleMachine(cx);
+        } else if (e.key === "tab" && !e.modifiers.shift && rows[this.at] && !this.opening && !this.loading && !this.pathError) {
           const folder = `${this.folder}/${rows[this.at]}/`;
-          this.input.set_value("~" + folder.slice(home().length));
+          this.input.set_value("~" + folder.slice(this.homeRoot.length));
           this.updatePath(cx);
         } else if ((e.key === "down" || e.key === "up") && rows.length) {
           this.at = (this.at + (e.key === "down" ? 1 : rows.length - 1)) % rows.length;
@@ -145,7 +178,7 @@ export default class SourcePicker extends View {
       .child(h_flex().items_center().justify_between()
         .child(div().font_semibold().text_size(16).child("Open project"))
         .child(div().text_color(t.dim).child("Esc to cancel")))
-      .child(div().text_color(t.muted).child("Choose a local directory under ~"))
+      .child(div().text_color(t.muted).child(`${this.machine || "This computer"} · ~/source · Ctrl+Tab to switch machine`))
       .child(Input.new(this.input).h(36).flex_none().px(10).rounded(0)
         .border_1().border_color(t.accent).bg(t.background).text_color(t.foreground))
       .child(v_flex().id("source-projects").flex_1().min_h(0)

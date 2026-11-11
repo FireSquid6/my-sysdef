@@ -1,6 +1,6 @@
 import { View, div } from "gpui-kit";
-import { v_flex, h_flex, InputState, Input, Scrollbar, v_virtual_list } from "gpui-base";
-import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings } from "herdr";
+import { v_flex, h_flex, InputState, Input, Scrollbar, v_virtual_list, ScrollHandle, VirtualListScrollHandle } from "gpui-base";
+import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, shared, nextCommand } from "herdr";
 
 function location() {
   const space = spaces().find((s) => s.active), f = focused();
@@ -34,6 +34,14 @@ function diffRows(lines) {
 export default class Changes extends View {
   init(_props, cx) {
     this.files = []; this.rows = []; this.diffWidth = 0; this.message = ""; this.handle = cx.focus_handle();
+    this.scroll = ScrollHandle.new();
+    this.diffScroll = VirtualListScrollHandle.new();
+    this.selected = null; this.diffAt = 0; this.inDiff = false;
+    cx.spawn(async cx => {
+      for (;;) {
+        if (await nextCommand() === "focus") { this.handle.focus(); cx.notify(); }
+      }
+    });
     this.input = InputState.new({ placeholder: "Commit message" });
     this.input.on("change", (_e, cx) => {
       const hadMessage = Boolean(this.message.trim());
@@ -136,10 +144,12 @@ export default class Changes extends View {
 
   setLines(lines) {
     this.rows = diffRows(lines);
+    this.diffAt = Math.min(this.diffAt, Math.max(0, this.rows.length - 1));
     this.diffWidth = Math.max(300, ...this.rows.map(row => (row.text.length + 1) * 7 + 50));
   }
 
   pick(path, cx) {
+    this.selected = path;
     this.open = this.open === path ? null : path; this.setLines([]); this.note = null;
     this.closed = !this.open;
     const context = this.context;
@@ -177,11 +187,18 @@ export default class Changes extends View {
 
   render(cx) {
     if (key() !== this.context) this.refresh(cx);
+    const request = shared("keyboard.panel");
+    if (request?.id === "changes" && request.token !== this.focusRequest) {
+      this.focusRequest = request.token;
+      cx.timer.after(0, cx => { this.typing = false; this.handle.focus(); cx.notify(); });
+    }
+    if (!this.files.some(f => f.path === this.selected)) this.selected = this.files[0]?.path ?? null;
     const t = theme(), add = this.files.reduce((n, f) => n + f.add, 0), del = this.files.reduce((n, f) => n + f.del, 0);
     const enabled = Boolean(this.message.trim() && this.root && !this.busy && !this.loading);
-    return v_flex().id("changes").size_full().min_h(0).rounded(0).overflow_hidden().bg(t.background).border_1().border_color(t.border).text_color(t.foreground).text_size(13).track_focus(this.handle)
+    return v_flex().id("changes").size_full().min_h(0).rounded(0).overflow_hidden().bg(t.background).border_1().border_color(this.handle.is_focused() || this.typing ? t.accent : t.border).text_color(t.foreground).text_size(13).track_focus(this.handle)
       .on_key_down((e, cx) => {
         if (e.key === "escape" && this.typing) { this.typing = false; this.handle.focus(); cx.stop_propagation(); cx.notify(); }
+        else if (!this.typing) this.navigate(e, cx);
       })
       .child(h_flex().h(42).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border)
         .child(div().font_semibold().child("Changes"))
@@ -189,9 +206,9 @@ export default class Changes extends View {
         .child(div().flex_1()).child(div().text_size(11).text_color(t.ansi2).child(`+${add}`)).child(div().text_size(11).text_color(t.ansi1).child(`−${del}`)))
       // overflow_y_scrollbar() wraps the list, so its flex sizing never reached the panel's layout.
       .child(div().flex_1().min_h(44).max_h(this.files.length * 28 + 12).relative().border_b(1).border_color(t.border)
-        .child(v_flex().id("changes-list").absolute().inset_0().overflow_y_scroll().p(6).children(this.files.map((f) => {
+        .child(v_flex().id("changes-list").absolute().inset_0().overflow_y_scroll().track_scroll(this.scroll).p(6).children(this.files.map((f) => {
         const parts = f.path.split("/"), name = parts.pop();
-        return h_flex().id(`change-${f.path}`).h(28).flex_none().px(8).gap(8).items_center().rounded(0).cursor_pointer().when(this.open === f.path, (e) => e.bg(t.selected)).hover((s) => s.bg(t.hover)).on_click((_e, cx) => this.pick(f.path, cx))
+        return h_flex().id(`change-${f.path}`).h(28).flex_none().px(8).gap(8).items_center().rounded(0).cursor_pointer().when(this.selected === f.path, (e) => e.bg(t.selected)).hover((s) => s.bg(t.hover)).on_click((_e, cx) => { this.inDiff = false; this.handle.focus(); this.pick(f.path, cx); })
           .child(div().w(14).text_size(11).text_color(f.status === "A" ? t.ansi2 : f.status === "D" ? t.ansi1 : f.status === "U" ? t.ansi1 : t.blocked).child(f.status))
           .child(h_flex().flex_1().min_w(0).child(div().text_color(t.dim).truncate().child(parts.length ? parts.join("/") + "/" : "")).child(div().max_w(260).min_w(0).truncate().child(name)))
           .when(f.add > 0, (e) => e.child(div().text_size(11).text_color(t.ansi2).child(`+${f.add}`))).when(f.del > 0, (e) => e.child(div().text_size(11).text_color(t.ansi1).child(`−${f.del}`)));
@@ -201,12 +218,37 @@ export default class Changes extends View {
       .child(div().flex_1().min_h(0).relative().font_family(settings().font_family ?? "JetBrains Mono").text_size(11)
         .child(div().id("changes-diff-x").size_full().overflow_x_scrollbar()
           .child(div().w_full().min_w(this.diffWidth).h_full().child(v_virtual_list("changes-diff", this.rows.length, 20, (i) => String(i),
-            (range) => this.rows.slice(range.start, range.end).map((row) => this.diffRow(row, t))).size_full())))
+             (range) => this.rows.slice(range.start, range.end).map((row) => this.diffRow(row, t))).track_scroll(this.diffScroll).size_full())))
         .child(Scrollbar.vertical("changes-diff").viewport_from_layout().absolute().inset_0())
         .when(!this.open && this.files.length > 0, (e) => e.child(div().absolute().top(6).px(12).text_color(t.dim).child("Select a file to view its changes"))))
       .when(Boolean(this.note), (e) => e.child(div().px(10).pb(8).text_size(11).text_color(t.ansi1).child(this.note)))
       .child(h_flex().flex_none().p(10).gap(8).border_t(1).border_color(t.border)
         .child(div().id("commit-message").flex_1().min_w(0).h(32).px(10).flex().items_center().rounded(0).border_1().border_color(this.typing ? t.accent : t.border).cursor_text().on_mouse_down("left", (_e, cx) => cx.stop_propagation()).child(Input.new(this.input).h_full().text_size(12).text_color(t.foreground)))
         .child(div().id("commit").h(32).px(14).flex().items_center().rounded(0).bg(enabled ? t.solid : t.raised).text_color(enabled ? t.solid_foreground : t.dim).text_size(12).when(enabled, (e) => e.cursor_pointer()).on_click((_e, cx) => this.commit(cx)).child(this.busy ? "Committing…" : "Commit")));
+  }
+
+  navigate(e, cx) {
+    if (e.modifiers.alt || e.modifiers.control || e.modifiers.platform) return;
+    const key = e.key;
+    if (/^[0-9]$/.test(key)) {
+      this.count = ((this.count ?? "") + key).slice(0, 6);
+      cx.stop_propagation(); return;
+    }
+    const repeat = Math.max(1, Number(this.count) || 1); this.count = "";
+    if (key === "i") { this.typing = true; this.input.focus(); }
+    else if (key === "h" || key === "left" || key === "escape") this.inDiff = false;
+    else if (key === "l" || key === "right" || key === "enter") {
+      if (this.selected && this.open !== this.selected) this.pick(this.selected, cx);
+      if (key !== "enter") this.inDiff = true;
+    } else if (["j", "down", "k", "up", "g", "G"].includes(key)) {
+      const count = this.inDiff ? this.rows.length : this.files.length;
+      const current = this.inDiff ? this.diffAt : Math.max(0, this.files.findIndex(f => f.path === this.selected));
+      const at = Math.max(0, Math.min(count - 1, key === "g" && !e.modifiers.shift ? 0
+        : key === "G" || (key === "g" && e.modifiers.shift) ? count - 1
+        : current + (key === "j" || key === "down" ? repeat : -repeat)));
+      if (this.inDiff) { this.diffAt = at; this.diffScroll.scroll_to_item(at, "top"); }
+      else { this.selected = this.files[at]?.path ?? null; this.scroll.scroll_to_item(at); }
+    } else return;
+    cx.stop_propagation(); cx.notify();
   }
 }
