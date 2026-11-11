@@ -17,6 +17,41 @@ elements live in the `mods/tty-*` clones. Native app-owned settings,
 palette, and system dialogs are not replaceable through the layout API.
 Clones are not automatically refreshed with upstream mod changes.
 
+## Centralized keyboard help
+
+Ctrl+Alt+H opens centralized, context-selected help above the current interface.
+The existing Ctrl+? / Ctrl+Shift+/ aliases use the same route in TTY. Press the
+help shortcut again or Escape to dismiss only help; the underlying pane, input,
+menu or game remains alive. Games retain their normal focus-loss pause behavior.
+Outside TTY, Ctrl+Alt+H opens the same help mod directly.
+
+General and Terminal are joined by tabs for each custom pane, picker, menu,
+dialog and game. `[` and `]` cycle tabs with wraparound, including while the
+search field has focus; brackets are reserved and cannot be searched literally.
+Click tabs or horizontally scroll the tab strip to reach every interface. Search
+filters the selected tab without clearing its query on tab changes; the result
+area scrolls independently. Global/layout/mod bindings are merged by specificity,
+and displayed with their applicable section. Inline shortcut-only labels have
+been removed; action labels, safety warnings and editable Tetris binding values
+remain. The status-bar palette action is simply **Commands**.
+
+Context uses explicit overlay lifetimes, live pane focus handles and input
+focus/blur notifications, not the last panel-open request. Layout-panel focus is
+sampled every 80 ms because this API has no focus-change subscription for handles.
+Unknown/native interfaces fall back to General or Terminal. Help uses the current
+Tokyo Night theme colors and a window-relative centered dialog.
+
+Tetris publishes its effective controls from the same binding table used by the
+game, so changes appear in help without a duplicate defaults table. Before its
+first launch, the Tetris tab asks you to open the game once to load these rows.
+Ctrl+Alt+H is reserved from binding capture.
+
+Implementation note: Herdr rejects imports (including symlinks) outside a mod's
+own directory. `mods/tty-help/context.js` is therefore mirrored as local
+`help-context.js` modules in participating personal mods. Keep these identical;
+`node --test tests/help.test.mjs` checks synchronization and context dispatch.
+No shipped or app-generated files are involved.
+
 ## Keyboard panels
 
 - Alt+F / Alt+C / Alt+R: show and focus Files / Changes / Repo.

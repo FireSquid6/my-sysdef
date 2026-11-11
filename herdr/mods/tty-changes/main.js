@@ -1,3 +1,4 @@
+import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar, v_virtual_list, ScrollHandle, VirtualListScrollHandle } from "gpui-base";
 import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, shared, nextCommand } from "herdr";
@@ -33,6 +34,7 @@ function diffRows(lines) {
 
 export default class Changes extends View {
   init(_props, cx) {
+    reportContext(this, "tty-changes", cx);
     this.files = []; this.rows = []; this.diffWidth = 0; this.message = ""; this.handle = cx.focus_handle();
     this.scroll = ScrollHandle.new();
     this.diffScroll = VirtualListScrollHandle.new();
@@ -275,7 +277,7 @@ export default class Changes extends View {
       .when(this.limited, el => el.child(div().px(12).py(4).text_size(11).text_color(t.dim).child("Showing the first 1,000 changed files")))
       .when(this.remoteDiff, e => e.child(h_flex().flex_none().px(10).py(4).gap(8)
         .child(div().flex_1().truncate().child(`Diff vs ${this.upstream} · includes local changes`))
-        .child(div().id("close-upstream-diff").cursor_pointer().text_color(this.focusArea === "close-diff" ? t.accent : t.muted).child("Close [Esc]").on_click((_e, cx) => this.closeRemoteDiff(cx)))))
+        .child(div().id("close-upstream-diff").cursor_pointer().text_color(this.focusArea === "close-diff" ? t.accent : t.muted).child("Close").on_click((_e, cx) => this.closeRemoteDiff(cx)))))
       .child(div().flex_1().min_h(0).relative().border_1().border_color(this.focusArea === "preview" ? t.accent : t.border).font_family(settings().font_family ?? "JetBrains Mono").text_size(11)
         .child(div().id("changes-diff-x").size_full().overflow_x_scrollbar()
           .child(div().w_full().min_w(this.diffWidth).h_full().child(v_virtual_list("changes-diff", this.rows.length, 20, (i) => String(i),
@@ -294,7 +296,7 @@ export default class Changes extends View {
             .text_color(available ? t.foreground : t.dim).when(available, e => e.cursor_pointer().hover(s => s.bg(t.hover)))
             .on_click((_e, cx) => this.sync(action, cx)).child(this.syncAction === action ? `${action}…` : action[0].toUpperCase() + action.slice(1));
         })))
-        .child(div().text_size(10).text_color(t.dim).child(`Ctrl+Tab: focus · h/l: move · Enter: activate · ${this.focusArea || "files"}`)));
+        .child(div().text_size(10).text_color(t.dim).child(`${this.focusArea || "files"}`)));
   }
 
   navigate(e, cx) {

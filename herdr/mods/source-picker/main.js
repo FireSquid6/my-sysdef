@@ -1,4 +1,5 @@
 // A fresh directory listing on the selected machine; never a recursive scan.
+import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, ScrollHandle } from "gpui-base";
 import { readdir } from "fs/promises";
@@ -7,6 +8,7 @@ import { parsePath, matchingDirectories } from "./paths.js";
 
 export default class SourcePicker extends View {
   init(_props, cx) {
+    reportContext(this, "source-picker", cx);
     this.machine = spaces().find(space => space.active)?.machine ?? "";
     this.homes = new Map([["", home()]]);
     this.homeRoot = this.homes.get(this.machine);
@@ -28,7 +30,7 @@ export default class SourcePicker extends View {
       if (!this.loading && !this.pathError) this.open(this.rows()[this.at] ?? (!this.filter ? "." : null), cx);
     });
     this.input.focus();
-    cx.timer.after(600, () => this.input.focus());
+
     this.updatePath(cx);
     cx.spawn(async cx => {
       for (;;) {
@@ -177,8 +179,8 @@ export default class SourcePicker extends View {
       })
       .child(h_flex().items_center().justify_between()
         .child(div().font_semibold().text_size(16).child("Open project"))
-        .child(div().text_color(t.dim).child("Esc to cancel")))
-      .child(div().text_color(t.muted).child(`${this.machine || "This computer"} · ~/source · Ctrl+Tab to switch machine`))
+        .child(div().text_color(t.dim).child("")))
+      .child(div().text_color(t.muted).child(`${this.machine || "This computer"} · ~/source`))
       .child(Input.new(this.input).h(36).flex_none().px(10).rounded(0)
         .border_1().border_color(t.accent).bg(t.background).text_color(t.foreground))
       .child(v_flex().id("source-projects").flex_1().min_h(0)
@@ -191,6 +193,6 @@ export default class SourcePicker extends View {
           .on_click((_e, cx) => this.open(name, cx))
           .child(div().truncate().child(name)))))
       .child(div().text_color(t.dim).text_size(11)
-        .child(`${rows.length} directories · ↑/↓ choose · Tab browse · Enter open`));
+        .child(`${rows.length} directories`));
   }
 }

@@ -1,4 +1,5 @@
 // A lazy file browser for the focused pane's folder, with bounded read-only previews.
+import { reportContext } from "./help-context.js";
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState, ScrollHandle, InputState, Input } from "gpui-base";
 import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, window, shared, nextCommand } from "herdr";
@@ -41,6 +42,7 @@ async function directory(path, on) {
 
 export default class Files extends View {
   init(_props, cx) {
+    reportContext(this, "tty-files", cx);
     this.handle = cx.focus_handle();
     this.scroll = ScrollHandle.new();
     this.selected = null;

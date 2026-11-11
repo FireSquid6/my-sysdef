@@ -2,12 +2,14 @@
 // dialog with props { title, detail, command: { name, args } }.
 // Enter confirms (runs the command), Esc cancels.
 
+import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { run, props, closeOverlay, theme } from "herdr";
 
 export default class Confirm extends View {
   init(_props, cx) {
+    reportContext(this, "tty-confirm", cx);
     this.handle = cx.focus_handle();
     this.handle.focus();
   }
@@ -39,7 +41,7 @@ export default class Confirm extends View {
       .rounded(0)
       .bg(t.popover).border_1().border_color(t.border)
       .text_size(13)
-      .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().text_color(t.foreground).child(p.title ?? "Are you sure?")).child(div().text_size(11).text_color(t.dim).child("Esc")))
+      .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().text_color(t.foreground).child(p.title ?? "Are you sure?")).child(div().text_size(11).text_color(t.dim).child("")))
       .child(div().flex_1().min_h(0).overflow_y_scrollbar().text_color(t.muted).child(p.detail ?? ""))
       .child(
         h_flex()

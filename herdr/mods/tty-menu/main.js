@@ -3,9 +3,10 @@
 // ↑/↓ move, Enter runs, Esc closes. An item is [label, command, args];
 // a command "worktree" opens the worktree dialog instead.
 
+import { reportContext, openHelp } from "./help-context.js";
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, exec } from "herdr";
+import { run, props, closeOverlay, openOverlay, theme, terminals, spaces, panes, exec } from "herdr";
 
 // Where a space is now: its first terminal's live folder, else where it was made.
 function place(s) {
@@ -84,16 +85,9 @@ function menuIcon(command) {
   return `mods/workspace-chrome/${name}.svg`;
 }
 
-// The key bound to a command, for the hint on the right.
-function shortcut(name, args) {
-  // `pane.split:right` binds pane.split with { direction: "right" }.
-  const value = args && Object.values(args)[0];
-  const k = keys().find((b) => b.section === "global" && (b.action === name || b.action === `${name}:${value}`));
-  return k ? k.keys : "";
-}
-
 export default class Menu extends View {
   init(_props, cx) {
+    reportContext(this, "tty-menu", cx);
     this.at = 0;
     this.git = null;
     this.handle = cx.focus_handle();
@@ -111,6 +105,7 @@ export default class Menu extends View {
   choose(i, cx) {
     const it = items(props(), this.git)[i];
     if (!it) return;
+    if (it[1] === "app.help") { openHelp(); return; }
     closeOverlay(props()?.overlay);
     if (it[1] === "worktree") openOverlay({ frame: "none", mod: "tty-worktree", kind: "dialog", ...(it[2].action === "open" ? { width: 560, height: 480 } : { width: 440, height: 260 }), props: it[2] });
     else run(it[1], it[2]);
@@ -152,8 +147,7 @@ export default class Menu extends View {
             .hover((s) => s.bg(t.hover))
             .on_click((_e, cx) => this.choose(i, cx))
             .child(svg(menuIcon(it[1])).size(14).flex_none().text_color(t.muted))
-            .child(div().flex_1().child(it[0]))
-            .child(div().text_size(11).text_color(t.dim).child(shortcut(it[1], it[2])))),
+            .child(div().flex_1().child(it[0]))),
         ),
       );
   }

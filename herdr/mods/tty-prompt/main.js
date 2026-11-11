@@ -1,10 +1,12 @@
 // A text prompt. Enter saves, Esc cancels.
+import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { run, props, closeOverlay, theme } from "herdr";
 
 export default class Prompt extends View {
   init(_props, cx) {
+    reportContext(this, "tty-prompt", cx);
     this.text = props()?.value ?? "";
     this.input = InputState.new({ value: this.text });
     if (this.text) this.input.set_selected_range({ start: 0, end: this.text.length });
@@ -14,7 +16,7 @@ export default class Prompt extends View {
     this.input.on("focus", (_e, cx) => { this.inputFocused = true; cx.notify(); });
     this.input.on("blur", (_e, cx) => { this.inputFocused = false; cx.notify(); });
     this.input.focus();
-    cx.timer.after(600, () => this.input.focus());
+
     this.handle = cx.focus_handle();
   }
 
@@ -39,7 +41,7 @@ export default class Prompt extends View {
     return v_flex().id("prompt").track_focus(this.handle).on_key_down((e, cx) => this.key(e, cx))
       .w_full().min_h(0).p(18).bg(t.popover).border_1().border_color(t.border).text_color(t.foreground)
       .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().child((p.title ?? "").replace(/^./, (c) => c.toUpperCase())))
-        .child(div().text_size(11).text_color(t.dim).child("Esc")))
+        .child(div().text_size(11).text_color(t.dim).child("")))
       .child(label("Name"))
       .child(Input.new(this.input).h(36).px(10).rounded(0).border_1().border_color(this.inputFocused ? t.accent : t.input).bg(t.background).text_size(12.8).text_color(t.foreground))
       .when(Boolean(p.hint), el => el.child(div().pt(6).text_size(11.5).text_color(t.dim).child(p.hint)))

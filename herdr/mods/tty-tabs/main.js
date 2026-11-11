@@ -2,6 +2,7 @@ import { View, div, svg, image } from "gpui-kit";
 import { h_flex, ScrollHandle } from "gpui-base";
 import { spaces, panes, focused, run, openOverlay, theme, window, shared, setShared, layout, settings, nextCommand } from "herdr";
 import { QuickTerminal } from "./quick-terminal.js";
+import { openHelp } from "./help-context.js";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -23,7 +24,8 @@ export default class Tabs extends View {
     cx.spawn(async cx => {
       for (;;) {
         const command = await nextCommand();
-        if (command === "quick") this.quick.toggle(cx);
+        if (command === "help") openHelp();
+        else if (command === "quick") this.quick.toggle(cx);
         else if (command === "quick-cycle") this.quick.cycle(cx);
         else if (command === "files" || command === "changes" || command === "repo") {
           run("layout.select", { stack: "panel-body", child: command });
@@ -122,7 +124,9 @@ export default class Tabs extends View {
       ? Math.max(10, (root.traffic_lights[0] + 64) / settings().zoom - (sidebar?.hidden ? 0 : sidebar?.size?.px ?? 0))
       : 10;
     const panel = find(root, "panel"), body = find(root, "panel-body");
-    const enabled = [...new Set([...(shared("workspace.panels") ?? ["files", "changes"]), "repo"])];
+    // This layout includes all three panels, independently of the welcome
+    // screen's panel preferences for the shipped workspace layout.
+    const enabled = ["files", "changes", "repo"];
     this.syncPanel(space, panel, body, enabled);
     const panelButton = (id, label, icon) => {
       const on = panel && !panel.hidden && body?.active === id;

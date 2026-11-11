@@ -1,6 +1,7 @@
 // Worktree dialog: { space, action: "new" | "open" | "remove" } or
 // { folder, machine } for a repo without a space; optional { branch, tab, argv }.
 
+import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar } from "gpui-base";
 import { run, props, closeOverlay, theme, spaces, panes, exec, home } from "herdr";
@@ -106,6 +107,7 @@ async function repoOf(folder, on) {
 
 export default class Worktree extends View {
   init(_props, cx) {
+    reportContext(this, "tty-worktree", cx);
     this.on = this.space()?.machine;
     this.userHome = this.on ? null : home();
     this.opening = props()?.action === "open";
@@ -303,7 +305,7 @@ export default class Worktree extends View {
               .child(Scrollbar.vertical("wt-list").absolute().inset_0()),
           ),
       )
-      .child(h_flex().justify_end().text_size(11).text_color(t.dim).child("\u2191\u2193 choose \u00b7 \u21b5 open \u00b7 esc close"));
+      .child(h_flex().justify_end().text_size(11).text_color(t.dim).child(""));
   }
 
   render(cx) {
@@ -359,7 +361,7 @@ export default class Worktree extends View {
           .text_color(t.dim)
           .gap(6)
           .when(this.busy, (el) => el.child(div().frames(["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], 90)))
-          .child(this.busy ? "working…" : blocked ? "esc close" : remove ? "↵ remove · esc cancel" : "↵ create · esc cancel"),
+          .child(this.busy ? "working…" : blocked ? "Close" : remove ? "Remove" : "Create"),
       );
   }
 }

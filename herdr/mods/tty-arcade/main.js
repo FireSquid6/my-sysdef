@@ -1,3 +1,4 @@
+import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { props, closeOverlay, openOverlay } from "herdr";
@@ -34,6 +35,7 @@ function marquee() {
 
 export default class Arcade extends View {
   init(_props, cx) {
+    reportContext(this, "tty-arcade", cx);
     this.selected = 0;
     this.handle = cx.focus_handle();
     cx.timer.after(0, () => this.handle.focus());
@@ -66,7 +68,7 @@ export default class Arcade extends View {
         .child(h_flex().flex_none().h(28).items_center().justify_between()
           .child(marquee())
           .child(div().id("arcade-close").cursor_pointer().px(6).py(4).bg(t.chrome).border_2().border_color(t.border).hover(s => s.bg(t.hover))
-            .on_click(() => closeOverlay(props().overlay)).child("ESC [X]")))
+            .on_click(() => closeOverlay(props().overlay)).child("Close")))
         .child(div().text_color(INK.p).text_size(11).child("* SELECT YOUR GAME *   NO COINS REQUIRED"))
         .children(GAMES.map((game, index) => h_flex().id(`arcade-${game.mod}`).h(61).flex_none().px(8).gap(12).items_center().cursor_pointer()
           .border_2().border_color(index === this.selected ? INK.y : t.border)
@@ -76,6 +78,6 @@ export default class Arcade extends View {
           .child(v_flex().gap(5)
             .child(div().font_semibold().text_color(index === this.selected ? INK.y : t.foreground).child(`${index === this.selected ? ">" : " "} ${index + 1}  ${game.name}`))
             .child(div().text_color(t.dim).text_size(10).child(game.detail)))))
-        .child(div().text_color(t.accent).text_size(10).child("J/K OR ARROWS: SELECT   ENTER: PLAY   1-3: START")));
+        );
   }
 }

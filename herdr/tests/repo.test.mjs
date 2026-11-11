@@ -18,7 +18,7 @@ function harness(execOverride) {
   const cx = { notify() {}, stop_propagation() { stops++; }, focus_handle() { return { focus() { focus++; }, is_focused: () => false }; },
     spawn(fn) { tasks.push(fn(cx)); }, timer: { after(_ms, fn) { timers.push(() => fn(cx)); } } };
   const dependencies = {
-    View: class {}, div: () => element, v_flex: () => element, h_flex: () => element,
+    reportContext() {}, View: class {}, div: () => element, v_flex: () => element, h_flex: () => element,
     InputState: { new: () => input }, Input: { new: () => element }, TextView: { markdown: () => element }, ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
     spaces: () => [{ active: true, folder: cwd, machine: "remote", tabs: [{ id: "tab" }] }],
     panes: () => [{ terminal: "remote/t1", cwd, tab: "tab" }], focused: () => null,

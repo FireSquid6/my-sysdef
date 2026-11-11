@@ -4,6 +4,7 @@
 // a tab, Esc to leave. Last rows: new work (a tab here, a space on this
 // computer or on each connected machine).
 
+import { reportContext } from "./help-context.js";
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, spaces, terminals, run, hc, theme, settings, props, closeOverlay, openOverlay, shared, setShared } from "herdr";
@@ -36,6 +37,7 @@ function spaceColor(t, p) {
 
 export default class Picker extends View {
   init(_props, cx) {
+    reportContext(this, "tty-picker", cx);
     this.filter = "";
     this.input = InputState.new({ placeholder: "Go to a tab, space or agent…" });
     this.input.on("change", (_e, cx) => {
@@ -45,7 +47,7 @@ export default class Picker extends View {
     });
     this.input.on("submit", (_e, cx) => this.go(this.rows().filter(r => r.kind !== "head")[this.at], cx));
     this.input.focus();
-    cx.timer.after(600, () => this.input.focus());
+
     this.at = null;
     this.scroll = 0;
     this.showEarlier = false;
@@ -247,7 +249,7 @@ export default class Picker extends View {
         cx.stop_propagation();
         cx.notify();
       })
-      .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().text_color(t.foreground).child("Go to…")).child(div().id("picker-esc").px(6).py(2).rounded(0).text_size(11).text_color(t.dim).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(() => this.close()).child("Esc")))
+      .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().text_color(t.foreground).child("Go to…")).child(div().id("picker-esc").px(6).py(2).rounded(0).text_size(11).text_color(t.dim).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(() => this.close()).child("Close")))
       .child(
         h_flex().h(36).flex_none().px(10).gap(8).items_center().rounded(0).border_1().border_color(t.accent).bg(t.background)
           .child(svg("mods/workspace-chrome/search.svg").size(15).text_color(t.dim))

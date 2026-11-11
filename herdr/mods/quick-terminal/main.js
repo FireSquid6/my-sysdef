@@ -16,7 +16,7 @@ export default class QuickTerminalBar extends View {
       .child(div().flex_1().truncate().child(`${p.machine || "This computer"} · ~`))
       .child(div().id("quick-machine").px(6).cursor_pointer().hover(s => s.bg(t.hover))
         .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
-        .on_click(() => run("tty-tabs.quick-cycle")).child("Ctrl+Tab"))
+        .on_click(() => run("tty-tabs.quick-cycle")).child("Machine"))
       .child(div().id("quick-close").px(6).cursor_pointer().hover(s => s.bg(t.hover))
         .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
         .on_click(() => run("tty-tabs.quick")).child("×"));

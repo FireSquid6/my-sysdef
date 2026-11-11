@@ -6,6 +6,7 @@
 // (`mod.open machine-add`); the sidebars' Add machine and the welcome
 // open it.
 
+import { reportContext } from "./help-context.js";
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, TextView } from "gpui-base";
 import { hc, exec, home, readTextFile, theme, props, closeOverlay } from "herdr";
@@ -58,6 +59,7 @@ async function parseConfig(text, hosts = [], depth = 0) {
 
 export default class MachineAdd extends View {
   init(_props, cx) {
+    reportContext(this, "tty-machine-add", cx);
     this.hosts = null;
     this.added = [];
     this.state = {}; // target -> "adding" | error text
@@ -71,7 +73,7 @@ export default class MachineAdd extends View {
     this.input.on("focus", (_e, cx) => { this.inputFocused = true; cx.notify(); });
     this.input.on("blur", (_e, cx) => { this.inputFocused = false; cx.notify(); });
     this.input.focus();
-    cx.timer.after(600, () => this.input.focus());
+
     this.macs = {}; // target -> { name, core } for an added Mac
     this.opened = {};
     this.handle = cx.focus_handle();
@@ -284,7 +286,7 @@ export default class MachineAdd extends View {
       .p(18)
       .bg(t.popover).border_1().border_color(t.border)
       .text_color(t.foreground)
-      .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().child("Add a machine")).child(div().id("ma-esc").px(6).py(2).rounded(0).text_size(11).text_color(t.dim).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(() => this.close()).child("Esc")))
+      .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().child("Add a machine")).child(div().id("ma-esc").px(6).py(2).rounded(0).text_size(11).text_color(t.dim).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(() => this.close()).child("Close")))
       .child(
         div()
           .pt(6)

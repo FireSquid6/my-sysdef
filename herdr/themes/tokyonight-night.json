@@ -10,6 +10,17 @@
     "#7aa2f7", "#bb9af7", "#7dcfff", "#c0caf5"
   ],
   "colors": {
-    "accent": "#7aa2f7"
+    "accent": "#7aa2f7",
+    "canvas": "#16161e",
+    "chrome": "#16161e",
+    "surface": "#1a1b26",
+    "popover": "#1f2335",
+    "raised": "#24283b",
+    "hover": "#292e42",
+    "selected": "#283457",
+    "border": "#292e42",
+    "input": "#1a1b26",
+    "foreground": "#c0caf5",
+    "dim": "#565f89"
   }
 }

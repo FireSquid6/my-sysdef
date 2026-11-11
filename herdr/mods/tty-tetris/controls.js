@@ -25,7 +25,7 @@ export function bindings(config = {}) {
   }
   const seen = new Set();
   for (const action of ACTIONS) for (const key of result[action]) {
-    if (["escape", "f2", "ctrl-alt-t"].includes(key) || seen.has(key)) return Object.fromEntries(ACTIONS.map(a => [a, [...DEFAULT_BINDINGS[a]]]));
+    if (["escape", "f2", "ctrl-alt-t", "ctrl-alt-h"].includes(key) || seen.has(key)) return Object.fromEntries(ACTIONS.map(a => [a, [...DEFAULT_BINDINGS[a]]]));
     seen.add(key);
   }
   return result;
@@ -36,7 +36,7 @@ export function actionFor(event, keys) {
 }
 export function rebind(keys, action, key) {
   if (!ACTIONS.includes(action) || !key) return { error: "Press a non-modifier key." };
-  if (["escape", "f2", "ctrl-alt-t"].includes(key)) return { error: "Escape, F2 and Ctrl+Alt+T are reserved." };
+  if (["escape", "f2", "ctrl-alt-t", "ctrl-alt-h"].includes(key)) return { error: "Escape, F2, Ctrl+Alt+T and Ctrl+Alt+H are reserved." };
   const other = ACTIONS.find(a => a !== action && keys[a].includes(key));
   if (other) return { error: `${key} is already bound to ${LABELS[other]}. Change that binding first.` };
   return { value: { ...keys, [action]: [key] } };

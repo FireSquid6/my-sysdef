@@ -1,3 +1,4 @@
+import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { shared, setShared, props, closeOverlay, openOverlay } from "herdr";
@@ -20,6 +21,7 @@ function pixels(id, pattern, color, scale = 2, background = null) {
 const samePile = (a, b) => a && b && a.area === b.area && a.index === b.index;
 export default class Solitaire extends View {
   init(_props, cx) {
+    reportContext(this, "tty-solitaire", cx);
     this.handle = cx.focus_handle();
     const saved = shared("solitaire.game");
     this.game = validSave(saved) ? clone(saved) : newGame();
@@ -136,8 +138,8 @@ export default class Solitaire extends View {
       .child(h_flex().flex_none().justify_between().items_center()
         .child(div().font_semibold().text_color(t.accent).child("SOLITAIRE · draw one"))
         .child(button("solitaire-arcade", "Arcade", () => this.arcade()))
-        .child(button("solitaire-restart", "r · restart", cx => { this.confirmReset = true; cx.notify(); }))
-        .child(button("solitaire-close", "Esc · save & close", () => this.dismiss())))
+        .child(button("solitaire-restart", "Restart", cx => { this.confirmReset = true; cx.notify(); }))
+        .child(button("solitaire-close", "Save & close", () => this.dismiss())))
       .child(h_flex().flex_none().gap(10)
         .child(v_flex().gap(4).child(div().child(`Stock · ${game.stock.length}`)).child(tile({ area: "stock", index: 0 }, null, game.stock.length ? "Draw" : "Recycle")))
         .child(v_flex().gap(4).child(div().child(`Waste · ${game.waste.length}`)).child(tile({ area: "waste", index: 0 }, game.waste.at(-1), game.waste.length ? rankLabel(game.waste.at(-1)) : "Empty")))
@@ -149,11 +151,11 @@ export default class Solitaire extends View {
         .children(pile.length ? pile.map((card, i) => tile({ area: "tableau", index, card: i }, card, card.faceUp ? rankLabel(card) : "", i === pile.length - 1 ? 64 : 20)) :
           [tile({ area: "tableau", index, card: -1 }, null, "King only")]))))
       .child(v_flex().flex_none().gap(5)
-        .child(div().font_semibold().text_color(t.accent).child(this.confirmReset ? "Restart? y: new deal · n: keep game" : won(game) ? "YOU WIN! · r: new game" : this.message))
+        .child(div().font_semibold().text_color(t.accent).child(this.confirmReset ? "Restart? Discard this deal?" : won(game) ? "YOU WIN!" : this.message))
         .when(Boolean(this.confirmReset), el => el.child(h_flex().gap(8)
           .child(button("solitaire-confirm", "Yes · new deal", cx => this.press({ key: "y" }, cx)))
           .child(button("solitaire-cancel", "No · keep game", cx => this.press({ key: "n" }, cx)))))
-        .child(div().text_color(t.dim).child(`${game.moves} moves · h/l or ←/→: pile · j/k or ↓/↑: card / row · Enter/Space: select / move`))
-        .child(div().text_color(t.dim).child("d: draw / recycle · click any face-up card to select its stack · same source cancels · r: restart · Esc: save & close")));
+        .child(div().text_color(t.dim).child(`${game.moves} moves`))
+        .child(div().text_color(t.dim).child("Select a face-up stack, then its destination; select the source again to cancel.")));
   }
 }

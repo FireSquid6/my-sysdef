@@ -1,3 +1,4 @@
+import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, ScrollHandle } from "gpui-base";
 import { spaces, panes, focused, exec, theme, shared, nextCommand } from "herdr";
@@ -22,6 +23,7 @@ async function json(args, options) {
 
 export default class Repo extends View {
   init(_props, cx) {
+    reportContext(this, "tty-repo", cx);
     this.handle = cx.focus_handle(); this.scroll = ScrollHandle.new();
     this.cache = new Map(); this.section = 0; this.at = 0; this.query = ""; this.count = "";
     this.input = InputState.new({ placeholder: "Filter current section" });
@@ -195,10 +197,10 @@ export default class Repo extends View {
           .child(div().child(repo?.description || "No repository description"))
           .child(div().text_color(t.dim).child(`Default branch: ${repo?.defaultBranchRef?.name || "—"}`))
           .child(div().id("repo-url").cursor_pointer().text_color(t.accent).child(repo?.url || "").on_click((_e, cx) => this.openURL(repo?.url, cx)))
-          .child(div().text_color(t.dim).child("Read-only GitHub panel · PRs/issues: up to 50 open items; runs: up to 30. r refreshes all sections.")))
+          .child(div().text_color(t.dim).child("Read-only GitHub panel · PRs/issues: up to 50 open items; runs: up to 30.")))
         .when(!this.detail && this.section !== 0, el => el.children(rows.map((row, i) => div().id(`repo-row-${i}`).flex_none().px(8).py(8).cursor_pointer().when(i === this.at, el => el.bg(t.selected)).hover(s => s.bg(t.hover)).child(this.label(row)).on_click((_e, cx) => { this.at = i; this.handle.focus(); this.openDetail(cx); })))
           .when(!rows.length, el => el.child(div().text_color(t.dim).child(entry.loading ? "Loading…" : "No matching items")))))
       .when(Boolean(this.note), el => el.child(div().p(8).text_color(t.muted).child(this.note)))
-      .child(div().flex_none().p(10).border_t(1).border_color(t.border).text_size(10).text_color(t.dim).child("Ctrl+Tab / h l: sections · j k: rows/scroll · [count] j k g G: move / first / last · Enter: detail · h/Esc: back · /: filter · Enter: apply filter · Esc: leave search · r: refresh · o: open URL (local, best effort)"));
+      .child(div().flex_none().p(10).border_t(1).border_color(t.border).text_size(10).text_color(t.dim).child("Read-only · browser opens locally (best effort)"));
   }
 }

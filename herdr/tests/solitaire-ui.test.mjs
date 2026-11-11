@@ -20,7 +20,7 @@ function harness(saved) {
     return node;
   }
   const cx = { notify() {}, stop_propagation() {}, focus_handle: () => ({ focus() {} }), timer: { after: (_ms, fn) => fn() } };
-  const deps = { View: class {}, div: element, h_flex: element, v_flex: element,
+  const deps = { reportContext() {}, View: class {}, div: element, h_flex: element, v_flex: element,
     shared: key => state[key], setShared: (key, value) => { state[key] = value; }, props: () => ({ overlay: "solitaire" }),
     closeOverlay: id => actions.push(["close", id]), openOverlay: options => actions.push(["open", options]),
     newGame, draw, move, won, validSave, red };
@@ -100,9 +100,9 @@ test("render includes selected stack markers, empty targets, confirmation and vi
   h.view.game.foundations = SUITS.map(suit => Array.from({ length: 13 }, (_, i) => ({ suit, rank: i + 1, faceUp: true })));
   h.view.game.tableau = Array.from({ length: 7 }, () => []); h.view.game.stock = []; h.view.game.waste = [];
   h.view.selected = null; h.view.render(h.cx);
-  assert.ok(h.texts.includes("YOU WIN! · r: new game"));
+  assert.ok(h.texts.includes("YOU WIN!"));
   assert.ok(h.texts.some(text => text.includes("King only")));
-  h.key("r"); h.view.render(h.cx); assert.ok(h.texts.includes("Restart? y: new deal · n: keep game"));
+  h.key("r"); h.view.render(h.cx); assert.ok(h.texts.includes("Restart? Discard this deal?"));
 });
 test("modified keys are left to application shortcuts", () => {
   const h = harness();

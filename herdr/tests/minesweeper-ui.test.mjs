@@ -26,7 +26,7 @@ function harness(saved) {
     return proxy;
   };
   const cx = { notify() {}, stop_propagation() {}, focus_handle: () => ({ focus() { focused++; } }), timer: { after(_ms, fn) { fn(); } } };
-  const deps = { View: class {}, div: element, v_flex: element, h_flex: element,
+  const deps = { reportContext() {}, View: class {}, div: element, v_flex: element, h_flex: element,
     props: () => ({ overlay: "game" }), shared: key => state[key],
     setShared: (key, value) => { writes++; state[key] = value; },
     closeOverlay: id => lifecycle.push(["close", id]), openOverlay: options => lifecycle.push(["open", options]), ...engine };

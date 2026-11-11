@@ -12,7 +12,7 @@ function harness() {
     if (name === "when" && args[0]) args[1](element);
     return element;
   } });
-  const deps = { View: class {}, div: () => element, v_flex: () => element, h_flex: () => element,
+  const deps = { reportContext() {}, View: class {}, div: () => element, v_flex: () => element, h_flex: () => element,
     theme: () => ({}), props: () => ({ overlay: "arcade" }), closeOverlay: id => closed.push(id), openOverlay: options => opened.push(options) };
   const Arcade = new Function(...Object.keys(deps), source.replace(/^import .*;$/gm, "").replace("export default class", "return class"))(...Object.values(deps));
   const cx = { focus_handle: () => ({ focus() { focused = true; } }), timer: { after: (_ms, fn) => fn() }, notify() {}, stop_propagation() {} };

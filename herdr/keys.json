@@ -1,6 +1,7 @@
 {
   "global": {
     "ctrl-alt-t": "mod.open:tty-arcade",
+    "ctrl-alt-h": "mod.open:tty-help",
     "alt-1": "tab.select:1",
     "alt-2": "tab.select:2",
     "alt-3": "tab.select:3",
@@ -62,6 +63,7 @@
     "shift-f2": "space.rename"
   },
   "layout:tty": {
+    "ctrl-alt-h": "tty-tabs.help",
     "alt-s": "tty-tabs.quick",
     "ctrl-tab": "tty-tabs.quick-cycle",
     "alt-f": "tty-tabs.files",
@@ -69,9 +71,17 @@
     "alt-r": "tty-tabs.repo",
     "alt-enter": "tty-tabs.terminal",
     "alt-shift-enter": "mod.open:tty-picker",
-    "ctrl-?": "mod.open:tty-help",
-    "ctrl-shift-/": "mod.open:tty-help",
-    "ctrl-shift-?": "mod.open:tty-help"
+    "ctrl-?": "tty-tabs.help",
+    "ctrl-shift-/": "tty-tabs.help",
+    "ctrl-shift-?": "tty-tabs.help"
+  },
+  "mod:tty-help": {
+    "[": "tty-help.prev",
+    "]": "tty-help.next",
+    "ctrl-alt-h": "tty-help.close",
+    "ctrl-?": "tty-help.close",
+    "ctrl-shift-/": "tty-help.close",
+    "ctrl-shift-?": "tty-help.close"
   },
   "mod:tty-changes": {
     "ctrl-tab": "tty-changes.cycle"

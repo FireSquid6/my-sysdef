@@ -1,91 +1,47 @@
-// The keybind list (Herdr's prefix+?), grouped, filterable by typing.
-// Reads keys.json through keys(); edit keys.json to change any of them.
-
 import { View, div } from "gpui-kit";
-import { v_flex, h_flex, InputState, Input } from "gpui-base";
-import { keys, props, closeOverlay, theme } from "herdr";
-
-const GROUPS = [
-  ["spaces", /^space\./],
-  ["tabs", /^tab\./],
-  ["panes", /^pane\./],
-  ["agents", /^agent\./],
-  ["terminal", /^terminal\.|^send:/],
-  ["window", /./],
-];
-
-function label(action) {
-  if (action.startsWith("send:")) return "type " + JSON.stringify(action.slice(5));
-  const [name, arg] = action.split(":");
-  const words = name.replace(/[._]/g, " ");
-  return arg ? `${words} ${arg}` : words;
-}
+import { v_flex, h_flex, InputState, Input, ScrollHandle } from "gpui-base";
+import { props, closeOverlay, theme, nextCommand, shared, setShared } from "herdr";
+import { TABS, rowsFor } from "./catalogue.js";
+import { origin } from "./context.js";
 
 export default class Help extends View {
   init(_props, cx) {
-    this.filter = "";
-    this.input = InputState.new({ placeholder: "Type to filter…" });
-    this.input.on("change", (_e, cx) => { this.filter = this.input.value(); cx.notify(); });
-    this.input.focus();
-    cx.timer.after(600, () => this.input.focus());
+    this.tab = Math.max(0, TABS.findIndex(t => t[0] === (props()?.context || origin())));
+    if (props()?.overlay) setShared("help.overlay", props().overlay);
+    this.filter = ""; this.scroll = ScrollHandle.new(); this.tabsScroll = ScrollHandle.new();
     this.handle = cx.focus_handle();
+    this.input = InputState.new({ placeholder: "Filter this tab…" });
+    this.input.on("change", (_e, cx) => { this.filter = this.input.value(); cx.notify(); });
+    cx.timer.after(0, () => this.input.focus());
+    cx.spawn(async cx => { for (;;) {
+      const command = await nextCommand();
+      if (command === "prev" || command === "next") this.select(this.tab + (command === "next" ? 1 : -1), cx);
+      else if (command === "close") closeOverlay(props().overlay);
+    } });
   }
-
+  close() { if (shared("help.overlay") === props().overlay) setShared("help.overlay", null); }
+  select(index, cx) { this.tab = (index + TABS.length) % TABS.length; this.scroll.scroll_to_item(0); this.tabsScroll.scroll_to_item(this.tab); cx.notify(); }
   render(cx) {
-    const t = theme();
-    const f = this.filter.toLowerCase();
-    const all = keys().filter((k) => !f || k.keys.includes(f) || label(k.action).includes(f));
-    const seen = new Set();
-    const groups = GROUPS.map(([name, re]) => {
-      const rows = all.filter((k) => !seen.has(k) && re.test(k.action) && (seen.add(k) || true));
-      return [name, rows];
-    }).filter(([, rows]) => rows.length > 0);
-    return v_flex()
-      .id("help")
-      .track_focus(this.handle)
+    const t = theme(), query = this.filter.toLowerCase();
+    const rows = rowsFor(TABS[this.tab][0]).filter(row => row.join(" ").toLowerCase().includes(query));
+    return v_flex().id("help").track_focus(this.handle).size_full().min_h(0).p(18).gap(12)
+      .bg(t.popover).border_1().border_color(t.border).text_color(t.foreground).text_size(12)
       .on_key_down((e, cx) => {
-        if (e.key === "escape") return closeOverlay(props().overlay);
+        if (e.key === "escape") { cx.stop_propagation(); closeOverlay(props().overlay); }
+        else if (e.key === "[" || e.key === "]") { cx.stop_propagation(); this.select(this.tab + (e.key === "]" ? 1 : -1), cx); }
       })
-      .size_full()
-      .min_h(0)
-      .p(18)
-      .gap(14)
-      .bg(t.popover).border_1().border_color(t.border)
-      .text_size(12)
-      .child(
-        h_flex()
-          .h(22)
-          .items_center()
-          .justify_between()
-          .child(div().text_size(15).font_semibold().text_color(t.foreground).child("Keybinds"))
-          .child(div().id("help-esc").px(6).py(2).rounded(0).text_size(11).text_color(t.dim).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(() => closeOverlay(props().overlay)).child("Esc")),
-      )
-      .child(Input.new(this.input).h(36).flex_none().px(10).rounded(0).border_1().border_color(t.accent).bg(t.background).text_size(12.8).text_color(t.foreground))
-      .child(
-        v_flex()
-          .flex_1()
-          .min_h(0)
-          .overflow_y_scrollbar()
-          .py(2)
-          .gap(10)
-          .children(
-            groups.map(([name, rows]) =>
-              v_flex()
-                .gap(2)
-                .child(div().text_size(11.5).font_medium().text_color(t.dim).child(name))
-                .children(
-                  rows.map((k) =>
-                    h_flex()
-                      .h(32)
-                      .px(8)
-                      .rounded(0)
-                      .items_center()
-                      .child(div().w(190).text_color(t.accent).child(k.keys + (k.section !== "global" ? `  (${k.section})` : "")))
-                      .child(div().text_color(t.foreground).child(label(k.action))),
-                  ),
-                ),
-            ),
-          ),
-      );
+      .child(h_flex().items_center().justify_between()
+        .child(div().text_size(16).font_semibold().child("Keyboard help"))
+        .child(div().id("help-close").cursor_pointer().on_click(() => closeOverlay(props().overlay)).child("Close")))
+      .child(h_flex().id("help-tabs").flex_none().h(38).gap(6).overflow_x_scrollbar().track_scroll(this.tabsScroll)
+        .on_size_change((_size, cx) => { this.tabsScroll.scroll_to_item(this.tab); cx.notify(); }).children(TABS.map(([id, label], index) =>
+        div().id(`help-tab-${id}`).flex_none().px(9).py(6).cursor_pointer().bg(index === this.tab ? t.selected : t.chrome)
+          .text_color(index === this.tab ? t.accent : t.muted).on_click((_e, cx) => this.select(index, cx)).child(label))))
+      .child(Input.new(this.input).h(36).flex_none().px(10).border_1().border_color(t.accent).bg(t.background).text_color(t.foreground))
+      .child(v_flex().id("help-rows").flex_1().min_h(0).overflow_y_scrollbar().track_scroll(this.scroll).gap(4)
+        .children(rows.map(([key, action], i) => h_flex().id(`help-row-${i}`).flex_none().min_h(32).px(8).py(6).gap(12)
+          .child(div().w(220).flex_none().text_color(t.accent).child(key))
+          .child(div().flex_1().min_w(0).child(action))))
+        .when(!rows.length, el => el.child(div().p(8).text_color(t.dim).child("No matching controls"))));
   }
 }

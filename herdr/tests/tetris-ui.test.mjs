@@ -22,7 +22,7 @@ function harness(saved) {
   };
   const cx = { notify() {}, stop_propagation() {}, spawn() {}, focus_handle: () => ({ focus() { focused = true; }, is_focused: () => focused }),
     timer: { after: (_ms, fn) => { timers.after = fn; }, every: (_ms, fn) => { timers.every = fn; return { cancel() { cancelled++; } }; } } };
-  const deps = { View: class {}, div: () => makeElement("div"), v_flex: () => makeElement("v_flex"), h_flex: () => makeElement("h_flex"),
+  const deps = { reportContext() {}, View: class {}, div: () => makeElement("div"), v_flex: () => makeElement("v_flex"), h_flex: () => makeElement("h_flex"),
     openOverlay: options => opened.push(options), nextCommand: () => new Promise(() => {}), props: () => ({ overlay: "game" }), shared: key => state[key] ?? null,
     setShared: (key, value) => { state[key] = value; }, closeOverlay: id => { assert.equal(id, "game"); dismissed++; },
     newGame, cells, ghostY, act, tick, DEFAULT_BINDINGS, ACTIONS, LABELS, bindings, actionFor, chord, rebind,

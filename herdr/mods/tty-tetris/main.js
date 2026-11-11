@@ -1,3 +1,4 @@
+import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { props, shared, setShared, closeOverlay, openOverlay, nextCommand } from "herdr";
@@ -43,6 +44,7 @@ export function validSave(game) {
 
 export default class Tetris extends View {
   init(_props, cx) {
+    reportContext(this, "tty-tetris", cx);
     this.handle = cx.focus_handle(); this.keys = bindings(shared("tetris.settings"));
     this.startLevel = Math.max(1, Math.min(15, Math.floor(Number(shared("tetris.startLevel"))) || 1));
     const saved = shared("tetris.game");
@@ -172,6 +174,8 @@ export default class Tetris extends View {
   }
 
   render(cx) {
+    const helpRows = ACTIONS.map(a => [this.keys[a].join(" / "), LABELS[a]]);
+    if (JSON.stringify(shared("tetris.help")) !== JSON.stringify(helpRows)) setShared("tetris.help", helpRows);
     const t = PALETTE, game = this.game;
     const clear = game.lastClear;
     const clearText = clear && clear.points ? [clear.perfectClear && "Perfect clear", clear.backToBack && "Back-to-back", clear.spin && `T-spin${clear.spin === "mini" ? " mini" : ""}`, clear.lines && `${clear.lines} line${clear.lines === 1 ? "" : "s"}`, clear.combo > 0 && `Combo ${clear.combo}`, `+${clear.points}`].filter(Boolean).join(" · ") : "";
@@ -194,32 +198,32 @@ export default class Tetris extends View {
             this.dismiss();
             openOverlay({ mod: "tty-arcade", frame: "none", kind: "dialog", modal: true, width: 480, height: 340 });
           }))
-          .child(button("tetris-close", "Esc · pause & close", () => this.dismiss()))))
+          .child(button("tetris-close", "Pause & close", () => this.dismiss()))))
       .when(Boolean(this.page), el => el.child(v_flex().flex_1().min_h(0).gap(5)
         .child(div().font_semibold().child("Settings · keybindings"))
-        .child(div().text_color(t.dim).child("j/k or Ctrl+Tab: select · Enter: rebind · Backspace: default · d: reset all · q/F2: back"))
+        .child(div().text_color(t.dim).child("Select a binding to edit"))
         .children(ACTIONS.map((action, i) => h_flex().id(`tetris-binding-${action}`).flex_none().h(30).px(8).items_center().justify_between().cursor_pointer()
           .bg(i === this.selected ? t.selected : t.background).on_click((_e, cx) => { this.selected = i; this.capturing = true; this.message = "Press a new key or chord."; cx.notify(); })
           .child(div().child(LABELS[action])).child(div().text_color(t.accent).child(i === this.selected && this.capturing ? "Press key…" : label(action)))))
         .child(h_flex().id("tetris-level").flex_none().h(30).px(8).items_center().justify_between().cursor_pointer()
           .bg(this.selected === ACTIONS.length ? t.selected : t.background)
           .on_click((_e, cx) => { this.selected = ACTIONS.length; this.capturing = false; this.changeLevel(this.startLevel === 15 ? -14 : 1, cx); })
-          .child(div().child("Starting level · next game (h/l)"))
+          .child(div().child("Starting level · next game"))
           .child(div().text_color(t.accent).child(String(this.startLevel))))
-        .child(div().text_color(t.dim).child("Changes save automatically. F2 always opens settings; Escape always closes. Closing keeps the game paused."))
+        .child(div().text_color(t.dim).child("Changes save automatically. Closing keeps the game paused."))
         .child(div().text_color(t.accent).child(this.message || ""))))
       .when(!this.page, el => el.child(h_flex().flex_1().min_h(0).gap(16).justify_center()
         .child(v_flex().w(132).gap(8).p(6).bg(t.chrome).border_1().border_color(t.border).flex_none()
           .child(div().text_color(t.dim).child("HOLD"))
           .child(this.preview(game.hold))
-          .child(div().child(`${label("hold")} · hold / swap`))
+          .child(div().child("Hold / swap"))
           .child(div().text_color(t.dim).child("SCORE"))
           .child(div().text_size(22).text_color(t.accent).child(String(game.score)))
           .child(div().child(`Best ${Math.max(this.best, game.score)}`))
           .child(div().child(`Level ${game.level} · ${game.lines} lines`))
           .child(div().text_color(t.dim).child(clearText))
-          .child(button("tetris-pause", `${label("pause")} · pause`, cx => { game.paused = !game.paused; this.clearKeys(); this.save(); cx.notify(); }))
-          .child(button("tetris-settings", "F2 · settings", cx => this.settings(cx))))
+          .child(button("tetris-pause", "Pause / resume", cx => { game.paused = !game.paused; this.clearKeys(); this.save(); cx.notify(); }))
+          .child(button("tetris-settings", "Settings", cx => this.settings(cx))))
         .child(v_flex().flex_none().gap(0).p(3).bg(t.selected).border_1().border_color(t.accent).children(Array.from({ length: 20 }, (_, y) => h_flex().flex_none().gap(0).children(Array.from({ length: 10 }, (_, x) => {
           const key = `${x}:${y + 20}`, type = active.get(key) || game.board[y + 20][x];
           return tile(type, 20, ghost.has(key) && !type);
@@ -229,8 +233,10 @@ export default class Tetris extends View {
           .children(game.queue.slice(0, 5).map(type => this.preview(type)))
           .child(div().text_color(t.dim).child("7-bag · SRS\n500ms lock\n15 resets")))))
       .when(!this.page, el => el.child(v_flex().flex_none().gap(4)
-        .child(div().text_color(t.accent).font_semibold().child(this.confirmReset ? "Start a new game? y: yes · n: cancel (stays paused)" : game.gameOver ? `GAME OVER · ${label("restart")}: new game` : game.paused ? `PAUSED · ${label("pause")}: resume` : "Marathon · 10 lines per level"))
-        .child(div().text_color(t.dim).child(`${label("left")} ← · ${label("right")} → · ${label("softDrop")} ↓ · ${label("rotateCW")} ↻ · ${label("rotateCCW")} ↺`))
-        .child(div().text_color(t.dim).child(`${label("hardDrop")}: hard drop · ${label("hold")}: hold · ${label("restart")}: restart · ${label("settings")} / F2: settings`))));
+        .child(div().text_color(t.accent).font_semibold().child(this.confirmReset ? "Start a new game? Confirm or cancel (stays paused)" : game.gameOver ? "GAME OVER" : game.paused ? "PAUSED" : "Marathon · 10 lines per level"))
+        .when(this.confirmReset, el => el.child(h_flex().gap(8)
+          .child(button("tetris-confirm", "New game", cx => this.press({ key: "y", modifiers: {} }, cx)))
+          .child(button("tetris-cancel", "Cancel", cx => this.press({ key: "n", modifiers: {} }, cx)))))
+        .when(!this.confirmReset, el => el.child(button("tetris-restart", "New game", cx => { game.paused = true; this.clearKeys(); this.confirmReset = true; cx.notify(); })))));
   }
 }

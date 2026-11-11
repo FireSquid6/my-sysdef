@@ -1,3 +1,4 @@
+import { reportContext } from "./help-context.js";
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { shared, setShared, props, closeOverlay, openOverlay } from "herdr";
@@ -17,6 +18,7 @@ function sprite(kind, color) {
 
 export default class Minesweeper extends View {
   init(_props, cx) {
+    reportContext(this, "tty-minesweeper", cx);
     this.handle = cx.focus_handle();
     this.game = restoreGame(shared("minesweeper.game"));
     this.confirmReset = false; this.closed = false;
@@ -100,12 +102,11 @@ export default class Minesweeper extends View {
       .child(div().text_color(t.accent).font_semibold().child(status))
       .when(this.confirmReset, el => el.child(h_flex().gap(8).items_center()
         .child(div().child("Discard this game?"))
-        .child(button("minesweeper-confirm", "y · Restart", cx => this.restart(cx)))
-        .child(button("minesweeper-cancel", "n · Cancel", cx => { this.confirmReset = false; cx.notify(); }))))
+        .child(button("minesweeper-confirm", "Restart", cx => this.restart(cx)))
+        .child(button("minesweeper-cancel", "Cancel", cx => { this.confirmReset = false; cx.notify(); }))))
       .when(!this.confirmReset, el => el.child(h_flex().gap(8)
-        .child(button("minesweeper-restart", "r · Restart", cx => { this.confirmReset = true; cx.notify(); }))
-        .child(button("minesweeper-close", "Esc · Save & close", () => this.dismiss()))))
-      .child(div().text_color(t.dim).child("Arrows/hjkl: move · Enter: reveal · f: flag"))
-      .child(div().text_color(t.dim).child("Left click: reveal · Right click: flag · X: wrong flag"));
+        .child(button("minesweeper-restart", "Restart", cx => { this.confirmReset = true; cx.notify(); }))
+        .child(button("minesweeper-close", "Save & close", () => this.dismiss()))))
+      .child(div().text_color(t.dim).child("X: wrong flag"));
   }
 }
