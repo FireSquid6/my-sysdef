@@ -42,6 +42,7 @@
     "alt-}": "agent.next",
     "alt-shift-[": "agent.prev",
     "alt-shift-]": "agent.next",
+    "alt-shift-a": "tty-agents.focus-working",
     "ctrl-?": "app.help",
     "ctrl-shift-/": "app.help",
     "ctrl-shift-?": "app.help",

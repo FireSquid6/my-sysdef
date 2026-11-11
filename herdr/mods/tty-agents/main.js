@@ -2,7 +2,7 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout } from "herdr";
+import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, nextCommand } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -85,6 +85,17 @@ export default class Agents extends View {
     if (!this.pendingPins.length) localStorage.removeItem("pins");
     this.migratingPins = new Set();
     cx.timer.every(30000, (cx) => cx.notify());
+    cx.spawn(async cx => {
+      for (;;) {
+        if (await nextCommand() === "focus-working") this.focusWorking();
+      }
+    });
+  }
+
+  focusWorking() {
+    const list = this.navigationAgents ?? [];
+    const target = list.find(agent => agent.status === "working") ?? list[0];
+    if (target) run("agent.focus", { terminal: target.address });
   }
 
   // Stamps agents whose state changed. Done and idle count as one: looking at a
@@ -236,6 +247,7 @@ export default class Agents extends View {
     const pinned = list.filter((a) => a.pinned);
     const rest = list.filter((a) => !a.pinned);
     list = [...pinned, ...rest];
+    this.navigationAgents = list;
     setAgentOrder(list.map((a) => a.address));
 
     const withKids = (a, i) => {
