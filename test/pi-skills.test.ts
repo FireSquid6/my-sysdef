@@ -12,6 +12,7 @@ describe("Pi Herdr orchestration skill", () => {
     try {
       delete process.env.PI_CODING_AGENT_DIR;
       const mod = await pi(dryShell);
+      expect(mod.files[path.join(os.homedir(), ".pi/agent/AGENTS.md")]).toBe("./pi/AGENTS.md");
       expect(mod.directories[path.join(os.homedir(), ".pi/agent/skills/herdr-orchestration")])
         .toBe("./pi/skills/herdr-orchestration");
       expect(mod.directories[path.join(os.homedir(), ".pi/agent/skills")]).toBeUndefined();
@@ -37,6 +38,10 @@ describe("Pi Herdr orchestration skill", () => {
         expect(fs.lstatSync(destination).isSymbolicLink()).toBe(true);
         expect(fs.realpathSync(destination)).toBe(path.join(root, "pi/skills/herdr-orchestration"));
         expect(fs.readFileSync(local, "utf8")).toBe("local skill");
+        const instructions = path.join(home, "AGENTS.md");
+        expect(fs.lstatSync(instructions).isSymbolicLink()).toBe(true);
+        expect(fs.realpathSync(instructions)).toBe(path.join(root, "pi/AGENTS.md"));
+        expect(fs.readFileSync(instructions, "utf8")).toBe(fs.readFileSync(path.join(root, "pi/AGENTS.md"), "utf8"));
       }
       const content = fs.readFileSync(path.join(destination, "SKILL.md"), "utf8");
       expect(content).toMatch(/^---\nname: herdr-orchestration\ndescription: .+\n/);

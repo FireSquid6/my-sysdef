@@ -4,6 +4,7 @@ Managed by `modules/pi.ts` (enabled in local `config.yaml`).
 
 | Pi path | Repository source |
 | --- | --- |
+| `~/.pi/agent/AGENTS.md` | `pi/AGENTS.md` |
 | `~/.pi/agent/settings.json` | `pi/settings.json` |
 | `~/.pi/agent/subagents.json` | `pi/subagents.json` |
 | `~/.pi/agent/agent-tool-description.md` | `pi/agent-tool-description.md` |
