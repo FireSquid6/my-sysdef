@@ -6,5 +6,7 @@
   "font_ligatures": false,
   "minimum_contrast": 1.0,
   "appearance": "dark",
-  "theme": "tokyonight-night"
+  "theme": "tokyonight-night",
+  "font": "JetBrains Mono",
+  "ui_font": "JetBrains Mono"
 }

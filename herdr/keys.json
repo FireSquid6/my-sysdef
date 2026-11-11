@@ -47,6 +47,7 @@
     "ctrl-shift-?": "app.help",
     "ctrl-shift-b": "layout.toggle:sidebar",
     "ctrl-shift-n": "space.new",
+    "ctrl-o": "mod.open:source-picker",
     "ctrl-shift-t": "tab.new",
     "ctrl-shift-k": "mod.open:picker",
     "ctrl-shift-p": "app.palette",
