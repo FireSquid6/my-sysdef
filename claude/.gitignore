@@ -1,0 +1,14 @@
+# Only share configuration, never credentials or session state.
+/*
+!/.gitignore
+!/README.md
+!/settings.json
+!/agents/
+!/skills/
+!/output-styles/
+
+**/node_modules/
+**/.env
+**/.env.*
+**/*.log
+**/.DS_Store

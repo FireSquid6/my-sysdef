@@ -1,0 +1,19 @@
+{
+  "model": "opus[1m]",
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); type=$(echo \"$input\" | jq -r '.notification_type'); dir=$(echo \"$input\" | jq -r '.cwd | split(\"/\") | last'); notify-send \"Claude Code ($dir)\" \"[$type] Claude code needs attention!\""
+          }
+        ]
+      }
+    ]
+  },
+  "tui": "fullscreen",
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark-ansi"
+}

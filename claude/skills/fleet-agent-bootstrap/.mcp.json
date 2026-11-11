@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "fleet-agent": {
+      "command": "fleet",
+      "args": ["agent-mcp"]
+    }
+  }
+}
