@@ -16,6 +16,7 @@ const m: ModuleGenerator = () => {
     directories: {
       [path.join(agentDir, "extensions")]: "./pi/extensions",
       [path.join(agentDir, "themes")]: "./pi/themes",
+      [path.join(agentDir, "skills/herdr-orchestration")]: "./pi/skills/herdr-orchestration",
     },
     packages: {},
   };
