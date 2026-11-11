@@ -1,14 +1,14 @@
 {
   "global": {
-    "alt-1": "space.select:1",
-    "alt-2": "space.select:2",
-    "alt-3": "space.select:3",
-    "alt-4": "space.select:4",
-    "alt-5": "space.select:5",
-    "alt-6": "space.select:6",
-    "alt-7": "space.select:7",
-    "alt-8": "space.select:8",
-    "alt-9": "space.select:9",
+    "alt-1": "tab.select:1",
+    "alt-2": "tab.select:2",
+    "alt-3": "tab.select:3",
+    "alt-4": "tab.select:4",
+    "alt-5": "tab.select:5",
+    "alt-6": "tab.select:6",
+    "alt-7": "tab.select:7",
+    "alt-8": "tab.select:8",
+    "alt-9": "tab.select:9",
     "alt-h": "pane.go:left",
     "alt-j": "pane.go:down",
     "alt-k": "pane.go:up",
@@ -65,11 +65,18 @@
     "ctrl-tab": "tty-tabs.quick-cycle",
     "alt-f": "tty-tabs.files",
     "alt-c": "tty-tabs.changes",
+    "alt-r": "tty-tabs.repo",
     "alt-enter": "tty-tabs.terminal",
     "alt-shift-enter": "mod.open:tty-picker",
     "ctrl-?": "mod.open:tty-help",
     "ctrl-shift-/": "mod.open:tty-help",
     "ctrl-shift-?": "mod.open:tty-help"
+  },
+  "mod:tty-changes": {
+    "ctrl-tab": "tty-changes.cycle"
+  },
+  "mod:tty-repo": {
+    "ctrl-tab": "tty-repo.cycle"
   },
   "mod:source-picker": {
     "ctrl-tab": "source-picker.cycle-machine"

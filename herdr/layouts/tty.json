@@ -140,6 +140,13 @@
                       "content": {
                         "mod": "tty-changes"
                       }
+                    },
+                    {
+                      "id": "repo",
+                      "type": "block",
+                      "content": {
+                        "mod": "tty-repo"
+                      }
                     }
                   ],
                   "active": "files"

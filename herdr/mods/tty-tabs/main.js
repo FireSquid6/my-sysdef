@@ -25,7 +25,7 @@ export default class Tabs extends View {
         const command = await nextCommand();
         if (command === "quick") this.quick.toggle(cx);
         else if (command === "quick-cycle") this.quick.cycle(cx);
-        else if (command === "files" || command === "changes") {
+        else if (command === "files" || command === "changes" || command === "repo") {
           run("layout.select", { stack: "panel-body", child: command });
           run("layout.show", { id: "panel" });
           setShared("keyboard.panel", { id: command, token: ++this.request });
@@ -122,7 +122,7 @@ export default class Tabs extends View {
       ? Math.max(10, (root.traffic_lights[0] + 64) / settings().zoom - (sidebar?.hidden ? 0 : sidebar?.size?.px ?? 0))
       : 10;
     const panel = find(root, "panel"), body = find(root, "panel-body");
-    const enabled = shared("workspace.panels") ?? ["files", "changes"];
+    const enabled = [...new Set([...(shared("workspace.panels") ?? ["files", "changes"]), "repo"])];
     this.syncPanel(space, panel, body, enabled);
     const panelButton = (id, label, icon) => {
       const on = panel && !panel.hidden && body?.active === id;
@@ -143,6 +143,7 @@ export default class Tabs extends View {
       .child(button("tab-new", "+", () => openOverlay({ frame: "none", mod: "tty-new-menu", kind: "popup", width: 250, height: 512 })))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))
+      .child(panelButton("repo", "Repo", "mods/tty-tabs/repo.svg"))
       .when(w?.buttons, el => el.child(button("minimize", w.platform === "windows" ? svg("mods/tty-tabs/win-min.svg").size(16) : "−", () => run("window.minimize")))
         .child(button("maximize", w.platform === "windows" ? svg(`mods/tty-tabs/${w.maximized ? "win-restore" : "win-max"}.svg`).size(16) : "□", () => run("window.maximize")))
         .child(button("close-window", w.platform === "windows" ? svg("mods/tty-tabs/win-close.svg").size(16) : svg("mods/pane/close.svg").size(13), () => run("window.close"))));
