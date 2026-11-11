@@ -1,0 +1,6 @@
+{
+  "place": "none",
+  "title": "2048",
+  "focusable": true,
+  "overlay": { "frame": "none", "kind": "dialog", "modal": true, "width": 480, "height": 580 }
+}

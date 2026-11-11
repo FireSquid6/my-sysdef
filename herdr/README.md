@@ -14,10 +14,10 @@ Developer Mode or elevated permissions; this setup has only been tested on Linux
 
 ## Arcade
 
-Press **Ctrl+Alt+T** to choose Tetris, Minesweeper, or Klondike Solitaire.
-**Ctrl+Shift+T** still opens a new tab. The menu supports mouse selection,
-j/k or arrow navigation, and 1–3 quick launch. Games save progress locally
-when closed. See [TTY.md](TTY.md#arcade) for game controls.
+Press **Ctrl+Alt+T** to choose Tetris, Minesweeper, Klondike Solitaire, 2048,
+or Breakout. **Ctrl+Shift+T** still opens a new tab. The menu supports mouse
+selection, j/k or arrow navigation, and 1–5 quick launch. Games save progress
+locally when closed; action games reopen paused. See [TTY.md](TTY.md#arcade) for game controls.
 
 ## Shared versus local
 

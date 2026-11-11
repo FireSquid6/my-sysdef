@@ -10,7 +10,9 @@ test("catalogue covers custom interfaces and merges effective bindings by sectio
     { section: "global", keys: "alt-f", action: "old" }, { section: "layout:tty", keys: "alt-f", action: "new" },
     { section: "terminal", keys: "alt-f", action: "terminal" }, { section: "layout:other", keys: "x", action: "wrong" },
   ] }, "TABS, rowsFor");
-  assert.equal(api.TABS.length, 19);
+  assert.equal(api.TABS.length, 21);
+  assert.ok(api.rowsFor("tty-2048").some(r => r[0] === "u"));
+  assert.ok(api.rowsFor("tty-breakout").some(r => r[0] === "p"));
   assert.deepEqual(api.rowsFor("general"), [["alt-f", "new (layout:tty)"]]);
   assert.equal(api.rowsFor("terminal").at(-1)[1], "terminal (terminal)");
   assert.ok(api.rowsFor("tty-tetris").some(r => r[0] === "v"));
@@ -48,7 +50,7 @@ test("help-local bracket routing is ahead of text entry and help capture is rese
 
 test("sandbox-local context modules match the maintained helper", async () => {
   const source = await readFile(new URL("../mods/tty-help/context.js", import.meta.url), "utf8");
-  for (const name of ["tty-tabs", "tty-files", "tty-changes", "tty-repo", "source-picker", "tty-picker", "tty-menu", "tty-new-menu", "tty-prompt", "tty-confirm", "tty-machine-add", "tty-worktree", "tty-arcade", "tty-minesweeper", "tty-solitaire", "tty-tetris"]) {
+  for (const name of ["tty-tabs", "tty-files", "tty-changes", "tty-repo", "source-picker", "tty-picker", "tty-menu", "tty-new-menu", "tty-prompt", "tty-confirm", "tty-machine-add", "tty-worktree", "tty-arcade", "tty-minesweeper", "tty-solitaire", "tty-tetris", "tty-2048", "tty-breakout"]) {
     assert.equal(await readFile(new URL(`../mods/${name}/help-context.js`, import.meta.url), "utf8"), source, name);
   }
 });

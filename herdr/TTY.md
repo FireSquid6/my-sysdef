@@ -107,15 +107,17 @@ server (enabled by default); no configuration changes are required.
 ## Arcade
 
 Ctrl+Alt+T opens the arcade menu in any layout (replacing the direct Tetris
-shortcut). Ctrl+Shift+T remains **new tab**. Choose Tetris, Minesweeper, or
-Solitaire with a click, 1–3, or j/k / arrow keys followed by Enter. Escape closes
-the menu. Each game has an Arcade button to return to the chooser, and saves
-its progress when closed.
+shortcut). Ctrl+Shift+T remains **new tab**. Choose Tetris, Minesweeper,
+Solitaire, 2048, or Breakout with a click, 1–5, or j/k / arrow keys followed by
+Enter. Escape closes the menu. Each game has an Arcade button to return to the
+chooser, and saves its progress when closed.
 
 The entire arcade has a fixed, independent retro palette rather than inheriting
 the TTY theme: a block-pixel marquee and game sprites, beveled Tetris blocks,
 raised mine tiles and pixel flags/mines, and pixel-suit playing cards with
-patterned backs. Theme changes to the workspace do not recolor these games.
+patterned backs, numbered 2048 tiles, and colorful Breakout bricks. Theme changes
+to the workspace do not recolor these games. All five choices fit the original
+480×340 launcher; games are modal overlays, never permanent sidebar panels.
 
 ### Tetris
 
@@ -191,7 +193,37 @@ turn face up automatically.
 Progress is stored locally as `solitaire.game`. Complete all four foundations
 to win.
 
-Arcade checks: `node --test tests/arcade.test.mjs tests/tetris-*.test.mjs tests/minesweeper*.test.mjs tests/solitaire*.test.mjs`
+### 2048
+
+Slide a 4×4 board to combine matching numbers. Each tile can merge only once per
+move, and a new 2 or 4 appears only when the board changes. Reach 2048 to win,
+then keep chasing a higher score. Continue acknowledges the milestone without
+interrupting play.
+
+- h/j/k/l or arrows: slide left/down/up/right.
+- u / Undo: undo the last move, including its spawned tile and score.
+- c / Continue: keep playing after reaching 2048.
+- r / New game: request a fresh board; y/n confirms/cancels.
+- On-screen direction buttons also support mouse play.
+- Escape: save and close. Arcade saves and returns to the chooser.
+
+Progress and best score are stored locally as `2048.game` and `2048.best`.
+
+### Breakout
+
+Bounce the ball off your paddle to clear colorful brick walls. You have three
+lives; clearing a wall advances to the next level.
+
+- h/l or Left/Right: move the paddle; release the key to stop.
+- Space: launch the ball; p: pause/resume.
+- r / New game: request a fresh game; y/n confirms/cancels.
+- Escape: pause, save and close. Arcade saves and returns to the chooser.
+
+Losing focus pauses the game. Reopening restores saved progress paused so the
+ball never starts moving unexpectedly. Progress and best score are stored as
+`breakout.game` and `breakout.best`.
+
+Arcade checks: `node --test tests/arcade.test.mjs tests/tetris-*.test.mjs tests/minesweeper*.test.mjs tests/solitaire*.test.mjs tests/2048*.test.mjs tests/breakout*.test.mjs`
 from this directory; `herdr-app check` can validate each `mods/tty-*` game.
 
 ## GitHub Repo panel
