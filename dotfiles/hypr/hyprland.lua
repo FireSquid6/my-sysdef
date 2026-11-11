@@ -105,6 +105,21 @@ hl.window_rule({ name = "youtube-music", match = { title = "^.*(YouTube Music).*
 hl.window_rule({ name = "spotify-capital", match = { class = "Spotify" }, float = true, size = "1200 1000", workspace = "special:music" })
 hl.window_rule({ name = "spotify-lowercase", match = { class = "spotify" }, float = true, size = "1200 1000", workspace = "special:music" })
 
+-- Tokyo Night machine colors. Title matching is dynamic, so SSH and tmux
+-- pane switches update both normal and special-workspace terminal borders.
+-- Restrict to terminals so a browser title containing a hostname is unaffected.
+for host, color in pairs({
+    deisslaptop = "bb9af7",
+    ["minibox-one"] = "9ece6a",
+    desktop = "f7768e",
+}) do
+    hl.window_rule({
+        name = "terminal-host-" .. host,
+        match = { class = "^(Alacritty|alacritty)$", title = "^" .. host .. ":.*$" },
+        border_color = "rgb(" .. color .. ") rgb(" .. color .. ")",
+    })
+end
+
 -- Application shortcuts.
 hl.bind("SUPER + SHIFT + Q", hl.dsp.window.close())
 hl.bind("SUPER + SHIFT + T", hl.dsp.exec_cmd(terminal))

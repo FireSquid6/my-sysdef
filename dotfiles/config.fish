@@ -3,6 +3,16 @@ set fish_greeting
 set -e fish_key_bindings default
 
 if status is-interactive
+  # Keep the connected host in the terminal title, including over SSH. Hyprland
+  # uses this prefix for machine-colored borders; tmux forwards the pane title.
+  function fish_title
+    set -l short_host (string split -m 1 . -- $hostname)[1]
+    printf '%s: %s' "$short_host" (fish_prompt_pwd_dir_length=1 prompt_pwd)
+    if set -q argv[1]
+      printf ' — %s' "$argv[1]"
+    end
+  end
+
   if not set -q SSH_CONNECTION
 
 

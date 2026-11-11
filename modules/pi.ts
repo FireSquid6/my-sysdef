@@ -10,6 +10,8 @@ const m: ModuleGenerator = () => {
     variables: {},
     files: {
       [path.join(agentDir, "settings.json")]: "./pi/settings.json",
+      [path.join(agentDir, "subagents.json")]: "./pi/subagents.json",
+      [path.join(agentDir, "agent-tool-description.md")]: "./pi/agent-tool-description.md",
     },
     directories: {
       [path.join(agentDir, "extensions")]: "./pi/extensions",

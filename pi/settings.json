@@ -9,6 +9,7 @@
     "npm:pi-matt-pocock-skills"
   ],
   "extensionChangelogVersions": {
-    "{\"source\":\"npm:@tintinweb/pi-subagents\",\"scope\":\"user\"}": "0.23.2"
+    "{\"source\":\"npm:@tintinweb/pi-subagents\",\"scope\":\"user\"}": "0.23.2",
+    "{\"source\":\"npm:pi-matt-pocock-skills\",\"scope\":\"user\"}": "0.2.0"
   }
 }
