@@ -282,7 +282,7 @@ export default class MachineAdd extends View {
       .w_full()
       .min_h(0)
       .p(18)
-      .bg(t.popover)
+      .bg(t.popover).border_1().border_color(t.border)
       .text_color(t.foreground)
       .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().child("Add a machine")).child(div().id("ma-esc").px(6).py(2).rounded(0).text_size(11).text_color(t.dim).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(() => this.close()).child("Esc")))
       .child(

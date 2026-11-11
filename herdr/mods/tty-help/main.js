@@ -50,7 +50,7 @@ export default class Help extends View {
       .min_h(0)
       .p(18)
       .gap(14)
-      .bg(t.popover)
+      .bg(t.popover).border_1().border_color(t.border)
       .text_size(12)
       .child(
         h_flex()

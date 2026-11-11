@@ -2,6 +2,7 @@
   "place": "none",
   "title": "Add a machine",
   "overlay": {
+    "frame": "none",
     "kind": "dialog",
     "width": 560
   },

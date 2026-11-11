@@ -125,7 +125,7 @@ export default class Menu extends View {
       .w_full()
       .min_h(0)
       .p(5)
-      .bg(t.popover)
+      .bg(t.popover).border_1().border_color(t.border)
       .text_size(12.8)
       .on_key_down((e, cx) => {
         if (e.key === "down") this.at = (this.at + 1) % list.length;

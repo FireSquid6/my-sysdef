@@ -37,7 +37,7 @@ export default class Confirm extends View {
       .p(18)
       .gap(12)
       .rounded(0)
-      .bg(t.popover)
+      .bg(t.popover).border_1().border_color(t.border)
       .text_size(13)
       .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().text_color(t.foreground).child(p.title ?? "Are you sure?")).child(div().text_size(11).text_color(t.dim).child("Esc")))
       .child(div().flex_1().min_h(0).overflow_y_scrollbar().text_color(t.muted).child(p.detail ?? ""))

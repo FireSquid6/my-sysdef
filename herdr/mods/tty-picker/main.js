@@ -231,7 +231,7 @@ export default class Picker extends View {
       .min_h(0)
       .p(18)
       .gap(10)
-      .bg(t.popover)
+      .bg(t.popover).border_1().border_color(t.border)
       .text_size(13)
       .on_key_down((e, cx) => {
         const k = e.key;

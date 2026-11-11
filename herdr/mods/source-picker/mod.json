@@ -1,5 +1,5 @@
 {
   "place": "none",
-  "title": "Open source project",
-  "overlay": { "kind": "dialog", "width": 560, "height": 540 }
+  "title": "Open project path",
+  "overlay": { "kind": "dialog", "frame": "none", "width": 560, "height": 540 }
 }
