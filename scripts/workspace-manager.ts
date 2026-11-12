@@ -190,7 +190,7 @@ export class Manager {
     const [name, destination] = args;
     if (command === "startup") {
       if (this.session.startup) return this.status(snapshot);
-      const apps = [["S", "herdr-app"], ["R", "hermes desktop"], ["G", "proton-mail"], ["N", "obsidian"], ["N", "protonmail-bridge"]];
+      const apps = [["S", "herdr-app"], ["R", "hermes desktop"], ["G", "proton-mail"], ["N", "obsidian"]];
       // Old optional applications are preserved, but missing commands are reported visibly.
       for (const [, app] of apps) {
         if (!this.which(app.split(" ")[0])) this.notify(`Startup command is not installed: ${app}`);

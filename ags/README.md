@@ -81,8 +81,10 @@ normal Hyprland windows. The GTK window accepts compositor resizing so its body
 keeps the full anchored height as content loads; it is not a fixed-size popup.
 Sections appear in this order:
 
-1. **Power & session:** Suspend, Logout, Reboot, Shutdown. Destructive actions
-   require a second explicit selection; holding Enter or Space cannot confirm.
+1. **Power & session:** Lock, Suspend, Log out, Reboot, Shut down. Lock uses the
+   existing Hyprlock wrapper and acts immediately; Log out, Reboot and Shut down
+   require a second explicit selection. Holding Enter or Space cannot confirm.
+   The former Super+Ctrl+L lock shortcut is removed; use Super+P → Lock instead.
 2. **System resources:** CPU utilization (delta sampled), RAM used/total, load
    averages and root filesystem usage. CPU shows “sampling” until its second sample.
 3. **Tailscale:** connection/login/daemon status, health warnings, this device and

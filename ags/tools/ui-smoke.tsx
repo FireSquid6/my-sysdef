@@ -5,6 +5,7 @@ import { Astal, Gdk, Gtk } from "ags/gtk4"
 import { createState } from "ags"
 import { createMenus } from "../menus"
 import { createSidebar } from "../sidebar"
+import { powerArgs } from "../menu-model"
 import { Bar } from "../bar"
 import style from "../style.css"
 import type { DesktopStatus } from "../services/controller"
@@ -36,6 +37,10 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
   app.add_window(menus.window)
   const sidebar = createSidebar({ close() {}, showError(error) { throw error }, copy(text) { copied.push(text) }, run: async argv => {
     calls.push(argv)
+    if (argv[0] === "bash") {
+      assert(JSON.stringify(argv) === JSON.stringify(powerArgs("lock")), "Unexpected sidebar lock command")
+      return ""
+    }
     assert(argv.includes("tailscale"), "Unexpected sidebar desktop action")
     return JSON.stringify({ BackendState: "Running", Self: { ID: "self", HostName: "local-test", Online: true },
       Peer: { peer: { ID: "peer", HostName: "offline-test", Online: false, TailscaleIPs: ["100.64.0.2"] } } })
@@ -79,7 +84,12 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
       key(Gdk.KEY_Right)
       await Promise.resolve()
       assert(calls.some(c => c.join(" ") === "assign 9 " + monitor.connector), "Assignment did not use the shared controller")
-      open("power"); key(Gdk.KEY_Down); key(Gdk.KEY_Return)
+      open("power")
+      assert(describe().results === 5, "Power menu must include Lock and Log out")
+      key(Gdk.KEY_Return)
+      await Promise.resolve(); await Promise.resolve()
+      assert(calls.some(c => JSON.stringify(c) === JSON.stringify(powerArgs("lock"))), "Lock did not run the shared locker")
+      open("power"); key(Gdk.KEY_Down); key(Gdk.KEY_Down); key(Gdk.KEY_Return)
       assert(describe().pending === "logout", "Logout did not request confirmation")
       key(Gdk.KEY_Return)
       assert(!calls.some(c => c[0] === "hyprctl"), "Repeating/held Enter bypassed confirmation")
@@ -101,7 +111,7 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         const controller = keyboard(sidebar.window, "sysdef-sidebar-keys")
         const press = (value: number, modifiers = 0) => controller.emit("key-pressed", value, 0, modifiers)
         press(Gdk.KEY_End)
-        assert(details().focusindex === 10, "End did not reach the last tailnet device")
+        assert(details().focusindex === 11, "End did not reach the last tailnet device")
         const last = widgets(sidebar.window, "sidebar-row").at(-1)!
         const detail = last.get_first_child()!.get_last_child()!
         assert(!detail.visible, "Device details should start collapsed")
@@ -116,8 +126,10 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         press(Gdk.KEY_j); assert(details().focusindex === 1, "j did not move down")
         press(Gdk.KEY_k); assert(details().focusindex === 0, "k did not move up")
         press(Gdk.KEY_j, Gdk.ModifierType.CONTROL_MASK); assert(details().focusindex === 0, "Ctrl+j was incorrectly treated as plain j")
-        press(Gdk.KEY_G); assert(details().focusindex === 10, "G did not reach the last row")
-        press(Gdk.KEY_Home); press(Gdk.KEY_j); press(Gdk.KEY_j)
+        press(Gdk.KEY_G); assert(details().focusindex === 11, "G did not reach the last row")
+        press(Gdk.KEY_Home); press(Gdk.KEY_j); press(Gdk.KEY_j); press(Gdk.KEY_j)
+        const logout = widgets(sidebar.window, "sidebar-power")[2] as Gtk.Button
+        assert(logout.label === "Log out", "Sidebar omitted Log out")
         press(Gdk.KEY_Return); press(Gdk.KEY_Return)
         assert(widgets(sidebar.window, "menu-confirm")[0]?.visible, "Sidebar power action skipped confirmation")
         assert(!calls.some(c => c[0] === "hyprctl" || c[0] === "systemctl"), "Sidebar executed a desktop action")
@@ -126,6 +138,14 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         assert(!sidebar.window.visible && sidebar.window.keymode === Astal.Keymode.NONE, "Sidebar Escape did not release keyboard focus")
         sidebar.open(monitor); press(Gdk.KEY_q)
         assert(!sidebar.window.visible && sidebar.window.keymode === Astal.Keymode.NONE, "q did not close and release keyboard focus")
+        sidebar.open(monitor)
+        const lock = widgets(sidebar.window, "sidebar-power")[0] as Gtk.Button
+        assert(lock.label === "Lock", "Sidebar omitted Lock")
+        const locksBefore = calls.filter(c => c[0] === "bash").length
+        lock.emit("clicked")
+        await Promise.resolve(); await Promise.resolve()
+        assert(calls.filter(c => c[0] === "bash").length === locksBefore + 1, "Sidebar Lock did not run exactly once")
+        assert(!sidebar.window.visible, "Sidebar did not close after locking")
       } finally { sidebar.close() }
       console.log("GTK UI smoke passed: native constant widths, menu/search/keyboard, controller routing, power repeat safety, sidebar sections/offline devices/navigation/details and Escape. No desktop actions executed.")
       app.quit(0)

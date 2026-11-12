@@ -32,7 +32,14 @@ const m: ModuleGenerator = () => {
         "procps-ng",
         "xdg-desktop-portal-hyprland",
         "sddm",
+        "qt6-declarative",
+        "qt6-svg",
+        "qt6-virtualkeyboard",
+        "qt6-multimedia-ffmpeg",
+        "qt6-5compat",
+        "ttf-jetbrains-mono-nerd",
       ],
+      "aur": ["sddm-astronaut-theme"],
     }
   }
 }

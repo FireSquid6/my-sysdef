@@ -4,7 +4,7 @@ import { Astal, Gdk, Gtk } from "ags/gtk4";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import type { DesktopStatus } from "./services/controller";
-import { confirmPower, cycleAssignment, filterItems, focusWindowArgs, moveSelection, powerArgs, projectName, savedConnections, type PowerAction } from "./menu-model";
+import { confirmPower, cycleAssignment, filterItems, focusWindowArgs, moveSelection, powerArgs, POWER_ACTIONS, POWER_LABELS, projectName, savedConnections, type PowerAction } from "./menu-model";
 
 type Dependencies = {
   run: (argv: string[]) => Promise<string>;
@@ -181,8 +181,8 @@ export function createMenus(deps: Dependencies): { window: Astal.Window; open: (
     return result.sort((a, b) => a.title.localeCompare(b.title));
   }
   function power(): Item[] {
-    return (["suspend", "logout", "reboot", "shutdown"] as PowerAction[]).map(action => ({
-      id: action, title: action[0]!.toUpperCase() + action.slice(1), detail: action === "suspend" ? "Put this computer to sleep" : "Requires confirmation",
+    return POWER_ACTIONS.map(action => ({
+      id: action, title: POWER_LABELS[action], detail: action === "lock" ? "Lock this session" : action === "suspend" ? "Put this computer to sleep" : "Requires confirmation",
       choose: () => {
         const next = confirmPower(pending(), action);
         setPending(next.pending);

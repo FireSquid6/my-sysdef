@@ -26,14 +26,14 @@ describe("Hyprlock and hypridle", () => {
     expect(idle).not.toContain("swaylock");
     expect(idle).not.toMatch(/(?:on-timeout|unlock_cmd)\s*=.*(?:suspend|unlock-session)/);
   });
-  test("uses opaque Tokyo Night styling and PAM, with a manual binding in both configs", () => {
+  test("uses opaque Tokyo Night styling and PAM, with no manual lock shortcut", () => {
     const lock = read("dotfiles/hypr/hyprlock.conf");
     expect(lock).toContain("color = rgb(1a1b26)");
     expect(lock).toContain("outer_color = rgb(bb9af7)");
     expect(lock).toContain("module = hyprlock");
     expect(lock).not.toContain("screenshot");
-    expect(read("dotfiles/hypr/hyprland.lua")).toContain('hl.bind("SUPER + CTRL + L", hl.dsp.exec_cmd("bash ~/.config/hypr/hyprlock.sh"))');
-    expect(read("dotfiles/hypr/hyprland.conf")).toContain("bind = $mainMod CONTROL, L, exec, bash ~/.config/hypr/hyprlock.sh");
+    expect(read("dotfiles/hypr/hyprland.lua")).not.toContain('hl.bind("SUPER + CTRL + L"');
+    expect(read("dotfiles/hypr/hyprland.conf")).not.toContain("bind = $mainMod CONTROL, L,");
   });
   test("serializes lock requests and requires authentication immediately (mock locker only)", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sysdef-hyprlock-test-"));

@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { filterItems, moveSelection, projectName, focusWindowArgs, confirmPower, powerArgs, cycleAssignment, savedConnections } from "../ags/menu-model";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { filterItems, moveSelection, projectName, focusWindowArgs, confirmPower, powerArgs, POWER_ACTIONS, POWER_LABELS, cycleAssignment, savedConnections } from "../ags/menu-model";
 
 describe("AGS menu model", () => {
   test("search matches all words across title and detail without interpreting markup", () => {
@@ -25,7 +28,30 @@ describe("AGS menu model", () => {
     expect(confirmPower("shutdown", "reboot")).toEqual({ pending: "reboot", execute: false });
     expect(confirmPower("shutdown", "shutdown")).toEqual({ pending: null, execute: true });
     expect(confirmPower(null, "suspend")).toEqual({ pending: null, execute: true });
+    expect(confirmPower(null, "logout")).toEqual({ pending: "logout", execute: false });
+    expect(confirmPower("logout", "logout")).toEqual({ pending: null, execute: true });
     expect(powerArgs("logout")).toEqual(["hyprctl", "eval", "hl.dispatch(hl.dsp.exit())"]);
+  });
+  test("power menus share Lock and Log out, and locking needs no confirmation", () => {
+    expect(POWER_ACTIONS).toEqual(["lock", "suspend", "logout", "reboot", "shutdown"]);
+    expect(POWER_LABELS.lock).toBe("Lock");
+    expect(POWER_LABELS.logout).toBe("Log out");
+    expect(confirmPower(null, "lock")).toEqual({ pending: null, execute: true });
+    expect(confirmPower("shutdown", "lock")).toEqual({ pending: null, execute: true });
+    expect(powerArgs("lock")).toEqual(["bash", "-c", 'exec bash "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprlock.sh"']);
+  });
+  test("Lock resolves the config path safely, including spaces and shell characters (mock locker only)", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "sysdef-menu-lock-"));
+    try {
+      for (const configHome of ["", path.join(home, "config with spaces; literal")]) {
+        const config = configHome || path.join(home, ".config");
+        fs.mkdirSync(path.join(config, "hypr"), { recursive: true });
+        fs.writeFileSync(path.join(config, "hypr/hyprlock.sh"), 'printf "mock lock invoked"');
+        const proc = Bun.spawn(powerArgs("lock"), { env: { ...process.env, HOME: home, XDG_CONFIG_HOME: configHome }, stdout: "pipe", stderr: "pipe" });
+        expect(await new Response(proc.stdout).text()).toBe("mock lock invoked");
+        expect(await proc.exited).toBe(0);
+      }
+    } finally { fs.rmSync(home, { recursive: true, force: true }); }
   });
   test("monitor cycling includes Automatic and tolerates unplugged assignments", () => {
     expect(cycleAssignment(null, ["DP-1"], 1)).toBe("DP-1");

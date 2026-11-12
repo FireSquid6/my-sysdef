@@ -4,7 +4,7 @@ import { Astal, Gdk, Gtk } from "ags/gtk4";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import Pango from "gi://Pango?version=1.0";
-import { confirmPower, powerArgs, type PowerAction } from "./menu-model";
+import { confirmPower, powerArgs, POWER_ACTIONS, POWER_LABELS, type PowerAction } from "./menu-model";
 import { normalizeTailnet, formatBytes, deviceIP, visibleTailnetHealth, type TailDevice } from "./sidebar-model";
 import { createResourceSampler, EMPTY_RESOURCES } from "./services/resources";
 
@@ -186,9 +186,9 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
     }
     return false; // Tab/Shift-Tab use native GTK focus traversal.
   }
-  const powerRows = (["suspend", "logout", "reboot", "shutdown"] as PowerAction[]).map(action =>
+  const powerRows = POWER_ACTIONS.map(action =>
     <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track}
-      class={`sidebar-row sidebar-power${action === "suspend" ? "" : " danger"}`} label={action[0]!.toUpperCase() + action.slice(1)} onClicked={() => { void power(action); }} />);
+      class={`sidebar-row sidebar-power${action === "lock" || action === "suspend" ? "" : " danger"}`} label={POWER_LABELS[action]} onClicked={() => { void power(action); }} />);
   const resourceRows = (["cpu", "memory", "load", "disk"] as const).map(field =>
     <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track} class="sidebar-row resource">
       <label label={resources(r => r[field])} xalign={0} wrap />

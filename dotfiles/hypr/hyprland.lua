@@ -103,6 +103,9 @@ for _, workspace in ipairs({ "name:S", "name:G", "name:R", "name:N", "1", "2", "
     hl.workspace_rule({ workspace = workspace, persistent = true, layout = "dwindle" })
 end
 
+-- Match the desktop app directly: its launcher can outlive exec workspace rules.
+hl.window_rule({ name = "hermes-workspace", match = { class = "^(com.nousresearch.hermes)$" }, workspace = "name:R silent" })
+
 hl.window_rule({ name = "godot-debug", match = { title = "^(DEBUG)$" }, float = true })
 hl.window_rule({ name = "floating-exporer", match = { class = "^(explorer)$" }, float = true, size = "1200 800" })
 hl.window_rule({ name = "thunar-float", match = { class = "^(thunar)$" }, float = true, center = true, size = "800 600" })
@@ -132,7 +135,6 @@ hl.bind("SUPER + E", hl.dsp.exec_cmd(fileManager))
 hl.bind("SUPER + X", hl.dsp.exec_cmd(menu))
 hl.bind("SUPER + P", hl.dsp.exec_cmd(ags .. "sidebar"))
 hl.bind("SUPER + B", hl.dsp.exec_cmd(ags .. "notifications"))
-hl.bind("SUPER + CTRL + L", hl.dsp.exec_cmd("bash ~/.config/hypr/hyprlock.sh"))
 hl.bind("SUPER + O", hl.dsp.exec_cmd(ags .. "projects"))
 hl.bind("SUPER + M", hl.dsp.exec_cmd(ags .. "monitors"))
 hl.bind("SUPER + T", hl.dsp.exec_cmd("bun " .. scripts .. "/workspace-manager.ts toggle"))

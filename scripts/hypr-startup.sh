@@ -11,4 +11,3 @@ hyprctl setcursor Google-DotBlack 24
 hyprpaper &
 bash "$SCRIPTS_DIR/../ags/start.sh" >>"$XDG_RUNTIME_DIR/sysdef-ags-start.log" 2>&1 &
 nm-applet &
-trayscale &

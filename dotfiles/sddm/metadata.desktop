@@ -1,0 +1,14 @@
+[SddmGreeterTheme]
+Name=Sysdef Tokyo Night (Astronaut)
+Description=Tokyo Night configuration of the system-packaged sddm-astronaut-theme
+Author=Keyitdev (theme), sysdef (configuration)
+Website=https://github.com/Keyitdev/sddm-astronaut-theme
+License=GPL-3.0-or-later
+Type=sddm-theme
+Version=1
+ConfigFile=theme.conf
+MainScript=Main.qml
+TranslationsDirectory=translations
+Theme-Id=sysdef-tokyo-night
+Theme-API=2.0
+QtVersion=6

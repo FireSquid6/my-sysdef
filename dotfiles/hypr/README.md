@@ -9,8 +9,10 @@ The active config is `hyprland.lua` (Hyprland 0.57+). `hyprland.conf` is the leg
 | S | Terminal | Tiling | Herdr (`herdr-app`) |
 | G | Mail | Tiling | Proton Mail (`proton-mail`) |
 | R | Robot | Tiling | Hermes Desktop (`hermes desktop`) |
-| N | Notebook | Tiling | Obsidian and the existing optional Proton Mail Bridge |
+| N | Notebook | Tiling | Obsidian |
 | 1–9 | Window | Floating initially | None |
+
+Trayscale and Proton Mail Bridge are not launched at login. Hermes Desktop has an app-ID window rule that opens it silently on R, including when its launcher spawns the window indirectly.
 
 - Super + workspace key: switch.
 - Super + Shift + workspace key: move the focused window and follow.
@@ -42,6 +44,10 @@ The Lua config starts one Bun controller per Hyprland instance. At login, `works
 
 The dedicated `ags` module links the shared Tokyo Night AGS shell. Each output shows its current workspaces, including empty ones, ordered S/G/R/N/1–9. Every button includes the key, application/window icon, and **▦ tiling / ◇ floating** indicator. Click to switch. The controller publishes one cached, atomic `desktop.json`; AGS watches it rather than spawning Bun for each button. Monitor additions/removals create/destroy bar windows. Launcher, project picker, power menu, window switcher, monitor settings, notifications and tray also run in AGS. See [`ags/README.md`](../../ags/README.md) for shortcuts, dependencies, control commands and verification limits.
 
+## Login screen
+
+SDDM uses a Qt6 Astronaut theme configured with the same Tokyo Night palette, flat background and centered login form. Sources and deployment instructions live in [`dotfiles/sddm/`](../sddm/README.md); `modules/desktop.ts` declares dependencies. System-wide deployment is an explicit sudo step, not a home-directory symlink or display-manager restart.
+
 ## Locking and idle
 
 `modules/desktop.ts` installs stable Arch `hyprlock` and `hypridle` packages, not
@@ -49,7 +55,7 @@ Git snapshots. Verified against upstream releases: hyprlock **0.9.7** and hyprid
 **0.1.8**. Keep them updated through normal full-system Arch upgrades (`pacman -Syu`),
 not partial repository refreshes.
 
-- **Super + Ctrl + L:** lock immediately. Type your normal account password to unlock.
+- **Super + P → Lock** (or bar power button → Lock): lock immediately. Type your normal account password to unlock. There is no dedicated lock keybind. **Log out** is in the same menu and requires a second selection to confirm.
 - **5 minutes idle:** lock; **8 minutes 20 seconds:** turn displays off.
 - Activity wakes displays; it does not bypass password authentication.
 - Before suspend, hypridle requests locking and holds a sleep-delay inhibitor until

@@ -53,13 +53,23 @@ describe("workspace allocation", () => {
 });
 
 describe("workspace controller", () => {
+  test("login config disables tray autostarts and routes Hermes by app ID", () => {
+    const startup = fs.readFileSync(new URL("../scripts/hypr-startup.sh", import.meta.url), "utf8");
+    const legacy = fs.readFileSync(new URL("../dotfiles/hypr/hyprland.conf", import.meta.url), "utf8");
+    const config = fs.readFileSync(new URL("../dotfiles/hypr/hyprland.lua", import.meta.url), "utf8");
+    expect(startup).not.toContain("trayscale");
+    expect(legacy).not.toContain("protonmail-bridge");
+    expect(config).toContain('match = { class = "^(com.nousresearch.hermes)$" }, workspace = "name:R silent"');
+  });
   test("startup launches desktop applications once per session, silently on letter workspaces", async () => {
     const { manager, snapshot, calls, script } = setup();
     manager.which = () => "/usr/bin/mock-app";
     manager.notify = () => {};
     await manager.command("startup");
-    expect(script().match(/hl\.exec_cmd\(/g)).toHaveLength(5);
+    expect(script().match(/hl\.exec_cmd\(/g)).toHaveLength(4);
+    expect(script()).not.toContain("protonmail-bridge");
     expect(script()).toContain('"hermes desktop"');
+    expect(script()).toContain('["workspace"]="name:R silent"');
     expect(script()).toContain('["workspace"]="name:G silent"');
     expect(script()).toContain('["no_initial_focus"]=true');
     expect(manager.session.startup?.pending).toBe(true);
