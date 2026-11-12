@@ -17,12 +17,13 @@ afterEach(() => {
 const getModule = () => hermes(dryShell);
 
 describe("Hermes shared configuration", () => {
-  test("defaults to ~/.hermes and manages only persona, license, and selected skills", async () => {
+  test("defaults to ~/.hermes and manages only persona, skin, license, and selected skills", async () => {
     delete process.env.HERMES_HOME;
     const mod = await getModule();
     const home = path.join(os.homedir(), ".hermes");
     expect(Object.keys(mod.files).sort()).toEqual([
       path.join(home, "SOUL.md"),
+      path.join(home, "skins/tokyonight-night.yaml"),
       path.join(home, "skills/aihero/AIHERO-LICENSE.txt"),
     ].sort());
     expect(mod.packages).toEqual({});
