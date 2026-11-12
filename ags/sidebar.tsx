@@ -5,7 +5,7 @@ import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import Pango from "gi://Pango?version=1.0";
 import { confirmPower, powerArgs, type PowerAction } from "./menu-model";
-import { normalizeTailnet, formatBytes, deviceIP, type TailDevice } from "./sidebar-model";
+import { normalizeTailnet, formatBytes, deviceIP, visibleTailnetHealth, type TailDevice } from "./sidebar-model";
 import { createResourceSampler, EMPTY_RESOURCES } from "./services/resources";
 
 type Dependencies = { run: (argv: string[]) => Promise<string>; close: () => void; showError: (error: unknown) => void; copy?: (text: string) => void };
@@ -142,7 +142,7 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
             let parsed: unknown;
             try { parsed = JSON.parse(output); } catch { throw Error("Invalid JSON"); }
             const tailnet = normalizeTailnet(parsed);
-            setStatus(tailnet.status); setHealth(tailnet.health.join("\n")); reconcile(tailnet.devices);
+            setStatus(tailnet.status); setHealth(visibleTailnetHealth(tailnet.health).join("\n")); reconcile(tailnet.devices);
           } catch {
             if (current()) { setStatus("Tailscale unavailable: daemon stopped, login required, or invalid status response"); setHealth(""); reconcile([]); }
           }
@@ -230,7 +230,6 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
           </box>
         </box>
       </scrolledwindow>
-      <label class="muted" label="j/k or ↑/↓ move · gg/G first/last · h/l collapse/expand · Enter select · q/Esc close" wrap xalign={0} />
     </box>
   </window> as Astal.Window;
   onCleanup(() => { disposed = true; stop(); for (const row of deviceRows.values()) row.dispose(); deviceRows.clear(); window.destroy(); });
