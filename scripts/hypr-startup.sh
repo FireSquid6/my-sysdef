@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-# Launch hypridle for screen idle management (lock, DPMS off, etc.)
-hypridle &
+# The compositor owns idle startup; don't also enable hypridle.service.
+if ! pgrep -u "$(id -u)" -x hypridle >/dev/null; then
+  hypridle &
+fi
 
 "$SCRIPTS_DIR"/tmux-startup.sh
 hyprctl setcursor Google-DotBlack 24

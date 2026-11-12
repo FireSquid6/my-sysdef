@@ -42,6 +42,39 @@ The Lua config starts one Bun controller per Hyprland instance. At login, `works
 
 The dedicated `ags` module links the shared Tokyo Night AGS shell. Each output shows its current workspaces, including empty ones, ordered S/G/R/N/1–9. Every button includes the key, application/window icon, and **▦ tiling / ◇ floating** indicator. Click to switch. The controller publishes one cached, atomic `desktop.json`; AGS watches it rather than spawning Bun for each button. Monitor additions/removals create/destroy bar windows. Launcher, project picker, power menu, window switcher, monitor settings, notifications and tray also run in AGS. See [`ags/README.md`](../../ags/README.md) for shortcuts, dependencies, control commands and verification limits.
 
+## Locking and idle
+
+`modules/desktop.ts` installs stable Arch `hyprlock` and `hypridle` packages, not
+Git snapshots. Verified against upstream releases: hyprlock **0.9.7** and hypridle
+**0.1.8**. Keep them updated through normal full-system Arch upgrades (`pacman -Syu`),
+not partial repository refreshes.
+
+- **Super + Ctrl + L:** lock immediately. Type your normal account password to unlock.
+- **5 minutes idle:** lock; **8 minutes 20 seconds:** turn displays off.
+- Activity wakes displays; it does not bypass password authentication.
+- Before suspend, hypridle requests locking and holds a sleep-delay inhibitor until
+  the Wayland session is locked. Waking turns displays back on.
+- No automatic suspend timer is configured. Browser/media, Wayland and systemd
+  idle inhibitors remain respected.
+
+`hyprlock.conf` uses opaque Tokyo Night backgrounds, clock/date and password entry
+on every output, with PAM's packaged `/etc/pam.d/hyprlock` service. No screenshots,
+grace period, authentication changes or credentials are stored. `hyprlock.sh` uses
+a per-user runtime `flock` to serialize requests, held until the locker exits.
+Authentication uses the distribution's normal PAM policy (including failed-login
+limits); no automatic unlock command is configured.
+
+`hypr-startup.sh` starts hypridle once for this compositor session. Do not also
+enable `hypridle.service`, which would create a second startup route. Configs are
+already linked through the managed `~/.config/hypr` directory. After changing
+`hypridle.conf`, restart hypridle; changing `hyprlock.conf` applies on the next lock.
+Legacy swaylock settings remain available, but this Hyprland session no longer
+uses swaylock. The lock screen itself must be tested interactively when ready;
+non-interactive checks do not authenticate, lock, suspend, or turn displays off.
+
+Sources: [hyprlock configuration](https://github.com/hyprwm/hyprland-wiki/blob/main/content/hypr-ecosystem/user/hyprlock.md),
+[hypridle configuration](https://github.com/hyprwm/hyprland-wiki/blob/main/content/hypr-ecosystem/user/hypridle.md).
+
 ## Sources, state, and dependencies
 
 - `scripts/workspace-model.ts`: allocation, validation, geometry, and safe Lua encoding.

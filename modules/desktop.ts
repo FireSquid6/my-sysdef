@@ -22,7 +22,8 @@ const m: ModuleGenerator = () => {
       "arch-official": [
         "hyprland",
         "hypridle",
-        "swaylock",
+        "hyprlock",
+        "util-linux",
         "hyprpicker",
         "hyprpaper",
         "hyprshot",
