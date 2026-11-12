@@ -11,6 +11,9 @@ hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1 
 hl.monitor({ output = "DP-1", mode = "preferred", position = "auto-left", scale = 1 })
 hl.monitor({ output = "HDMI-A-1", mode = "preferred", position = "auto-right", scale = 1 })
 
+-- Display-manager sessions don't inherit the interactive shell's Bun PATH.
+-- Export it for startup scripts, workspace shortcuts, and AGS subprocesses.
+hl.env("PATH", (os.getenv("HOME") or "/home/firesquid") .. "/.bun/bin:" .. (os.getenv("PATH") or "/usr/local/bin:/usr/bin"))
 hl.env("XCURSOR_SIZE", "24")
 hl.env("XCURSOR_THEME", "GoogleDot-Black")
 hl.env("HYPRSHOT_DIR", "Pictures")
@@ -194,7 +197,9 @@ hl.bind("SUPER + C", hl.dsp.window.center())
 
 -- Idempotent on reload: one controller per Hyprland session. Its private log stays local.
 -- Config verification evaluates Lua too; never launch desktop services from it.
-if not (os.getenv("HYPRLAND_CMD") or ""):find("--verify-config", 1, true) then
+-- Initial config evaluation precedes Wayland setup; hyprland.start handles login.
+-- Only run this recovery path on reload, once the display is available.
+if os.getenv("WAYLAND_DISPLAY") and not (os.getenv("HYPRLAND_CMD") or ""):find("--verify-config", 1, true) then
     -- The AGS startup lock serializes controller startup too: don't launch it
     -- separately here, which can race the controller's initial socket bind.
     hl.exec_cmd('bash "${XDG_CONFIG_HOME:-$HOME/.config}/ags/start.sh" >> "$XDG_RUNTIME_DIR/sysdef-ags-start.log" 2>&1')

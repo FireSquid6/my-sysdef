@@ -43,6 +43,9 @@ describe("AGS module and integration", () => {
     expect(hypr).not.toMatch(/rofi|fuzzel|monitor-menu\.py/);
     expect(hypr).not.toContain("workspace-manager.ts daemon");
     expect(hypr).toContain(':find("--verify-config", 1, true)');
+    expect(hypr).toContain('hl.env("PATH", (os.getenv("HOME") or "/home/firesquid") .. "/.bun/bin:"');
+    expect(hypr).toContain('if os.getenv("WAYLAND_DISPLAY") and not');
+    expect(hypr.indexOf('hl.env("PATH",')).toBeLessThan(hypr.indexOf('hl.on("hyprland.start"'));
     const startup = fs.readFileSync(path.join(root, "scripts/hypr-startup.sh"), "utf8");
     expect(startup).toContain("ags/start.sh");
     expect(hypr).toContain('hl.bind("SUPER + B", hl.dsp.exec_cmd(ags .. "notifications"))');
