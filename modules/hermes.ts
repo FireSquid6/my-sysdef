@@ -22,6 +22,7 @@ const m: ModuleGenerator = () => {
     variables: {},
     files: {
       [path.join(home, "SOUL.md")]: "./hermes/SOUL.md",
+      [path.join(home, "skins/tokyonight-night.yaml")]: "./hermes/skins/tokyonight-night.yaml",
       [path.join(home, "skills/aihero/AIHERO-LICENSE.txt")]: "./hermes/skills/aihero/AIHERO-LICENSE.txt",
     },
     directories,
