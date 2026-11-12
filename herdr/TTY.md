@@ -13,9 +13,57 @@ herdr-app do layout.switch --name main
 
 Global monospace font settings live in `settings.json`. The sharp pane
 frames and compact layout live in `layouts/tty.json`; individual UI
-elements live in the `mods/tty-*` clones. Native app-owned settings,
-palette, and system dialogs are not replaceable through the layout API.
+elements live in the `mods/tty-*` clones. TTY shortcuts and entry points open
+personal settings and palette clones; the native app-owned dialogs are unchanged.
 Clones are not automatically refreshed with upstream mod changes.
+
+## Focus shortcuts
+
+- **Ctrl+Shift+B:** collapse the left sidebar to its narrow rail, or restore its
+  previous width. There is no hide-sidebar shortcut.
+- **Ctrl+Shift+H:** hide/show the right Files/Changes/Repo panel, retaining its
+  selected tab. Combine with the collapsed left rail for focus mode.
+- **Alt+Shift+F:** open Go To (spaces and tabs). Alt+Shift+Enter is unbound.
+
+The top-left search and collapse buttons are removed; use these shortcuts.
+The left footer retains Settings, without the Add machine button; machine setup
+remains available through Settings.
+
+## Command palette
+
+**Ctrl+Shift+P** opens the personal TTY command palette. Search, Up/Down, Enter,
+mouse selection and Escape work here. It includes the live native command catalog
+(native argument prompts/confirmations still apply), plus **Agents: Priority** and
+**Agents: Grouped by space**. A checkmark identifies the active agent view, stored
+in the existing shared `agents.sort` preference. Selecting a view closes the
+palette and updates the agents list immediately. Other layouts retain Herdr's
+native command palette.
+
+## Settings
+
+**Ctrl+,**, the left-footer Settings button, and Settings in the command palette
+open `mods/tty-settings`, a personal clone of Herdr 0.1.15's app-owned settings.
+Other layouts retain native Settings. The clone keeps the immediate-write behavior,
+font search, machine actions/confirmations, updates, sounds and privacy controls.
+
+- **j/k** or **Down/Up**: move the selection without changing a setting.
+- **Enter/Space**: activate the selected section or control.
+- **l/Right**: enter a section's controls; **h/Left**: return to the section list.
+- **Tab/Shift+Tab**: cycle through sections and controls.
+- **gg / G** (or **Home/End**): first / last control in the current list.
+- **Ctrl+d/Ctrl+u** or **PageDown/PageUp**: scroll page blocks, including telemetry
+  report lines. Selecting an offscreen control also scrolls it into view.
+- Font search accepts normal text. **Down/Up** leaves the search field for the
+  font list; **/** focuses search again. **Enter** chooses a font.
+- **Escape** leaves input editing first, then dismisses a font picker or machine
+  edit/confirmation, and finally closes Settings. Outside inputs, **q** also backs out.
+
+Machine rename fields accept normal text; Enter on the selected input re-enters
+editing. Removal still requires its separate confirmation, initially selecting
+Cancel. No keybinding footer is added to the dialog.
+
+Tests: `node --test herdr/tests/settings-keyboard.test.mjs` and
+`herdr-app check "$PWD/herdr/mods/tty-settings"`.
 
 ## Centralized keyboard help
 

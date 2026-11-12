@@ -46,12 +46,11 @@
     "ctrl-?": "app.help",
     "ctrl-shift-/": "app.help",
     "ctrl-shift-?": "app.help",
-    "ctrl-shift-b": "layout.toggle:sidebar",
     "ctrl-shift-n": "space.new",
     "ctrl-o": "mod.open:source-picker",
     "alt-o": "mod.open:source-picker",
     "ctrl-shift-t": "tab.new",
-    "alt-shift-enter": "mod.open:picker",
+    "alt-shift-f": "mod.open:picker",
     "ctrl-shift-p": "app.palette",
     "ctrl-,": "app.settings",
     "ctrl-shift-o": "pane.split:right",
@@ -64,6 +63,8 @@
     "shift-f2": "space.rename"
   },
   "layout:tty": {
+    "ctrl-,": "mod.open:tty-settings",
+    "ctrl-shift-p": "mod.open:tty-command-palette",
     "ctrl-alt-h": "tty-tabs.help",
     "alt-s": "tty-tabs.quick",
     "ctrl-tab": "tty-tabs.quick-cycle",
@@ -71,7 +72,9 @@
     "alt-c": "tty-tabs.changes",
     "alt-r": "tty-tabs.repo",
     "alt-enter": "tty-tabs.terminal",
-    "alt-shift-enter": "mod.open:tty-picker",
+    "alt-shift-f": "mod.open:tty-picker",
+    "ctrl-shift-b": "tty-workspace-chrome.toggle-sidebar",
+    "ctrl-shift-h": "layout.toggle:panel",
     "ctrl-?": "tty-tabs.help",
     "ctrl-shift-/": "tty-tabs.help",
     "ctrl-shift-?": "tty-tabs.help"

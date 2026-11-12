@@ -9,7 +9,7 @@ const m: ModuleGenerator = () => ({
   directories: {
     [process.env.HERDR_APP_HOME || path.join(os.homedir(), ".config", "herdr-app")]: "./herdr",
   },
-  packages: {},
+  packages: { "arch-official": ["bun", "libnotify"] },
 });
 
 export default m;

@@ -1,0 +1,5 @@
+{
+  "place": "none",
+  "overlay": { "width": 1000, "height": 620 },
+  "cloned_from": { "name": "frame/settings", "version": "0.1.15" }
+}

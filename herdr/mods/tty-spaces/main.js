@@ -321,7 +321,7 @@ export default class Spaces extends View {
         .when(collapsed, el => el.mt(4).w(RAIL_CELL).justify_center().rounded(0).tooltip(login ? `${m} needs a login: run ${login}. Click for Copy.` : m ? `${m} · ${connected ? "connected" : (machine?.state ?? "asleep").replace(/_/g, " ")}` : "This computer"))
         .cursor_pointer().hover(s => s.bg(t.hover))
         .on_click((_e, cx) => {
-          if (collapsed && login) { run("app.settings", { section: "machines" }); return; }
+          if (collapsed && login) { openOverlay({ mod: "tty-settings", props: { section: "machines" } }); return; }
           folded ? this.folded.delete(m) : this.folded.add(m);
           localStorage.setItem("machines.folded", JSON.stringify([...this.folded]));
           cx.notify();

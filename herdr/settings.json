@@ -1,12 +1,13 @@
 {
-  "zoom": 1.0,
+  "zoom": 1,
   "sounds": {
     "enabled": true
   },
   "font_ligatures": false,
-  "minimum_contrast": 1.0,
+  "minimum_contrast": 1,
   "appearance": "dark",
   "theme": "tokyonight-night",
   "font": "JetBrains Mono",
-  "ui_font": "JetBrains Mono"
+  "ui_font": "JetBrains Mono",
+  "font_size": 15
 }
