@@ -23,8 +23,7 @@ hl.on("hyprland.start", function()
     hl.exec_cmd(terminal .. " --command tmux attach -t home", {
         workspace = "special:a", float = true, size = "1200 1000", center = true,
     })
-    hl.exec_cmd("obsidian", { workspace = "8" })
-    hl.exec_cmd("protonmail-bridge", { workspace = "8" })
+    hl.exec_cmd("bash " .. scripts .. "/workspace-session.sh")
 end)
 
 hl.config({
@@ -94,8 +93,10 @@ for _, animation in ipairs({
     hl.animation({ leaf = animation[1], enabled = true, speed = animation[2], bezier = animation[3], style = animation[4] })
 end
 
-for _, workspace in ipairs({ 1, 2, 3, 4, 5, 6, 8 }) do
-    hl.workspace_rule({ workspace = tostring(workspace), monitor = "DP-1" })
+-- Placement and per-session numeric floating modes are owned by workspace-manager.ts.
+-- Named workspaces stay tiled; native popup/explicit floating rules remain exceptions.
+for _, workspace in ipairs({ "name:S", "name:G", "name:R", "name:N", "1", "2", "3", "4", "5", "6", "7", "8", "9" }) do
+    hl.workspace_rule({ workspace = workspace, persistent = true, layout = "dwindle" })
 end
 
 hl.window_rule({ name = "godot-debug", match = { title = "^(DEBUG)$" }, float = true })
@@ -127,6 +128,8 @@ hl.bind("SUPER + E", hl.dsp.exec_cmd(fileManager))
 hl.bind("SUPER + X", hl.dsp.exec_cmd(menu))
 hl.bind("SUPER + P", hl.dsp.exec_cmd(scripts .. "/open-menu.sh powermenu"))
 hl.bind("SUPER + O", hl.dsp.exec_cmd(scripts .. "/open-menu.sh open-project"))
+hl.bind("SUPER + M", hl.dsp.exec_cmd("python " .. scripts .. "/monitor-menu.py"))
+hl.bind("SUPER + T", hl.dsp.exec_cmd("bun " .. scripts .. "/workspace-manager.ts toggle"))
 hl.bind("SUPER + ALT + F", hl.dsp.exec_cmd("firefox"))
 hl.bind("SUPER + ALT + E", hl.dsp.exec_cmd("alacritty --class explorer --command yazi"))
 hl.bind("SUPER + ALT + T", hl.dsp.exec_cmd("thunderbird"))
@@ -139,13 +142,11 @@ for key, direction in pairs({ H = "left", L = "right", K = "up", J = "down" }) d
     hl.bind("SUPER + ALT + SHIFT + " .. key, hl.dsp.window.move({ out_of_group = direction }))
 end
 
-for workspace, key in ipairs({ "1", "2", "3", "4", "5", "6", "G", "Q" }) do
+for _, key in ipairs({ "S", "G", "R", "N", "1", "2", "3", "4", "5", "6", "7", "8", "9" }) do
+    local workspace = tonumber(key) or ("name:" .. key)
     hl.bind("SUPER + " .. key, hl.dsp.focus({ workspace = workspace }))
-    -- Preserve the legacy workspace bindings, including CTRL+Q targeting 7.
-    if workspace < 8 then
-        hl.bind("SUPER + SHIFT + " .. key, hl.dsp.window.move({ workspace = workspace, follow = true }))
-    end
-    hl.bind("SUPER + CTRL + " .. key, hl.dsp.window.move({ workspace = math.min(workspace, 7), follow = false }))
+    hl.bind("SUPER + SHIFT + " .. key, hl.dsp.window.move({ workspace = workspace, follow = true }))
+    hl.bind("SUPER + CTRL + " .. key, hl.dsp.window.move({ workspace = workspace, follow = false }))
 end
 
 hl.bind("ALT + SHIFT + mouse:272", hl.dsp.window.drag(), { mouse = true })
@@ -175,7 +176,7 @@ local function floatAndCenter()
     hl.dispatch(hl.dsp.window.resize({ x = 1200, y = 1000, relative = false }))
     hl.dispatch(hl.dsp.window.center())
 end
-hl.bind("SUPER + SHIFT + F", floatAndCenter)
+hl.bind("SUPER + SHIFT + F", hl.dsp.exec_cmd("bun " .. scripts .. "/workspace-manager.ts manual-float"))
 hl.bind("SUPER + SHIFT + A", function()
     floatAndCenter()
     hl.dispatch(hl.dsp.window.move({ workspace = "special:a", follow = true }))
@@ -188,3 +189,6 @@ end
 hl.bind("SUPER + SPACE", hl.dsp.group.next())
 hl.bind("SUPER + SHIFT + SPACE", hl.dsp.group.toggle())
 hl.bind("SUPER + C", hl.dsp.window.center())
+
+-- Idempotent on reload: one controller per Hyprland session. Its private log stays local.
+hl.exec_cmd("bun " .. scripts .. "/workspace-manager.ts daemon >> \"$XDG_RUNTIME_DIR/sysdef-workspace-manager.log\" 2>&1")

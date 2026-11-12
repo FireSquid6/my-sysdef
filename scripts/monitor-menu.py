@@ -15,6 +15,7 @@ import time
 
 
 CONTROLLER = Path(__file__).resolve().with_name("workspace-manager.ts")
+ICONS = {"S": "", "G": "", "R": "󰚩", "N": "󰠮"}
 CSS = b"""
 window { background: #1a1b26; color: #c0caf5; }
 notebook header { background: #16161e; border-color: #414868; }
@@ -107,7 +108,7 @@ class Singleton:
                     close()
             return True
 
-        GLib.io_add_watch(self.server.fileno(), GLib.IO_IN, ready)
+        GLib.io_add_watch(self.server.fileno(), GLib.PRIORITY_DEFAULT, GLib.IO_IN, ready)
 
     def close(self):
         if self.server is not None:
@@ -299,7 +300,7 @@ def show_menu(singleton, modules):
                     rows.remove(child)
             primary = self.state["primaryAssignment"]
             for choice, label, description in [(None, "Automatic", "Follow controller policy")] + [
-                    (m["name"], m["name"], m.get("description") or "") for m in self.state["monitors"]]:
+                    (m["name"], m["name"] + (" · current primary" if m["primary"] else ""), m.get("description") or "") for m in self.state["monitors"]]:
                 row = Gtk.ListBoxRow()
                 row.choice = choice
                 text = label + ("  ✓" if choice == primary else "")
@@ -319,7 +320,7 @@ def show_menu(singleton, modules):
                 row.choice = workspace["name"]
                 box = Gtk.Box(spacing=10)
                 info = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
-                info.pack_start(Gtk.Label(label=workspace["name"], xalign=0), False, False, 0)
+                info.pack_start(Gtk.Label(label=f'{workspace["name"]}  {ICONS.get(workspace["name"], "󰣆")}', xalign=0), False, False, 0)
                 detail = Gtk.Label(label=f'{workspace["monitor"]} · {workspace["mode"]}', xalign=0)
                 detail.get_style_context().add_class("detail")
                 info.pack_start(detail, False, False, 0)

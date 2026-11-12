@@ -1,0 +1,71 @@
+# Hyprland workspaces and monitors
+
+The active config is `hyprland.lua` (Hyprland 0.57+). `hyprland.conf` is the legacy config, not the active source.
+
+## Workspaces
+
+| Key | Icon | Mode | Login application |
+| --- | --- | --- | --- |
+| S | Terminal | Tiling | Herdr (`herdr-app`) |
+| G | Mail | Tiling | Proton Mail (`proton-mail`) |
+| R | Robot | Tiling | Hermes Desktop (`hermes desktop`) |
+| N | Notebook | Tiling | Obsidian and the existing optional Proton Mail Bridge |
+| 1–9 | Window | Floating initially | None |
+
+- Super + workspace key: switch.
+- Super + Shift + workspace key: move the focused window and follow.
+- Super + Ctrl + workspace key: move the focused window without following.
+- Super + Shift + Q still closes a window. N replaces the old Q workspace; numeric 7 and 8 are independent again.
+- Super + T toggles a **numeric workspace** between floating and tiling, including future windows. S/G/R/N remain tiling-only.
+- Native floating windows/popups, floating-rule windows, pinned windows, and explicitly floated windows are not forced into tiling.
+- Super + Shift + F explicitly floats and centers a window. On a workspace-default floating window it marks an exemption; on an already explicitly floating window it toggles back to tiling.
+- Returning a workspace to floating restores saved positions/sizes, clamped to its current monitor. Windows opened while tiled get a centered size.
+- Workspace modes and window geometry survive controller/config reloads in the same login session, but numeric modes reset to floating on the next login.
+- Existing scratchpad/music workspaces, grouping, media keys, screenshots, and machine border rules remain.
+
+## Monitor menu (Super + M)
+
+A GTK3 layer-shell popup opens on the focused monitor. Press Super + M again or Escape to close it.
+
+- **Primary**: Up/Down selects; Enter applies. Monitor rows are also clickable.
+- **Workspaces**: Up/Down selects; Left/Right cycles Automatic and connected monitors. Mouse buttons provide the same actions.
+- Tab switches pages. Changes apply and save immediately; closing is not cancellation.
+- Automatic clears the saved override. Disconnected assignments remain saved, with primary as the temporary fallback.
+
+On `deisslaptop`, the default primary is eDP-1; other hosts prefer DP-1. If unavailable, use the other conventional output or the first connected output. S/G/R/N follow primary unless explicitly assigned elsewhere. Numeric workspaces are split evenly across other monitors, or use primary if it is the only output.
+
+Changing primary moves the automatic letter workspaces but leaves existing numeric locations intact. Super + Ctrl + arrow monitor moves are temporary: the manager does not fight them or save them as preferences. The menu changes the saved assignment. Unplugged destinations fall back temporarily and restore on reconnect.
+
+## Startup and bar
+
+The Lua config starts one Bun controller per Hyprland instance. At login, `workspace-session.sh` waits for it, then launches applications **once** and focuses S/Herdr. Closing an application does not relaunch it; reloading the config does not rerun application startup.
+
+`waybar.sh` uses the controller-generated, per-output config. Each output shows its current workspaces, including empty ones, ordered S/G/R/N/1–9. Every button includes the key, application/window icon, and **▦ tiling / ◇ floating** indicator. Click to switch. Workspace JSON is cached and Waybar uses its native signal refresh rather than repeatedly launching Bun for each button. Monitor topology changes regenerate and reload the bar config.
+
+## Sources, state, and dependencies
+
+- `scripts/workspace-model.ts`: allocation, validation, geometry, and safe Lua encoding.
+- `scripts/workspace-manager.ts`: serialized local command service, Hyprland event handling, session modes, preferences, and bar data.
+- `scripts/monitor-menu.py`: thin Python/GTK UI; policy lives in the TypeScript controller.
+- Persistent per-host preferences: `$XDG_STATE_HOME/sysdef/monitors/<hostname>.json` (default `~/.local/state/sysdef/monitors/`).
+- Session data/socket/bar config: run `bun scripts/workspace-manager.ts runtime` to locate the private directory under `$XDG_RUNTIME_DIR`.
+- Controller log: `$XDG_RUNTIME_DIR/sysdef-workspace-manager.log`.
+- No preferences, monitor choices, app credentials, or session state belong in Git.
+
+`modules/desktop.ts` declares Bun, Python, GTK3, PyGObject, gtk-layer-shell, libnotify, and procps-ng alongside the existing desktop dependencies. Install Herdr, Hermes Desktop, Proton Mail, and Obsidian separately. A missing required S/R/G launcher is reported and aborts app startup rather than silently skipping it; a missing legacy Notes application is reported visibly.
+
+Useful checks:
+
+```sh
+bun test test/workspaces.test.ts
+python scripts/monitor-menu.py --check
+PYTHONPYCACHEPREFIX=/tmp/sysdef-pycache python test/monitor-menu.test.py
+# Optional: opens/closes the real popup and checks Tab/arrow/Escape handling.
+SYSDEF_TEST_LIVE_GTK=1 PYTHONPYCACHEPREFIX=/tmp/sysdef-pycache python test/monitor-menu.test.py
+bash -n scripts/workspace-session.sh scripts/waybar.sh
+Hyprland --verify-config -c "$PWD/dotfiles/hypr/hyprland.lua"
+hyprctl configerrors
+bun scripts/workspace-manager.ts status
+```
+
+Physical multi-monitor hotplug should also be checked on a docked/desktop setup; the unit tests exercise allocation, saved overrides, disconnected fallback/restore, and temporary moves without needing extra outputs.
