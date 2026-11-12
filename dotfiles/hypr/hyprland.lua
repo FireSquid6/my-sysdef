@@ -2,7 +2,8 @@
 -- ~/.config/hypr is linked to this directory by modules/desktop.ts.
 local terminal = "alacritty"
 local fileManager = "dolphin"
-local menu = "fuzzel"
+local ags = 'bash "${XDG_CONFIG_HOME:-$HOME/.config}/ags/control.sh" '
+local menu = ags .. "launcher"
 local scripts = "/home/firesquid/sysdef/scripts"
 
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
@@ -126,9 +127,10 @@ hl.bind("SUPER + SHIFT + Q", hl.dsp.window.close())
 hl.bind("SUPER + SHIFT + T", hl.dsp.exec_cmd(terminal))
 hl.bind("SUPER + E", hl.dsp.exec_cmd(fileManager))
 hl.bind("SUPER + X", hl.dsp.exec_cmd(menu))
-hl.bind("SUPER + P", hl.dsp.exec_cmd(scripts .. "/open-menu.sh powermenu"))
-hl.bind("SUPER + O", hl.dsp.exec_cmd(scripts .. "/open-menu.sh open-project"))
-hl.bind("SUPER + M", hl.dsp.exec_cmd("python " .. scripts .. "/monitor-menu.py"))
+hl.bind("SUPER + P", hl.dsp.exec_cmd(ags .. "sidebar"))
+hl.bind("SUPER + B", hl.dsp.exec_cmd(ags .. "notifications"))
+hl.bind("SUPER + O", hl.dsp.exec_cmd(ags .. "projects"))
+hl.bind("SUPER + M", hl.dsp.exec_cmd(ags .. "monitors"))
 hl.bind("SUPER + T", hl.dsp.exec_cmd("bun " .. scripts .. "/workspace-manager.ts toggle"))
 hl.bind("SUPER + ALT + F", hl.dsp.exec_cmd("firefox"))
 hl.bind("SUPER + ALT + E", hl.dsp.exec_cmd("alacritty --class explorer --command yazi"))
@@ -151,7 +153,7 @@ end
 
 hl.bind("ALT + SHIFT + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind("ALT + SHIFT + mouse:273", hl.dsp.window.resize(), { mouse = true })
-hl.bind("ALT + Tab", hl.dsp.exec_cmd("rofi -modi window -show window"))
+hl.bind("ALT + Tab", hl.dsp.exec_cmd(ags .. "windows"))
 
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("pamixer -i 5"), { repeating = true })
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("pamixer -d 5"), { repeating = true })
@@ -191,4 +193,9 @@ hl.bind("SUPER + SHIFT + SPACE", hl.dsp.group.toggle())
 hl.bind("SUPER + C", hl.dsp.window.center())
 
 -- Idempotent on reload: one controller per Hyprland session. Its private log stays local.
-hl.exec_cmd("bun " .. scripts .. "/workspace-manager.ts daemon >> \"$XDG_RUNTIME_DIR/sysdef-workspace-manager.log\" 2>&1")
+-- Config verification evaluates Lua too; never launch desktop services from it.
+if not (os.getenv("HYPRLAND_CMD") or ""):find("--verify-config", 1, true) then
+    -- The AGS startup lock serializes controller startup too: don't launch it
+    -- separately here, which can race the controller's initial socket bind.
+    hl.exec_cmd('bash "${XDG_CONFIG_HOME:-$HOME/.config}/ags/start.sh" >> "$XDG_RUNTIME_DIR/sysdef-ags-start.log" 2>&1')
+end

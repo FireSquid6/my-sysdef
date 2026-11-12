@@ -1,4 +1,5 @@
 {
+  "exclude": ["ags"],
   "compilerOptions": {
     // Environment setup & latest features
     "lib": ["ESNext"],

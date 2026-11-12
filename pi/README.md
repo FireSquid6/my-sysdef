@@ -11,6 +11,7 @@ Managed by `modules/pi.ts` (enabled in local `config.yaml`).
 | `~/.pi/agent/extensions/` | `pi/extensions/` |
 | `~/.pi/agent/themes/` | `pi/themes/` |
 | `~/.pi/agent/skills/herdr-orchestration/` | `pi/skills/herdr-orchestration/` |
+| `~/.pi/agent/skills/ags/` | `pi/skills/ags/` |
 
 The module honors `PI_CODING_AGENT_DIR` when set.
 
@@ -134,6 +135,26 @@ It covers discovery, safe messaging, bounded delegation, remote agents, result
 verification, and cleanup. The skill reads `hc --skill` for current CLI behavior.
 Only this individual skill is linked; other local and package skills are preserved.
 Requires `hc` to be installed separately. No agents are launched during sync.
+
+Tests: `bun test test/pi-skills.test.ts`.
+
+## AGS desktop development skill
+
+Run `/reload`, then `/skill:ags` when building or debugging an AGS bar, popup,
+launcher, or other desktop shell component. The skill targets AGS 3 with
+TypeScript/TSX, GTK4, Astal, and Gnim, while requiring version checks before work.
+It distinguishes AGS v1/v2 examples, GJS runtime APIs versus Bun tooling, reactive
+ownership/cleanup, layer-shell focus, styling, named-instance IPC, and verification.
+
+`skills/ags/references/current-api.md` contains the source-verified API notes and
+primary-source links pinned to upstream v3.1.2. The observed Arch package
+3.1.2-1 reports CLI version 3.1.0; check both rather than assuming they match.
+The notes are a researched snapshot, not a replacement for installed CLI help.
+
+Only this individual skill is linked; AGS application configuration and startup
+are not changed. Install the AGS CLI and required native libraries separately.
+Adding the skill does not migrate Waybar or the Python monitor menu to AGS, launch
+a desktop shell, or install packages.
 
 Tests: `bun test test/pi-skills.test.ts`.
 

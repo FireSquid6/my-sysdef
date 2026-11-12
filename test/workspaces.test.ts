@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { allocation, DEFAULT_PREFERENCES, floatingGeometry, lua, modeOf, validatePreferences, WORKSPACES, type Client, type Monitor } from "../scripts/workspace-model";
-import { Manager, waybarConfig } from "../scripts/workspace-manager";
+import { Manager } from "../scripts/workspace-manager";
 
 const monitor = (name: string, id = 0): Monitor => ({ name, id, x: id * 1920, y: 0, width: 1920, height: 1080, scale: 1, reserved: [0, 46, 0, 0], activeWorkspace: { name: id ? "1" : "S" } });
 const client = (address = "0x123", floating = false, tags: string[] = []): Client => ({ address, stableId: address, pid: 123, floating, tags, monitor: 0, workspace: { name: "1" }, at: [100, 120], size: [800, 600] });
@@ -19,7 +19,6 @@ function setup() {
     return JSON.stringify(args[1] === "activeworkspace" ? { name: "1" } : args[1] === "activewindow" ? snapshot.clients[0] ?? {} : snapshot[args[1] as keyof typeof snapshot]);
   };
   const manager = new Manager(io, path.join(dir, "preferences.json"), dir, "deisslaptop");
-  manager.signal = async () => {};
   const script = () => calls.filter(c => c[0] === "eval").map(c => c[1]).join("\n");
   return { manager, snapshot, calls, script, dir };
 }
@@ -197,18 +196,26 @@ describe("workspace controller", () => {
     await manager.applyPlacement(snapshot, "topology");
     expect(script()).not.toContain('workspace.move({["workspace"]="1",["monitor"]="DP-1"})');
   });
-  test("bar renders letters, icons, mode and current location including empty workspaces", async () => {
+  test("publishes UI-neutral workspace state, ordered keys, icons and actual locations", async () => {
     const { manager, snapshot, dir } = setup();
-    await manager.writeBar(snapshot);
-    const bar = (monitorName: string, name: string) => JSON.parse(fs.readFileSync(path.join(dir, "bar", monitorName, `${name}.json`), "utf8"));
-    expect(fs.readFileSync(path.join(dir, "bar/eDP-1/N.json"), "utf8").trim().split("\n")).toHaveLength(1);
-    expect(bar("eDP-1", "N").text).toBe("N 󰠮 ▦");
-    expect(bar("eDP-1", "1").text).toBe("1 󰣆 ◇");
-    expect(bar("eDP-1", "S").class).toContain("active");
-    expect(bar("DP-1", "S").text).toBe("");
-    const config = waybarConfig(snapshot.monitors, dir);
-    expect(config[0]["modules-left"].slice(0, 4)).toEqual(["custom/workspace-S", "custom/workspace-G", "custom/workspace-R", "custom/workspace-N"]);
-    expect(config[0]["custom/workspace-1"]["on-click"]).toContain("focus '1'");
+    snapshot.clients = [client()];
+    await manager.writeDesktop(snapshot);
+    const filename = path.join(dir, "desktop.json");
+    const status = JSON.parse(fs.readFileSync(filename, "utf8"));
+    expect(status.version).toBe(1);
+    expect(status.workspaces.map((w: {name: string}) => w.name)).toEqual(WORKSPACES);
+    expect(status.workspaces.find((w: {name: string}) => w.name === "N")).toMatchObject({ icon: "󰠮", mode: "tiling", monitor: "eDP-1", occupied: false });
+    expect(status.workspaces.find((w: {name: string}) => w.name === "1")).toMatchObject({ mode: "floating", occupied: true });
+    expect(status.workspaces[0].active).toBe(true);
+    expect(status.clients[0].address).toBe("0x123");
+    expect(fs.statSync(filename).mode & 0o777).toBe(0o600);
+    const before = fs.statSync(filename).ino;
+    await manager.writeDesktop(snapshot);
+    expect(fs.statSync(filename).ino).toBe(before);
+    snapshot.workspaces[0].monitor = "DP-1";
+    await manager.writeDesktop(snapshot);
+    expect(JSON.parse(fs.readFileSync(filename, "utf8")).workspaces[0].monitor).toBe("DP-1");
+    expect(fs.existsSync(path.join(dir, "waybar.json"))).toBe(false);
   });
 });
 

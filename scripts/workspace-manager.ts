@@ -6,7 +6,6 @@ import net from "node:net";
 import { createHash } from "node:crypto";
 import { allocation, DEFAULT_PREFERENCES, floatingGeometry, geometryOf, ICONS, isNumeric, lua, modeOf, selector, validatePreferences, WORKSPACES, type Client, type Geometry, type Mode, type Monitor, type Preferences } from "./workspace-model";
 
-const root = path.resolve(import.meta.dir, "..");
 const signature = process.env.HYPRLAND_INSTANCE_SIGNATURE;
 const runtimeBase = process.env.XDG_RUNTIME_DIR;
 // Keep AF_UNIX paths below Linux's 108-byte limit, even with long instance signatures.
@@ -40,7 +39,7 @@ export class Manager {
   session: Session;
   previousPlacements: Record<string, string> = {};
   topology = "";
-  barCache = new Map<string, string>();
+  desktopCache = "";
   initial = true;
   constructor(public io = hypr, public prefsFile = preferencesPath, public runtimeDir = runtime, public hostname = os.hostname()) {
     this.preferences = validatePreferences(readJSON(prefsFile, DEFAULT_PREFERENCES));
@@ -63,10 +62,16 @@ export class Manager {
   notify(message: string) { report(message); }
   status(snapshot: Snapshot) {
     const { primary, placements } = allocation(snapshot.monitors, this.preferences, this.hostname);
-    return { primary, primaryAssignment: this.preferences.primary,
+    return { version: 1, primary, primaryAssignment: this.preferences.primary,
       monitors: snapshot.monitors.map(m => ({ ...m, primary: m.name === primary })),
-      workspaces: WORKSPACES.map(name => ({ name, monitor: snapshot.workspaces.find(w => w.name === name)?.monitor ?? placements[name],
-        assignment: this.preferences.assignments[name] ?? null, mode: modeOf(name, this.session.modes) })) };
+      clients: snapshot.clients,
+      workspaces: WORKSPACES.map(name => {
+        const monitor = snapshot.workspaces.find(w => w.name === name)?.monitor ?? placements[name];
+        return { name, monitor, icon: ICONS[name] ?? "󰣆",
+          assignment: this.preferences.assignments[name] ?? null, mode: modeOf(name, this.session.modes),
+          active: snapshot.monitors.some(m => m.name === monitor && m.activeWorkspace?.name === name),
+          occupied: snapshot.clients.some(c => c.workspace.name === name) };
+      }) };
   }
   observeMoves(snapshot: Snapshot) {
     for (const workspace of snapshot.workspaces) {
@@ -169,41 +174,15 @@ export class Manager {
         report("Herdr did not open on S within 30 seconds; startup will not keep trying to focus it.");
       }
     }
-    await this.writeBar(snapshot);
+    await this.writeDesktop(snapshot);
   }
-  async signal(signal: string) {
-    await Bun.spawn(["pkill", "-u", String(process.getuid!()), signal, "-x", "waybar"], { stdout: "ignore", stderr: "ignore" }).exited;
-  }
-  async writeBar(snapshot: Snapshot) {
+  async writeDesktop(snapshot: Snapshot) {
+    // UI-neutral, event-driven snapshot. AGS watches the directory for atomic renames.
     const status = this.status(snapshot);
-    const configPath = path.join(this.runtimeDir, "waybar.json");
-    const config = waybarConfig(snapshot.monitors, this.runtimeDir);
-    const serializedConfig = JSON.stringify(config);
-    if (this.barCache.get(configPath) !== serializedConfig) {
-      atomicJSON(configPath, config);
-      this.barCache.set(configPath, serializedConfig);
-      await this.signal("-USR2");
-    }
-    let changed = false;
-    for (const monitor of snapshot.monitors) for (const workspace of status.workspaces) {
-      const name = workspace.name;
-      const assigned = workspace.monitor === monitor.name;
-      const active = monitor.activeWorkspace?.name === name;
-      const value = assigned ? {
-        text: `${name} ${ICONS[name] ?? "󰣆"} ${workspace.mode === "tiling" ? "▦" : "◇"}`,
-        tooltip: `${name} · ${workspace.mode} · ${monitor.name}${workspace.assignment ? " (assigned)" : " (automatic)"}`,
-        class: ["workspace", workspace.mode, active ? "active" : "inactive", snapshot.clients.some(c => c.workspace.name === name) ? "occupied" : "empty"],
-      } : { text: "", tooltip: "", class: ["hidden"] };
-      const filename = path.join(this.runtimeDir, "bar", monitor.name, `${name}.json`);
-      const serialized = JSON.stringify(value);
-      if (this.barCache.get(filename) !== serialized) {
-        atomicJSON(filename, value, false); this.barCache.set(filename, serialized); changed = true;
-      }
-    }
-    if (changed) {
-      // Waybar's documented custom-module signal: SIGRTMIN + 8 (42 on Linux).
-      await this.signal("-42");
-    }
+    const serialized = JSON.stringify(status);
+    if (this.desktopCache === serialized) return;
+    atomicJSON(path.join(this.runtimeDir, "desktop.json"), status, false);
+    this.desktopCache = serialized;
   }
   async command(command: string, args: string[] = []) {
     let snapshot = await this.snapshot();
@@ -274,27 +253,9 @@ export class Manager {
     } else throw new Error(`Unknown workspace command: ${command}`);
     snapshot = await this.snapshot();
     await this.reconcile(snapshot);
-    await this.writeBar(snapshot);
+    await this.writeDesktop(snapshot);
     return this.status(snapshot);
   }
-}
-
-export function waybarConfig(monitors: Monitor[], runtimeDir = runtime) {
-  // Bun 1.4 exposes JSONC; this repo's older @types/bun does not declare it yet.
-  const jsonc = (Bun as typeof Bun & { JSONC: { parse(text: string): Record<string, unknown> & { "modules-left": string[] } } }).JSONC;
-  const template = jsonc.parse(fs.readFileSync(path.join(root, "dotfiles/waybar.jsonc"), "utf8"));
-  const quote = (text: string) => "'" + text.replace(/'/g, "'\\''") + "'";
-  return monitors.map(monitor => {
-    const config = structuredClone(template);
-    config.output = monitor.name;
-    config["modules-left"] = [...WORKSPACES.map(n => `custom/workspace-${n}`), ...config["modules-left"].filter((n: string) => n !== "hyprland/workspaces")];
-    for (const name of WORKSPACES) config[`custom/workspace-${name}`] = {
-      exec: `cat ${quote(path.join(runtimeDir, "bar", monitor.name, `${name}.json`))}`,
-      "return-type": "json", signal: 8, interval: "once", format: "{}",
-      "on-click": `bun ${quote(path.join(root, "scripts/workspace-manager.ts"))} focus ${quote(name)} >/dev/null`,
-    };
-    return config;
-  });
 }
 
 async function request(command: string, args: string[]): Promise<unknown> {
@@ -376,13 +337,10 @@ if (import.meta.main) {
   try {
     if (command === "runtime") console.log(runtime);
     else if (command === "daemon") await daemon();
-    else if (command === "waybar-config") {
-      const status = await request("status", []) as { monitors: Monitor[] };
-      console.log(JSON.stringify(waybarConfig(status.monitors), null, 2));
-    } else console.log(JSON.stringify(await request(command, args)));
+    else console.log(JSON.stringify(await request(command, args)));
   } catch (error) {
     console.error(String(error));
-    if (!["status", "waybar-config"].includes(command)) report(error);
+    if (command !== "status") report(error);
     process.exitCode = 1;
   }
 }

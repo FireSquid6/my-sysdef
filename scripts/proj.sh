@@ -35,7 +35,8 @@ fi
 
 
 if [[ "$TYPE" == "window" ]]; then
-  alacritty --command tmux attach-session -t "$PROJECT" &
+  # Do not keep an AGS async-command pipe open for the terminal's lifetime.
+  alacritty --command tmux attach-session -t "$PROJECT" </dev/null >/dev/null 2>&1 &
 fi
 
 if [[ "$TYPE" == "attach" ]]; then

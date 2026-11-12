@@ -1,0 +1,95 @@
+/* Tokyo Night Night — shared with sysdef terminals, Pi and the previous shell. */
+* {
+  font-family: "JetBrainsMono Nerd Font", monospace;
+  font-size: 14px;
+}
+window { background: transparent; color: #c0caf5; }
+button {
+  color: #c0caf5;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  box-shadow: none;
+  padding: 7px 10px;
+  min-height: 20px;
+}
+button:hover { background: #292e42; }
+button:focus-visible { outline: 2px solid #bb9af7; outline-offset: -2px; }
+button:disabled { color: #565f89; }
+window.sysdef-bar { background: #1a1b26; }
+.bar-content { padding: 3px 8px; min-height: 40px; }
+.bar-content button { padding: 4px 6px; border: none; border-radius: 4px; }
+.bar-content button:hover { background: #292e42; color: #bb9af7; }
+.bar-divider { background: #414868; min-width: 1px; min-height: 20px; margin: 0 5px; border: none; }
+.workspace { color: #565f89; border-radius: 0; padding: 5px 4px; }
+.workspace.occupied { color: #c0caf5; }
+.workspace.active { color: #ffc777; background: #24283b; border-bottom: 2px solid #bb9af7; }
+.window-title { color: #a9b1d6; }
+.status-chip, .status-readout { color: #c0caf5; background: transparent; border: none; margin: 2px 0; }
+.status-chip:hover { color: #bb9af7; background: #292e42; }
+.status-readout { padding: 4px 6px; }
+.battery.warning { color: #ff9e64; }
+.battery.critical { color: #f7768e; }
+.battery.charging { color: #9ece6a; }
+.bar-power { color: #f7768e; }
+.bar-settings { color: #7dcfff; }
+.bar-error { color: #ff9e64; }
+.tray { margin: 0 6px; }
+.menu-panel {
+  background: #1a1b26;
+  border: 2px solid #bb9af7;
+  border-radius: 14px;
+  padding: 20px;
+  margin: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.menu-title { font-size: 21px; font-weight: bold; color: #bb9af7; }
+.menu-close { color: #565f89; }
+searchentry {
+  background: #24283b;
+  color: #c0caf5;
+  border: 1px solid #414868;
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 26px;
+  box-shadow: none;
+}
+searchentry:focus-within { border-color: #bb9af7; }
+.menu-row { border: 1px solid transparent; border-radius: 8px; }
+.menu-row.selected { background: #24283b; border-color: #414868; }
+.menu-row-action { padding: 10px 12px; }
+.menu-row-title { color: #c0caf5; }
+.menu-row-detail, .menu-hint, .menu-empty, .muted { color: #7982a9; font-size: 12px; }
+.menu-tabs { background: #16161e; border-radius: 8px; padding: 4px; }
+.menu-tab.active { color: #bb9af7; background: #292e42; }
+.menu-cycle { color: #7dcfff; }
+.menu-confirm { color: #ff9e64; background: #24283b; padding: 10px; border-radius: 8px; }
+.menu-error, .danger { color: #f7768e; }
+.menu-calendar { padding: 14px; background: #24283b; border-radius: 10px; }
+calendar:selected { color: #1a1b26; background: #bb9af7; }
+.notification {
+  color: #c0caf5;
+  background: #1a1b26;
+  border: 1px solid #414868;
+  border-radius: 10px;
+  padding: 16px;
+}
+.notification-title { color: #bb9af7; font-weight: bold; }
+.notification-body { color: #a9b1d6; }
+.notification button { background: #24283b; }
+.notification button:hover { background: #292e42; }
+scrollbar { background: transparent; }
+scrollbar slider { background: #414868; min-width: 4px; border-radius: 4px; }
+
+/* Keyboard-first system sidebar; shared Tokyo Night palette. */
+.sidebar-panel { background: #1a1b26; border: 2px solid #bb9af7; border-radius: 10px; padding: 20px; }
+.sidebar-heading { color: #bb9af7; font-size: 17px; font-weight: bold; }
+.sidebar-section { padding: 8px 0; }
+.sidebar-row { background: #16161e; border: 1px solid #24283b; border-radius: 8px; padding: 10px; }
+.sidebar-row:hover { background: #24283b; }
+.sidebar-row.selected, .sidebar-row:focus-visible { background: #24283b; border-color: #bb9af7; }
+.sidebar-detail { color: #a9b1d6; font-size: 12px; }
+.sidebar-row .online { color: #9ece6a; }
+.sidebar-row .offline { color: #565f89; }
+.sidebar-power.danger { color: #f7768e; }
+.resource { color: #c0caf5; }

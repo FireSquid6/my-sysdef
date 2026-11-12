@@ -25,7 +25,7 @@ The active config is `hyprland.lua` (Hyprland 0.57+). `hyprland.conf` is the leg
 
 ## Monitor menu (Super + M)
 
-A GTK3 layer-shell popup opens on the focused monitor. Press Super + M again or Escape to close it.
+The AGS GTK4 layer-shell popup opens on the focused monitor. Press Super + M again or Escape to close it.
 
 - **Primary**: Up/Down selects; Enter applies. Monitor rows are also clickable.
 - **Workspaces**: Up/Down selects; Left/Right cycles Automatic and connected monitors. Mouse buttons provide the same actions.
@@ -40,29 +40,26 @@ Changing primary moves the automatic letter workspaces but leaves existing numer
 
 The Lua config starts one Bun controller per Hyprland instance. At login, `workspace-session.sh` waits for it, then launches applications **once** and focuses S/Herdr. Closing an application does not relaunch it; reloading the config does not rerun application startup.
 
-`waybar.sh` uses the controller-generated, per-output config. Each output shows its current workspaces, including empty ones, ordered S/G/R/N/1–9. Every button includes the key, application/window icon, and **▦ tiling / ◇ floating** indicator. Click to switch. Workspace JSON is cached and Waybar uses its native signal refresh rather than repeatedly launching Bun for each button. Monitor topology changes regenerate and reload the bar config.
+The dedicated `ags` module links the shared Tokyo Night AGS shell. Each output shows its current workspaces, including empty ones, ordered S/G/R/N/1–9. Every button includes the key, application/window icon, and **▦ tiling / ◇ floating** indicator. Click to switch. The controller publishes one cached, atomic `desktop.json`; AGS watches it rather than spawning Bun for each button. Monitor additions/removals create/destroy bar windows. Launcher, project picker, power menu, window switcher, monitor settings, notifications and tray also run in AGS. See [`ags/README.md`](../../ags/README.md) for shortcuts, dependencies, control commands and verification limits.
 
 ## Sources, state, and dependencies
 
 - `scripts/workspace-model.ts`: allocation, validation, geometry, and safe Lua encoding.
 - `scripts/workspace-manager.ts`: serialized local command service, Hyprland event handling, session modes, preferences, and bar data.
-- `scripts/monitor-menu.py`: thin Python/GTK UI; policy lives in the TypeScript controller.
+- `ags/`: GTK4/TSX bar, menus, tray and notification daemon; policy stays in the TypeScript controller.
 - Persistent per-host preferences: `$XDG_STATE_HOME/sysdef/monitors/<hostname>.json` (default `~/.local/state/sysdef/monitors/`).
-- Session data/socket/bar config: run `bun scripts/workspace-manager.ts runtime` to locate the private directory under `$XDG_RUNTIME_DIR`.
+- Session data/socket/desktop snapshot: run `bun scripts/workspace-manager.ts runtime` to locate the private directory under `$XDG_RUNTIME_DIR`.
 - Controller log: `$XDG_RUNTIME_DIR/sysdef-workspace-manager.log`.
 - No preferences, monitor choices, app credentials, or session state belong in Git.
 
-`modules/desktop.ts` declares Bun, Python, GTK3, PyGObject, gtk-layer-shell, libnotify, and procps-ng alongside the existing desktop dependencies. Install Herdr, Hermes Desktop, Proton Mail, and Obsidian separately. A missing required S/R/G launcher is reported and aborts app startup rather than silently skipping it; a missing legacy Notes application is reported visibly.
+`modules/ags.ts` owns AGS/native dependencies and its config symlink; enable `ags` and the `aur` provider in local config. `modules/desktop.ts` retains compositor, idle, wallpaper and other non-shell dependencies. The Python popup and Waybar/Fuzzel/Rofi/Dunst shell dependencies are retired. Install Herdr, Hermes Desktop, Proton Mail, and Obsidian separately. A missing required S/R/G launcher is reported and aborts app startup rather than silently skipping it; a missing legacy Notes application is reported visibly.
 
 Useful checks:
 
 ```sh
-bun test test/workspaces.test.ts
-python scripts/monitor-menu.py --check
-PYTHONPYCACHEPREFIX=/tmp/sysdef-pycache python test/monitor-menu.test.py
-# Optional: opens/closes the real popup and checks Tab/arrow/Escape handling.
-SYSDEF_TEST_LIVE_GTK=1 PYTHONPYCACHEPREFIX=/tmp/sysdef-pycache python test/monitor-menu.test.py
-bash -n scripts/workspace-session.sh scripts/waybar.sh
+bun test test/workspaces.test.ts test/ags.test.ts test/ags-menus.test.ts test/ags-notifications.test.ts
+bash ags/check.sh
+bash -n scripts/workspace-session.sh ags/*.sh
 Hyprland --verify-config -c "$PWD/dotfiles/hypr/hyprland.lua"
 hyprctl configerrors
 bun scripts/workspace-manager.ts status

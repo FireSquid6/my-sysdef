@@ -7,7 +7,6 @@ hypridle &
 hyprctl setcursor Google-DotBlack 24
 
 hyprpaper &
-"$SCRIPTS_DIR"/waybar.sh &
+bash "$SCRIPTS_DIR/../ags/start.sh" >>"$XDG_RUNTIME_DIR/sysdef-ags-start.log" 2>&1 &
 nm-applet &
 trayscale &
-dunst &
