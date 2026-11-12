@@ -92,4 +92,5 @@ scrollbar slider { background: #414868; min-width: 4px; border-radius: 4px; }
 .sidebar-row .online { color: #9ece6a; }
 .sidebar-row .offline { color: #565f89; }
 .sidebar-power.danger { color: #f7768e; }
+.sidebar-power-icon { font-family: "JetBrainsMono Nerd Font"; font-size: 18px; }
 .resource { color: #c0caf5; }

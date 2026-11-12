@@ -22,6 +22,8 @@ export function focusWindowArgs(address: string): string[] {
 export const POWER_ACTIONS = ["lock", "suspend", "logout", "reboot", "shutdown"] as const;
 export type PowerAction = typeof POWER_ACTIONS[number];
 export const POWER_LABELS: Record<PowerAction, string> = { lock: "Lock", suspend: "Suspend", logout: "Log out", reboot: "Reboot", shutdown: "Shut down" };
+// Nerd Font / Font Awesome glyphs, independent of the installed GTK icon theme.
+export const POWER_ICONS: Record<PowerAction, string> = { lock: "", suspend: "", logout: "", reboot: "", shutdown: "" };
 export function confirmPower(pending: PowerAction | null, action: PowerAction): { pending: PowerAction | null; execute: boolean } {
   const execute = action === "lock" || action === "suspend" || pending === action;
   return { pending: execute ? null : action, execute };

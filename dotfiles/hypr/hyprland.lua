@@ -97,6 +97,9 @@ for _, animation in ipairs({
     hl.animation({ leaf = animation[1], enabled = true, speed = animation[2], bezier = animation[3], style = animation[4] })
 end
 
+-- Only the system sidebar slides; other shell surfaces retain their animations.
+hl.layer_rule({ name = "sidebar-slide", match = { namespace = "^sysdef-sidebar$" }, animation = "slide left" })
+
 -- Placement and per-session numeric floating modes are owned by workspace-manager.ts.
 -- Named workspaces stay tiled; native popup/explicit floating rules remain exceptions.
 for _, workspace in ipairs({ "name:S", "name:G", "name:R", "name:N", "1", "2", "3", "4", "5", "6", "7", "8", "9" }) do

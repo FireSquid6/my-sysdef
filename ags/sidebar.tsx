@@ -4,7 +4,7 @@ import { Astal, Gdk, Gtk } from "ags/gtk4";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import Pango from "gi://Pango?version=1.0";
-import { confirmPower, powerArgs, POWER_ACTIONS, POWER_LABELS, type PowerAction } from "./menu-model";
+import { confirmPower, powerArgs, POWER_ACTIONS, POWER_LABELS, POWER_ICONS, type PowerAction } from "./menu-model";
 import { normalizeTailnet, formatBytes, deviceIP, visibleTailnetHealth, type TailDevice } from "./sidebar-model";
 import { createResourceSampler, EMPTY_RESOURCES } from "./services/resources";
 
@@ -24,12 +24,11 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
   const baseRows: Gtk.Button[] = [];
   let deviceOrder: string[] = [];
   let deviceBox: Gtk.Box;
-  let closeButton: Gtk.Button;
   let timer = 0, generation = 0, disposed = false, busy = false, polling = false;
   let cancellation: Gio.Cancellable | null = null;
   let focusIndex = 0;
   let pendingG = false;
-  const allRows = () => [closeButton, ...baseRows, ...deviceOrder.map(id => deviceRows.get(id)?.button).filter((button): button is Gtk.Button => !!button)];
+  const allRows = () => [...baseRows, ...deviceOrder.map(id => deviceRows.get(id)?.button).filter((button): button is Gtk.Button => !!button)];
   function track(self: Gtk.Button) {
     if (self.has_focus) { self.add_css_class("selected"); focusIndex = allRows().indexOf(self); }
     else self.remove_css_class("selected");
@@ -188,7 +187,12 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
   }
   const powerRows = POWER_ACTIONS.map(action =>
     <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track}
-      class={`sidebar-row sidebar-power${action === "lock" || action === "suspend" ? "" : " danger"}`} label={POWER_LABELS[action]} onClicked={() => { void power(action); }} />);
+      class={`sidebar-row sidebar-power${action === "lock" || action === "suspend" ? "" : " danger"}`} onClicked={() => { void power(action); }}>
+      <box spacing={10}>
+        <label label={POWER_ICONS[action]} class="sidebar-power-icon" widthRequest={22} />
+        <label label={POWER_LABELS[action]} xalign={0} hexpand />
+      </box>
+    </button>);
   const resourceRows = (["cpu", "memory", "load", "disk"] as const).map(field =>
     <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track} class="sidebar-row resource">
       <label label={resources(r => r[field])} xalign={0} wrap />
@@ -205,7 +209,7 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
     <box orientation={Gtk.Orientation.VERTICAL} class="sidebar-panel" spacing={12}>
       <box spacing={8}>
         <label label="System" class="sidebar-heading" hexpand xalign={0} />
-        <button $={(self: Gtk.Button) => { closeButton = self; }} label="✕" tooltipText="Close (Escape)" onNotifyHasFocus={track} onClicked={close} />
+        <button label="✕" tooltipText="Close (Escape)" focusable={false} onClicked={close} />
       </box>
       <scrolledwindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
         <box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
@@ -224,7 +228,6 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
             <label label="Tailscale · all devices" class="sidebar-heading" xalign={0} />
             <label label={status} class="sidebar-detail" wrap xalign={0} />
             <label label={feedback} visible={feedback(value => !!value)} class="online" wrap xalign={0} />
-            <label label="Enter / Space: copy peer IP and toggle details" class="muted" wrap xalign={0} />
             <label label={health} visible={health(h => !!h)} class="danger" wrap xalign={0} />
             <box orientation={Gtk.Orientation.VERTICAL} spacing={6} $={(self: Gtk.Box) => { deviceBox = self; }} />
           </box>

@@ -77,11 +77,12 @@ not rewritten. `scripts/open-menu.sh` remains a compatibility shim into AGS.
 
 Super+P toggles the left-hand sidebar on the focused output. It fills the usable
 vertical space with the same 20px outer gaps, 2px border and 10px corner radius as
-normal Hyprland windows. The GTK window accepts compositor resizing so its body
+normal Hyprland windows. It slides in/out from the left via a namespace-specific
+Hyprland layer rule; other shell animations are unchanged. The GTK window accepts compositor resizing so its body
 keeps the full anchored height as content loads; it is not a fixed-size popup.
 Sections appear in this order:
 
-1. **Power & session:** Lock, Suspend, Log out, Reboot, Shut down. Lock uses the
+1. **Power & session:** icon-labelled Lock, Suspend, Log out, Reboot, Shut down. Lock uses the
    existing Hyprlock wrapper and acts immediately; Log out, Reboot and Shut down
    require a second explicit selection. Holding Enter or Space cannot confirm.
    The former Super+Ctrl+L lock shortcut is removed; use Super+P → Lock instead.
@@ -93,7 +94,8 @@ Sections appear in this order:
    last-seen and transfer information. No login URLs, keys or raw status are saved.
 
 `j`/`k` or Up/Down navigate rows; `gg`/`G` or Home/End reach the first/last row;
-`h`/`l` collapse/expand device details; Tab/Shift+Tab traverse controls;
+`h`/`l` collapse/expand device details; Tab/Shift+Tab traverse controls.
+Row navigation starts at Lock and excludes the mouse-only ✕ close button;
 Enter/Space activates a power choice; on a peer device it copies its Tailscale IP
 (prefer IPv4, fall back to IPv6) and toggles details, with a visible copied marker.
 Self rows only toggle details. Devices without an IP report that nothing can be

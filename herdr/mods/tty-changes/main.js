@@ -302,8 +302,7 @@ export default class Changes extends View {
           return div().id(`remote-${action}`).flex_1().h(28).flex().items_center().justify_center().border_1().border_color(this.focusArea === action ? t.accent : t.border).bg(t.raised)
             .text_color(available ? t.foreground : t.dim).when(available, e => e.cursor_pointer().hover(s => s.bg(t.hover)))
             .on_click((_e, cx) => this.sync(action, cx)).child(this.syncAction === action ? `${action}…` : action[0].toUpperCase() + action.slice(1));
-        })))
-        .child(div().text_size(10).text_color(t.dim).child(`${this.focusArea || "files"} · p Pull · Shift+P Push · Shift+D Diff`)));
+        }))));
   }
 
   branchColor(fallback) {

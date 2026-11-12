@@ -1,11 +1,11 @@
 // Workspace spaces: stable colored avatars, worktrees under their checkout,
 // grouped by machine when more than one is known. After a space's name, the repo
-// its first terminal is in now, only where unusual: branch, ahead/behind. Agent state lives in the agents list, not here. Click to
+// its first terminal is in now, only where unusual: branch, ahead/behind. Live agent counts sit at the right edge. Click to
 // switch, right-click for its menu, drag to reorder.
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, window, layout } from "herdr";
+import { spaces, machines, panes, agents, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, window, layout } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -385,6 +385,8 @@ export default class Spaces extends View {
   }
 
   row({ w, i, g, tree }, t) {
+    const count = agents().filter(agent => agent.space === w.id).length;
+    const agentColor = count === 0 ? "#565f89" : count === 1 ? "#bb9af7" : "#e0af68";
     const on = w.active;
     const fromIndex = this.pressed === null ? -1 : spaces().findIndex(s => s.id === this.pressed);
     const colors = shared("space.colors") ?? {};
@@ -437,7 +439,11 @@ export default class Spaces extends View {
           .when(Boolean(tree), el => el.pl(22).child(svg("mods/workspace-chrome/branch.svg").size(13).text_color(t.dim)))
           .when(!tree, el => el.child(h_flex().size(18).flex_none().rounded(0).bg(fill).items_center().justify_center().text_size(10.5).font_bold().text_color("#ffffff").child([...w.name][0]?.toUpperCase() ?? "?")))
           .child(div().flex_shrink(0).max_w(150).truncate().text_color(t.foreground).child(w.name))
-          .child(g ? this.gitTail(g, tree, w.name, t) : div().flex_1()),
+          .child(g ? this.gitTail(g, tree, w.name, t) : div().flex_1())
+          .child(h_flex().id(`space-agents-${w.id}`).flex_none().gap(4).items_center().text_color(agentColor)
+            .tooltip("Live agents in this space")
+            .child(String(count))
+            .child(div().font_family("JetBrainsMono Nerd Font").child("󰚩"))),
       );
   }
 

@@ -111,7 +111,7 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         const controller = keyboard(sidebar.window, "sysdef-sidebar-keys")
         const press = (value: number, modifiers = 0) => controller.emit("key-pressed", value, 0, modifiers)
         press(Gdk.KEY_End)
-        assert(details().focusindex === 11, "End did not reach the last tailnet device")
+        assert(details().focusindex === 10, "End did not reach the last tailnet device")
         const last = widgets(sidebar.window, "sidebar-row").at(-1)!
         const detail = last.get_first_child()!.get_last_child()!
         assert(!detail.visible, "Device details should start collapsed")
@@ -126,10 +126,26 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         press(Gdk.KEY_j); assert(details().focusindex === 1, "j did not move down")
         press(Gdk.KEY_k); assert(details().focusindex === 0, "k did not move up")
         press(Gdk.KEY_j, Gdk.ModifierType.CONTROL_MASK); assert(details().focusindex === 0, "Ctrl+j was incorrectly treated as plain j")
-        press(Gdk.KEY_G); assert(details().focusindex === 11, "G did not reach the last row")
-        press(Gdk.KEY_Home); press(Gdk.KEY_j); press(Gdk.KEY_j); press(Gdk.KEY_j)
-        const logout = widgets(sidebar.window, "sidebar-power")[2] as Gtk.Button
-        assert(logout.label === "Log out", "Sidebar omitted Log out")
+        press(Gdk.KEY_G); assert(details().focusindex === 10, "G did not reach the last row")
+        press(Gdk.KEY_Home)
+        const actions = widgets(sidebar.window, "sidebar-power") as Gtk.Button[]
+        assert(actions.length === 5, "Sidebar omitted a session action")
+        for (const action of actions) {
+          const icon = action.get_child()?.get_first_child() as Gtk.Label
+          assert(icon instanceof Gtk.Label && icon.has_css_class("sidebar-power-icon") && /^[\uE000-\uF8FF]$/.test(icon.label), "Session action omitted its Nerd Font glyph")
+        }
+        assert(details().focusindex === 0, "Home must select the first session row")
+        const closeButton = sidebar.window.get_child()?.get_first_child()?.get_last_child() as Gtk.Button
+        assert(closeButton.label === "✕" && !closeButton.focusable, "Close button must remain mouse-only")
+        const labels = (root: Gtk.Widget): string[] => {
+          const values = root instanceof Gtk.Label ? [root.label] : []
+          for (let child = root.get_first_child(); child; child = child.get_next_sibling()) values.push(...labels(child))
+          return values
+        }
+        assert(!labels(sidebar.window).some(text => text.includes("Enter / Space")), "Tailscale shortcut hint is still visible")
+        press(Gdk.KEY_j); press(Gdk.KEY_j)
+        const logout = actions[2]!
+        assert((logout.get_child()?.get_last_child() as Gtk.Label).label === "Log out", "Sidebar omitted Log out")
         press(Gdk.KEY_Return); press(Gdk.KEY_Return)
         assert(widgets(sidebar.window, "menu-confirm")[0]?.visible, "Sidebar power action skipped confirmation")
         assert(!calls.some(c => c[0] === "hyprctl" || c[0] === "systemctl"), "Sidebar executed a desktop action")
@@ -140,9 +156,9 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         assert(!sidebar.window.visible && sidebar.window.keymode === Astal.Keymode.NONE, "q did not close and release keyboard focus")
         sidebar.open(monitor)
         const lock = widgets(sidebar.window, "sidebar-power")[0] as Gtk.Button
-        assert(lock.label === "Lock", "Sidebar omitted Lock")
+        assert((lock.get_child()?.get_last_child() as Gtk.Label).label === "Lock", "Sidebar omitted Lock")
         const locksBefore = calls.filter(c => c[0] === "bash").length
-        lock.emit("clicked")
+        press(Gdk.KEY_Home); press(Gdk.KEY_Return)
         await Promise.resolve(); await Promise.resolve()
         assert(calls.filter(c => c[0] === "bash").length === locksBefore + 1, "Sidebar Lock did not run exactly once")
         assert(!sidebar.window.visible, "Sidebar did not close after locking")
