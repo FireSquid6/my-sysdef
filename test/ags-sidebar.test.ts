@@ -1,5 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { cpuDelta, parseCpu, parseMemory, normalizeTailnet, formatBytes, deviceIP } from "../ags/sidebar-model";
+import { cpuDelta, parseCpu, parseMemory, normalizeTailnet, formatBytes, deviceIP, visibleTailnetHealth } from "../ags/sidebar-model";
+
+describe("sidebar Tailscale warnings", () => {
+  test("hides only the SSH access-policy warning and preserves other health issues", () => {
+    const ssh = "Tailscale SSH enabled, but access controls don't allow anyone to access this device. Update your tailnet's ACLs at https://tailscale.com/s/ssh-policy";
+    expect(visibleTailnetHealth([ssh, "DNS configuration unavailable", "Tailscale SSH is not supported on this device"])).toEqual([
+      "DNS configuration unavailable", "Tailscale SSH is not supported on this device",
+    ]);
+    expect(visibleTailnetHealth([])).toEqual([]);
+    expect(normalizeTailnet({ BackendState: "Running", Health: [ssh] }).health).toEqual([ssh]);
+  });
+});
 
 describe("sidebar device clipboard", () => {
   test("prefers IPv4, falls back to IPv6 and leaves missing addresses unavailable", () => {

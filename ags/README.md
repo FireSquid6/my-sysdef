@@ -101,6 +101,10 @@ releases keyboard focus. Vim letter keys do not intercept Ctrl/Alt/Super
 shortcuts. Focused rows scroll into view. Tailscale is read-only
 here: there are no automatic connect/disconnect, SSH or network-changing actions.
 Resource/status polling runs only while open, without overlapping requests;
+The informational “Tailscale SSH enabled, but access controls don't allow anyone”
+warning is hidden in this menu only; other health warnings remain visible and no
+Tailscale settings are changed. Keyboard controls remain active without a bottom
+controls-guide footer.
 Tailscale commands have a four-second timeout. Closing cancels resource reads and
 discards stale asynchronous results. `modules/ags.ts` declares the Tailscale CLI.
 

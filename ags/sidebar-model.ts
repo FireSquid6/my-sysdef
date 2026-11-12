@@ -24,6 +24,10 @@ export function formatBytes(value: number | undefined): string {
 }
 export type TailDevice = { id: string; name: string; os: string; self: boolean; online: boolean; ips: string[]; connection: string; lastSeen: string; rx?: number; tx?: number; exitNode: boolean };
 export type Tailnet = { status: string; devices: TailDevice[]; health: string[] };
+/** Hide this informational SSH-policy warning in the menu, not in Tailscale itself. */
+export function visibleTailnetHealth(messages: string[]): string[] {
+  return messages.filter(message => !message.startsWith("Tailscale SSH enabled, but access controls don't allow anyone to access this device."));
+}
 /** Prefer the familiar Tailscale IPv4 address, otherwise the first daemon-supplied IP. */
 export function deviceIP(device: Pick<TailDevice, "ips">): string | null {
   return device.ips.find(ip => /^\d+\.\d+\.\d+\.\d+$/.test(ip)) ?? device.ips[0] ?? null;
