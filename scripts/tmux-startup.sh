@@ -25,7 +25,8 @@ tmux new-window -t local-sysdef -n term3 -c "$SYSTEM_CONFIG_DIR"
 tmux new-window -t local-sysdef -n term4 -c "$SYSTEM_CONFIG_DIR"
 
 tmux select-window -t local-sysdef:claude
-tmux send-keys -t local-sysdef "/home/firesquid/sysdef/scripts/sandbox.sh" Enter
+printf -v sandbox_command '%q' "$SYSTEM_CONFIG_DIR/scripts/sandbox.sh"
+tmux send-keys -t local-sysdef "$sandbox_command" Enter
 
 tmux select-window -t local-sysdef:editor
 tmux send-keys -t local-sysdef "nvim" Enter

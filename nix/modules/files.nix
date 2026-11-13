@@ -37,12 +37,14 @@ in
       ".config/alacritty/alacritty.toml" = "dotfiles/alacritty.toml";
       ".config/foot/foot.ini" = "dotfiles/foot.ini";
     })
-    (lib.mkIf cfg.modules.desktop.enable {
+    (lib.mkIf (cfg.modules.desktop.enable && cfg.legacySessionFiles) {
       ".config/i3/config" = "dotfiles/i3";
       ".config/picom/picom.conf" = "dotfiles/picom.conf";
       ".config/polybar/config.ini" = "dotfiles/polybar.ini";
       ".config/swaylock/config" = "dotfiles/swaylock/config";
       ".config/betterlockscreen/betterlockscreenrc" = "dotfiles/betterlockscreenrc";
+    })
+    (lib.mkIf cfg.modules.desktop.enable {
       ".config/hypr" = "dotfiles/hypr";
       "wallpapers" = "dotfiles/wallpapers";
     })

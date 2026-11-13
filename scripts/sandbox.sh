@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 usage() {
@@ -66,14 +66,13 @@ REAL_HOME="$(eval echo ~)"
 BWRAP_ARGS=(
   --ro-bind /usr /usr
   --ro-bind /bin /bin
-  --ro-bind /sbin /sbin
   --ro-bind /etc /etc
   --proc /proc
   --dev /dev
   --tmpfs /tmp
   --unshare-pid
   --clearenv
-  --setenv PATH /usr/bin:/bin:/usr/local/bin
+  --setenv PATH "$PATH"
   --setenv HOME "$REAL_HOME"
   --setenv TMPDIR /tmp
   --setenv TERM "${TERM:-xterm}"
@@ -81,6 +80,12 @@ BWRAP_ARGS=(
   --chdir "$SANDBOX_DIR"
 )
 
+# NixOS executables and profile symlinks resolve into the immutable store.
+# Do not bind all of /run: that would expose unrelated host service sockets.
+[[ -d /nix/store ]] && BWRAP_ARGS+=(--ro-bind /nix/store /nix/store)
+[[ -d /run/current-system ]] && BWRAP_ARGS+=(--ro-bind /run/current-system /run/current-system)
+[[ -d /run/systemd/resolve ]] && BWRAP_ARGS+=(--ro-bind /run/systemd/resolve /run/systemd/resolve)
+[[ -d /sbin ]] && BWRAP_ARGS+=(--ro-bind /sbin /sbin)
 [[ -d /lib ]]   && BWRAP_ARGS+=(--ro-bind /lib /lib)
 [[ -d /lib64 ]] && BWRAP_ARGS+=(--ro-bind /lib64 /lib64)
 [[ -d /opt ]]   && BWRAP_ARGS+=(--ro-bind /opt /opt)

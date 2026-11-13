@@ -1,5 +1,11 @@
 # Bounded legacy package translation
 
+This document describes the **original standalone Home Manager translation**.
+The expanded fresh-install NixOS workstation provisions native services and
+compatible graphical runtimes separately; see [the NixOS desktop guide](nixos-desktop.md).
+Its package selection supersedes the host/external exclusions below only for
+`nixosConfigurations.deisslaptop`, not the standalone outputs.
+
 `nix/modules/packages.nix` is a standalone Home Manager **user package** module,
 not a NixOS configuration. It targets `x86_64-linux` and `aarch64-linux`. Every
 `personal.modules.<group>.enable` declared here defaults to **false**:

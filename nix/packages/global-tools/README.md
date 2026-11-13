@@ -33,40 +33,71 @@ and lifecycle scripts, and regenerate `package-lock.json` with
 nixpkgs' `prefetch-npm-deps package-lock.json`; compute the source hash using
 `nix store prefetch-file --json URL`. Run the rendering test, not just `--help`.
 
-## browser-use 0.13.8 — blocked, NOT packaged
+## browser-use 0.13.8
 
-No `browser-use` attribute is exported. This is an incomplete migration, not a
-runtime `uv tool install` wrapper or a Python package with dependencies omitted.
-The installed uv tool must remain until a complete replacement is verified.
+`browser-use/default.nix` builds an isolated Python 3.12 environment from
+`pyproject.toml` and `uv.lock` using uv2nix. The complete required dependency graph,
+including browser-harness 0.1.9 and packages absent from nixpkgs, comes from
+hash-locked PyPI artifacts. Nixpkgs Python package versions are not substituted
+or relaxed. The lock supports Linux Python 3.12/3.13; this derivation deliberately
+selects 3.12. Binary wheels are preferred. The build-system wheel overlay provides
+wheel installation and auto-patchelf hooks (including manylinux libraries).
+No additional package-specific wheel overrides were needed on x86_64-linux.
 
-Inspected upstream's actual tagged metadata:
-<https://github.com/browser-use/browser-use/blob/0.13.8/pyproject.toml>
-and <https://github.com/browser-use/browser-use/blob/0.13.8/browser_use/cli.py>.
-The CLI extra is empty; normal dependencies are **not** optional. In particular,
-the CLI delegates to `browser-harness==0.1.9`, which itself requires
-`cdp-use==1.4.5`, `fetch-use==0.4.0`, `pillow==12.3.0`, and `websockets==15.0.1`.
+The package takes an **explicit `inputs` argument** with `uv2nix`, `pyproject-nix`,
+and `pyproject-build-systems`. The parent flake must pin/provide these inputs;
+this package does not fetch another flake during normal evaluation. For standalone
+reproduction, the verified versions can be obtained from the pinned Hermes flake:
 
-Concrete packaging gaps in the supplied nixpkgs snapshot:
+```sh
+nix-build --no-out-link --expr '
+  let
+    pkgs = import /nix/store/yxkqzvl5bf7knrh55lbl5xjxksq6ydmp-source {};
+    inputs = (builtins.getFlake "github:NousResearch/hermes-agent/3b421578588243f920886e6fe79a6faa87ea026e?narHash=sha256-wGv%2BkNpiOGa1k%2FQxN7njXSF3wmlwPGtQ02Frnp6hP18%3D").inputs;
+  in (import ./nix/packages/global-tools { inherit pkgs inputs; }).browser-use
+'
+# Append .tests.smoke to the final browser-use expression to run the CDP test.
+```
 
-- Neither top-level tool exists in nixpkgs.
-- `python3Packages` lacks `browser-use`, `browser-harness`, `fetch-use`, `cdp-use`,
-  `bubus`, `browser-use-sdk`, and `uuid7`.
-- Numerous upstream dependencies are exact pins incompatible with this snapshot.
-  Examples (required vs available): aiohttp 3.14.3 vs 3.14.5; Pillow 12.3.0 vs
-  13.0.0; OpenAI 2.16.0 vs 3.14.1; Anthropic 0.76.0 vs 2.3.0; Pydantic 2.12.5
-  vs 2.13.4. Blindly relaxing these requirements, especially major SDK versions,
-  would not constitute a verified package.
-- Upstream's `browser-use install` invokes `uvx playwright install chromium`.
-  That is not an acceptable activation step. The harness uses CDP and discovers
-  a running browser via DevToolsActivePort or explicit `BU_CDP_WS`/`BU_CDP_URL`;
-  merely adding Chromium to PATH does not verify browser operation.
+The wrapper sets defaults for upstream's `CHROME_PATH` and `BH_CHROME_PATH` to
+Nix Chromium. These settings are honored by browser-harness's browser probe; they
+are not a promise that the CLI launches a browser automatically. This release's
+CLI attaches to a running browser, either discovered locally or supplied using
+`BU_CDP_URL` / `BU_CDP_WS`. Start Nix Chromium explicitly, for example:
 
-Completing this requires packaging and locking the missing Python closure
-(possibly with a separately pinned uv2nix workspace), resolving the exact pins,
-and testing both CLI import/startup and a local Nix Chromium CDP session without
-install-time downloads. None of those browser-use build/runtime claims have been
-verified here. This is an implementation-scope blocker, not a claim that upstream
-cannot be packaged with Nix.
+```sh
+chromium --remote-debugging-port=9222 --user-data-dir="$HOME/.local/share/browser-use-chromium"
+BU_CDP_URL=http://127.0.0.1:9222 browser-use <<'PY'
+ensure_real_tab()
+print(page_info())
+PY
+```
+
+Do not run `browser-use install` (upstream's Playwright network installer) or
+`--update` (upstream's imperative updater). Neither is invoked by this package,
+activation, or its smoke test. The package has no uv/uvx installer dependency.
+Keep Chromium's sandbox enabled for ordinary use; only the isolated Nix smoke
+test passes `--no-sandbox`.
+
+`tests.smoke` imports `Agent`, `Browser`, the harness/CDP/fetch packages, exercises
+Pillow's native code, validates installed required dependency version constraints
+(with a test-only packaging parser), checks CLI help and versions, launches Nix Chromium headless
+with an ephemeral profile/port, and evaluates JavaScript through the actual CLI
+and harness daemon. The daemon/browser are stopped after testing. This passes in
+the Nix network sandbox, using only loopback CDP and no external service.
+
+Known limits: verified only on x86_64-linux / Python 3.12, not other architectures
+or Python 3.13. No paid cloud browser or LLM integration was tested. Upstream
+`browser-use --version` reports the delegated harness version **0.1.9**, while
+Python distribution metadata correctly reports browser-use **0.13.8**; the test
+asserts both. Native wheel installation succeeded with automatic patching; this
+is not exhaustive functional testing of every dependency. Parent flake/lock and
+system installation are intentionally outside this change.
+
+For updates, change the exact browser-use requirement and run
+`uv lock --python 3.12` from `browser-use/` with a compatible uv, review artifact
+hashes and dependency changes, rebuild, and rerun `tests.smoke`. Never introduce
+fake hashes or replace the lock with an activation-time resolver.
 
 ## Verification performed
 
@@ -85,5 +116,10 @@ Against `/nix/store/yxkqzvl5bf7knrh55lbl5xjxksq6ydmp-source`:
   `157.0.8103.50`, with `PUPPETEER_SKIP_DOWNLOAD=true`.
 - Source hash and npm dependency hash were verified by the successful Nix build;
   no placeholder hashes remain.
-- browser-use was investigated only; **no browser-use build or runtime test
-  passed or was claimed**.
+- browser-use package build passed:
+  `/nix/store/hcl03a5m238msmr0rkb3sdwql3q1fc8p-browser-use-0.13.8`.
+- browser-use isolated environment:
+  `/nix/store/3szrwcblxig02i7azfg7i95l2n5h34hm-browser-use-0.13.8-env`.
+- browser-use `tests.smoke` passed with `sandbox = true`, including local CDP
+  evaluation returning `42`:
+  `/nix/store/9q8s4jycz5w9vr62vbglcipynzl0rsns-browser-use-smoke`.

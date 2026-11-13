@@ -19,7 +19,7 @@ hl.env("PATH", home .. "/.nix-profile/bin:" .. home .. "/.bun/bin:" .. (os.geten
 hl.env("XCURSOR_SIZE", "24")
 hl.env("XCURSOR_THEME", "GoogleDot-Black")
 hl.env("HYPRSHOT_DIR", "Pictures")
-hl.env("QT_QPA_PLATFORMTHEME", "qt5ct")
+hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
 hl.env("SCRIPTS_DIR", scripts)
 hl.env("SYSTEM_CONFIG_DIR", configRoot)
 

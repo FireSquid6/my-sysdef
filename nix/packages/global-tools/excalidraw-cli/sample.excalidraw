@@ -1,0 +1,24 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "nix-smoke-test",
+  "appState": { "viewBackgroundColor": "#ffffff" },
+  "elements": [
+    {
+      "id": "rectangle",
+      "type": "rectangle",
+      "x": 20, "y": 20, "width": 120, "height": 80, "angle": 0,
+      "strokeColor": "#000000", "backgroundColor": "#ff0000",
+      "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid",
+      "roughness": 0, "opacity": 100, "seed": 42
+    },
+    {
+      "id": "label",
+      "type": "text",
+      "x": 30, "y": 40, "width": 100, "height": 24, "angle": 0,
+      "strokeColor": "#000000", "backgroundColor": "transparent",
+      "fontSize": 20, "fontFamily": 1, "text": "Nix PNG",
+      "opacity": 100, "seed": 43
+    }
+  ]
+}

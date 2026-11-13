@@ -6,6 +6,10 @@ purple `#bb9af7`, green `#9ece6a`, red `#f7768e`, and cyan `#7dcfff`.
 
 ## Managed installation
 
+The [fresh-install NixOS desktop](../docs/nixos-desktop.md) supplies the pinned
+upstream AGS 3 flake and matching runtime. The stable-package/runtime caveat below
+applies only to the **standalone Home Manager** outputs.
+
 The repository now uses Nix + standalone Home Manager; see
 [the migration guide](../docs/nix-migration.md). Workstation profiles enable
 `personal.modules.ags.enable` alongside `personal.modules.desktop.enable`.

@@ -1,5 +1,13 @@
-{ lib, buildNpmPackage, fetchurl, makeWrapper, chromium, runCommand, poppler-utils
-, makeFontsConf, dejavu_fonts
+{
+  lib,
+  buildNpmPackage,
+  fetchurl,
+  makeWrapper,
+  chromium,
+  runCommand,
+  poppler-utils,
+  makeFontsConf,
+  dejavu_fonts,
 }:
 
 buildNpmPackage (finalAttrs: {
@@ -32,21 +40,27 @@ buildNpmPackage (finalAttrs: {
     done
   '';
 
-  passthru.tests.render = runCommand "md-to-pdf-render-test" {
-    nativeBuildInputs = [ finalAttrs.finalPackage poppler-utils ];
-    FONTCONFIG_FILE = makeFontsConf { fontDirectories = [ dejavu_fonts ]; };
-  } ''
-    export HOME="$TMPDIR/home"
-    mkdir -p "$HOME"
-    md-to-pdf --version | grep -Fx '5.2.5'
-    md2pdf --help >/dev/null
-    printf '# Nix PDF smoke test\n\nOffline rendering works.\n' > input.md
-    # Nix build sandboxes do not support Chromium's nested sandbox.
-    md-to-pdf input.md --launch-options '{"args":["--no-sandbox"]}'
-    pdftotext input.pdf output.txt
-    grep -F 'Offline rendering works.' output.txt
-    touch "$out"
-  '';
+  passthru.tests.render =
+    runCommand "md-to-pdf-render-test"
+      {
+        nativeBuildInputs = [
+          finalAttrs.finalPackage
+          poppler-utils
+        ];
+        FONTCONFIG_FILE = makeFontsConf { fontDirectories = [ dejavu_fonts ]; };
+      }
+      ''
+        export HOME="$TMPDIR/home"
+        mkdir -p "$HOME"
+        md-to-pdf --version | grep -Fx '5.2.5'
+        md2pdf --help >/dev/null
+        printf '# Nix PDF smoke test\n\nOffline rendering works.\n' > input.md
+        # Nix build sandboxes do not support Chromium's nested sandbox.
+        md-to-pdf input.md --launch-options '{"args":["--no-sandbox"]}'
+        pdftotext input.pdf output.txt
+        grep -F 'Offline rendering works.' output.txt
+        touch "$out"
+      '';
 
   meta = {
     description = "CLI tool for converting Markdown files to PDF using Chromium";

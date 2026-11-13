@@ -2,6 +2,11 @@
 
 ## Scope and current status
 
+**This guide covers the standalone Home Manager outputs.** For a fresh NixOS
+installation with the native Hyprland/AGS runtime, services and expanded package
+inventory, use [the NixOS desktop guide](nixos-desktop.md). Its
+`nixosConfigurations.deisslaptop` output is separate from the outputs below.
+
 The flake is the new configuration entry point. The old TypeScript engine is
 retained for comparison/tests, not used by the new system. No native packages
 are removed. No Nix installation, real home adoption, or Home Manager switch has
