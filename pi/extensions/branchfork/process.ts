@@ -1,10 +1,10 @@
 import { spawn } from "node:child_process";
 
 export interface ProcessResult { code: number; stdout: string; stderr: string }
-export type Run = (program: string, argv: string[], options?: { input?: string; cwd?: string; timeout?: number }) => Promise<ProcessResult>;
+export type Run = (program: string, argv: string[], options?: { input?: string; cwd?: string; timeout?: number; env?: NodeJS.ProcessEnv }) => Promise<ProcessResult>;
 
 export const run: Run = (program, argv, options = {}) => new Promise((resolve, reject) => {
-  const child = spawn(program, argv, { cwd: options.cwd, stdio: "pipe" });
+  const child = spawn(program, argv, { cwd: options.cwd, env: options.env ? { ...process.env, ...options.env } : process.env, stdio: "pipe" });
   const stdout: Buffer[] = [], stderr: Buffer[] = [];
   let bytes = 0, failure: Error | undefined;
   const timer = setTimeout(() => { failure = new Error(`${program} timed out`); child.kill("SIGKILL"); }, options.timeout ?? 190000);
@@ -34,7 +34,7 @@ export async function checked(run: Run, program: string, argv: string[], options
 // Large/sensitive session payloads travel on stdin, not command lines or shell interpolation.
 export async function onHost(run: Run, host: string, program: string, argv: string[], input = "") {
   if (!host) return checked(run, program, argv, { input });
-  const raw = await checked(run, "herdr-core", ["exec", "--json", "--on", host, "--timeout", "180", "--stdin", "--", program, ...argv], { input });
+  const raw = await checked(run, "hc", ["exec", "--json", "--on", host, "--timeout", "180", "--stdin", "--", program, ...argv], { input });
   const result = JSON.parse(raw) as ProcessResult & { truncated?: boolean; timed_out?: boolean };
   const stdout = Buffer.from(result.stdout, "base64").toString();
   const stderr = Buffer.from(result.stderr, "base64").toString();

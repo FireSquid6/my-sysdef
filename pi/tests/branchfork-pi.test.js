@@ -19,6 +19,8 @@ const temporary = () => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bra
 describe.skipIf(!available)("branchfork compatibility with the installed Pi", () => {
   test("real loader discovers /branchfork, and startup/reload/shutdown own their inbox resources", async () => {
     const dir = temporary(), original = process.env.PI_CODING_AGENT_DIR;
+    const originalTerminal = process.env.HC_TERMINAL_ID;
+    delete process.env.HC_TERMINAL_ID; // Standalone Pi: never inspect the user's core from a loader test.
     process.env.PI_CODING_AGENT_DIR = dir;
     let extension;
     try {
@@ -61,6 +63,7 @@ describe.skipIf(!available)("branchfork compatibility with the installed Pi", ()
     } finally {
       for (const handler of extension?.handlers.get("session_shutdown") ?? []) await handler({}, {});
       if (original === undefined) delete process.env.PI_CODING_AGENT_DIR; else process.env.PI_CODING_AGENT_DIR = original;
+      if (originalTerminal === undefined) delete process.env.HC_TERMINAL_ID; else process.env.HC_TERMINAL_ID = originalTerminal;
     }
   });
   test("real SessionManager forks only the active path, preserves compaction/context edits, and changes cwd", () => {

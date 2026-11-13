@@ -23,9 +23,17 @@ export function storageWorker(request) {
   if (request.action === "prerequisites") {
     const entry = path.join(path.dirname(root), "extensions", "branchfork", "index.ts");
     if (!fs.existsSync(entry)) throw new Error("Branchfork is not installed in the destination Pi extensions directory. Recommended fix: sync the sysdef Pi module on that host, then retry.");
-    const helper = path.resolve(path.dirname(fs.realpathSync(entry)), "../../../herdr/mods/source-picker/project-launch.js");
-    if (!fs.existsSync(helper)) throw new Error("The shared Herdr project launcher is missing beside the destination extension checkout. Recommended fix: sync the complete sysdef checkout, not just the branchfork directory.");
     return { ok: true };
+  }
+  if (request.action === "executable") {
+    const program = request.program;
+    if (typeof program !== "string" || !program || program.includes("\0")) throw new Error("Invalid executable name");
+    const candidates = path.isAbsolute(program) ? [program] : (process.env.PATH || "").split(path.delimiter).filter(Boolean).map(dir => path.resolve(dir, program));
+    for (const file of candidates) {
+      try { fs.accessSync(file, fs.constants.X_OK); if (fs.statSync(file).isFile()) return fs.realpathSync(file); }
+      catch { /* Try the next PATH entry. */ }
+    }
+    throw new Error(`Required executable not found: ${program}. Install/configure it on the destination and retry.`);
   }
   if (request.action === "identity") return { hostname: os.hostname(), home: os.homedir() };
   if (request.action === "canonical") return fs.realpathSync(request.path);

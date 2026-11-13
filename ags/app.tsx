@@ -13,6 +13,8 @@ import { createCaffeineService } from "./services/caffeine"
 import { createNotificationService } from "./services/notifications"
 import { createTrayService } from "./services/tray"
 import { NotificationList, NotificationPopups } from "./indicators"
+import { Wallpaper } from "./wallpaper"
+import { createWallpaperService } from "./services/wallpaper"
 
 const root = GLib.getenv("SYSDEF_ROOT_DIR") || `${GLib.get_home_dir()}/sysdef`
 const instance = GLib.getenv("SYSDEF_AGS_INSTANCE") || "sysdef"
@@ -31,6 +33,7 @@ app.start({
     const controller = createController(root, report)
     const system = createSystemService()
     const caffeine = createCaffeineService()
+    const wallpaper = createWallpaperService(GLib.getenv("SYSDEF_AGS_SERVICES") !== "0")
     const notifications = createNotificationService()
     const tray = createTrayService()
     const monitors = createBinding(app, "monitors")
@@ -43,7 +46,7 @@ app.start({
     const menus = createMenus({ run, controller: controller.controller, desktop: controller.desktop, root,
       close() { active = "" }, showError: report })
     app.add_window(menus.window)
-    const sidebar = createSidebar({ run, caffeine, close() { active = "" }, showError: report })
+    const sidebar = createSidebar({ run, caffeine, wallpaper: GLib.getenv("SYSDEF_AGS_SERVICES") !== "0" ? wallpaper : undefined, close() { active = "" }, showError: report })
     app.add_window(sidebar.window)
     const history = <window name="sysdef-history" application={app} namespace="sysdef-menu" visible={false}
       layer={Astal.Layer.OVERLAY} keymode={Astal.Keymode.NONE} class="sysdef-menu" resizable={false}
@@ -78,7 +81,9 @@ app.start({
       return all.filter(m => m.connector === controller.desktop().primary).slice(0, 1)
     })
     const popups = <For each={popupMonitors}>{monitor => <This this={app}><NotificationPopups service={notifications} monitor={monitor} /></This>}</For>
-    void bars; void popups
+    const wallpapers = <For each={monitors}>{monitor => <This this={app}><Wallpaper monitor={monitor} service={wallpaper} /></This>}</For>
+    void bars; void popups; void wallpapers
+    if (GLib.getenv("SYSDEF_AGS_SERVICES") !== "0") void wallpaper.start()
     void controller.start()
     system.start()
     caffeine.start()
@@ -90,12 +95,12 @@ app.start({
         try { app.apply_css(`${root}/ags/style.css`, true) } catch (e) { report(e) }
       }
     })
-    onCleanup(() => { controller.stop(); system.stop(); caffeine.stop(); notifications.stop(); tray.stop(); cssWatcher.cancel(); menus.window.destroy(); history.destroy() })
+    onCleanup(() => { controller.stop(); system.stop(); caffeine.stop(); wallpaper.stop(); notifications.stop(); tray.stop(); cssWatcher.cancel(); menus.window.destroy(); history.destroy() })
     dispatch = ([command, name]) => {
       if (command === "ping") return "pong"
       if (command === "status") return { instance, menu: active, menus: menus.describe(), sidebar: sidebar.describe(), windows: app.windows.map(w => ({ name: w.name, visible: w.visible })),
         primary: controller.desktop().primary, workspaces: controller.desktop().workspaces.length,
-        caffeine: caffeine.state(), notifications: notifications.items().length, notificationError: notifications.error(), tray: tray.items().length, trayError: tray.error(), error: error() }
+        wallpaper: wallpaper.state(), caffeine: caffeine.state(), notifications: notifications.items().length, notificationError: notifications.error(), tray: tray.items().length, trayError: tray.error(), error: error() }
       if (command === "toggle" || command === "show") {
         if (command === "show" && active === (name === "power" ? "sidebar" : name)) close()
         open(name)

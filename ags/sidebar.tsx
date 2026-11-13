@@ -8,8 +8,9 @@ import { confirmPower, powerArgs, POWER_ACTIONS, POWER_LABELS, POWER_ICONS, type
 import { normalizeTailnet, formatBytes, deviceIP, visibleTailnetHealth, type TailDevice } from "./sidebar-model";
 import { createResourceSampler, EMPTY_RESOURCES } from "./services/resources";
 import type { CaffeineService } from "./services/caffeine";
+import type { WallpaperService } from "./services/wallpaper";
 
-type Dependencies = { caffeine: Pick<CaffeineService, "state" | "toggle">; run: (argv: string[]) => Promise<string>; close: () => void; showError: (error: unknown) => void; copy?: (text: string) => void };
+type Dependencies = { wallpaper?: Pick<WallpaperService, "state" | "toggle">; caffeine: Pick<CaffeineService, "state" | "toggle">; run: (argv: string[]) => Promise<string>; close: () => void; showError: (error: unknown) => void; copy?: (text: string) => void };
 type DeviceRow = { button: Gtk.Button; title: Gtk.Label; summary: Gtk.Label; detail: Gtk.Label; device: TailDevice; expanded: boolean; dispose: () => void };
 
 export function createSidebar(deps: Dependencies): { window: Astal.Window; open: (monitor?: Gdk.Monitor) => void; close: () => void; describe: () => unknown } {
@@ -203,6 +204,15 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
       <label label={deps.caffeine.state(s => `Caffeine: ${s.busy ? "Enabling…" : s.enabled ? "On" : "Off"}`)} xalign={0} hexpand />
     </box>
   </button>;
+  const wallpaperRow = deps.wallpaper ? <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track}
+    class="sidebar-row" sensitive={deps.wallpaper.state(s => !s.busy)}
+    tooltipText="Switch between the local-time pixel landscape and your Hyprpaper configuration"
+    onClicked={() => { setPending(null); void deps.wallpaper!.toggle(); }}>
+    <box spacing={10}>
+      <label label="▧" class="sidebar-power-icon" widthRequest={22} />
+      <label label={deps.wallpaper.state(s => `Wallpaper: ${s.busy ? "Switching…" : s.mode === "animated" ? "Animated landscape" : "Hyprpaper"}`)} xalign={0} hexpand />
+    </box>
+  </button> : null;
   const resourceRows = (["cpu", "memory", "load", "disk"] as const).map(field =>
     <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track} class="sidebar-row resource">
       <label label={resources(r => r[field])} xalign={0} wrap />
@@ -227,6 +237,8 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
             <label label="Power & session" class="sidebar-heading" xalign={0} />
             {powerRows}
             {caffeineRow}
+            {wallpaperRow}
+            {deps.wallpaper && <label class="danger" visible={deps.wallpaper.state(s => !!s.error)} label={deps.wallpaper.state(s => s.error)} wrap xalign={0} />}
             <label class="danger" visible={deps.caffeine.state(s => !!s.error)} label={deps.caffeine.state(s => s.error)} wrap xalign={0} />
             <label class="menu-confirm" visible={pending(p => p !== null)} label={pending(p => p ? `Choose ${p} again to confirm. Escape closes.` : "")} wrap xalign={0} />
             <label class="danger" visible={error(e => !!e)} label={error} wrap xalign={0} />

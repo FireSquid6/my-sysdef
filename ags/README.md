@@ -46,6 +46,7 @@ workspace controller and development tools, not GTK widgets.
 | Super+B / bell | Notification history, dismiss/actions, Do Not Disturb, clear history |
 | Tray icons | StatusNotifier activation, middle click, and right-click DBusMenu |
 | Caffeine (in Power & session) / coffee cup on bar | Toggle idle and lid-close inhibition; stays on with the lid closed |
+| Wallpaper (in Power & session) | Switch between animated landscape and Hyprpaper; remembers the selection |
 
 Search menus support arrows, Enter and Escape, mouse selection, and automatic
 search focus. In the monitor menu, Tab switches Primary/Workspaces; left/right
@@ -61,6 +62,40 @@ only clickable items highlight on hover. Audio, battery, notifications and each
 workspace tab use fixed pixel widths with ellipsized labels, so changing contents
 does not shift their boundaries. The Arch logo is removed. Native tray icons and bounded ARGB pixmaps are supported. DBusMenu
 submenus are presented as indented rows rather than cascading windows.
+
+### Wallpaper
+
+Open **Super+P → Power & session → Wallpaper** to switch renderers. The default
+is **Animated landscape**: a Tokyo Night pixel-art scene with layered mountains,
+fields, a winding river, pines, drifting clouds and gently moving grass/water.
+Lighting follows the **system's local clock**, with dawn around 05:00–07:00,
+dusk from 17:00–20:00, and stars, a moon and animated teal/purple aurora at night.
+These are fixed clock times, not location-based sunrise/sunset calculations.
+All colors are blended from the Tokyo Night palette, including daytime lighting.
+
+The selection is saved in `$XDG_STATE_HOME/sysdef/wallpaper` (normally
+`~/.local/state/sysdef/wallpaper`). **Hyprpaper** uses the existing
+`~/.config/hypr/hyprpaper.conf` unchanged. AGS owns renderer handoff; don't also
+start Hyprpaper separately. It can adopt legacy Hyprpaper processes from this exact
+Hyprland/Wayland session, but never kills another session's wallpaper. Hyprpaper
+0.8's `listactive` IPC must be enabled for readiness checks. Failures are shown
+in the sidebar; failed startup or an unexpected exit restores animation.
+
+Every output gets an independent background-layer window; hotplug cleanup removes
+its window and timer. Backgrounds do not reserve screen space or accept input.
+Animation redraws at 8 FPS and stops drawing in Hyprpaper mode. Disposable
+`SYSDEF_AGS_SERVICES=0` instances cannot change wallpapers or preferences.
+
+Checks and previews (no live shell restart):
+
+```sh
+bun test test/wallpaper.test.ts
+bash ags/tools/wallpaper-service-smoke.sh # isolated stub renderer, state and session
+ags run ags/tools/wallpaper-preview.ts --gtk 4 # /tmp/sysdef-wallpaper-{0,6,12,18}.png
+ags run ags/tools/wallpaper-smoke.tsx --gtk 4 # two-second live window test only
+```
+
+After updating sources, restart AGS or log in again to load the wallpaper toggle.
 
 ### Caffeine
 
