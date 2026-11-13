@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-
-
-# Get the directory of this script
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# This is the actual entrypoint of sysdef
-"$SCRIPT_DIR/bun" run "$SCRIPT_DIR/../sysdef-src/entrypoint.ts" "$@"
+# Retired intentionally: do not let two managers overwrite the same home files.
+printf '%s\n' \
+  'sysdef is retired in this checkout. Configuration is now a Nix flake + Home Manager.' \
+  'Read README.md and docs/nix-migration.md before installing or activating anything.' \
+  'No files were changed.' >&2
+exit 1

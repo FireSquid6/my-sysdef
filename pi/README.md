@@ -1,6 +1,8 @@
 # Pi configuration
 
-Managed by `modules/pi.ts` (enabled in local `config.yaml`).
+Managed by Home Manager's `personal.agents.pi.enable` in `nix/modules/files.nix`.
+See the [migration guide](../docs/nix-migration.md) for preview, backup and switch.
+The historical `modules/pi.ts`/local `config.yaml` writer is retired.
 
 | Pi path | Repository source |
 | --- | --- |
@@ -13,7 +15,9 @@ Managed by `modules/pi.ts` (enabled in local `config.yaml`).
 | `~/.pi/agent/skills/herdr-orchestration/` | `pi/skills/herdr-orchestration/` |
 | `~/.pi/agent/skills/ags/` | `pi/skills/ags/` |
 
-The module honors `PI_CODING_AGENT_DIR` when set.
+For another location, configure home-relative `personal.paths.pi`; Home Manager
+exports the corresponding absolute `PI_CODING_AGENT_DIR`. Evaluation does not
+read the invoking shell's environment. Private runtime/session/auth state stays local.
 
 The selected theme is `tokyonight-night`, using the same Tokyo Night Night
 palette as Kitty and Neovim. Its definition lives in `themes/tokyonight-night.json`.

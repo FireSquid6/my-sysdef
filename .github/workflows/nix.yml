@@ -1,0 +1,32 @@
+name: Nix configuration
+
+on:
+  push:
+    branches: [main, nix-migration]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@d698718aa798980d17dd749f03beae0b51183399 # v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - name: Adoption unit tests
+        run: python3 test/prepare_home_test.py
+      - name: Formatting
+        run: nix fmt -- --check flake.nix nix/hosts.nix nix/modules/*.nix nix/profiles/*.nix
+      - name: Evaluate both architectures and every package group
+        run: nix flake check --no-build --all-systems
+      - name: Build tests and generated core files without activation
+        run: >-
+          nix build --no-link
+          .#checks.x86_64-linux.migration-tests
+          '.#homeConfigurations."firesquid@minibox-one".config.home-files'

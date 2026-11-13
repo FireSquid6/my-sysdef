@@ -2,6 +2,13 @@
 
 The active config is `hyprland.lua` (Hyprland 0.57+). `hyprland.conf` is the legacy config, not the active source.
 
+Home Manager's workstation profile links this directory. The pinned Nixpkgs
+Hyprland is too old, so the compositor, matching portal/ecosystem, and PAM locker
+remain native; see the [migration guide](../../docs/nix-migration.md). The Lua
+config uses HM's `SYSTEM_CONFIG_DIR`/`SCRIPTS_DIR` environment and includes the
+Nix profile on PATH. Legacy `hyprland.conf` retains historical paths and is not
+activated by this migration.
+
 ## Workspaces
 
 | Key | Icon | Mode | Login application |

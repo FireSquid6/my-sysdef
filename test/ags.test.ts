@@ -40,10 +40,14 @@ describe("AGS module and integration", () => {
   test("startup and shortcuts route through the single AGS shell", () => {
     const hypr = fs.readFileSync(path.join(root, "dotfiles/hypr/hyprland.lua"), "utf8");
     for (const menu of ["sidebar", "notifications", "projects", "monitors", "windows"]) expect(hypr).toContain(`ags .. "${menu}"`);
-    expect(hypr).not.toMatch(/rofi|fuzzel|monitor-menu\.py/);
+    // Match executable names, not the "rofi" substring in .nix-profile.
+    expect(hypr).not.toMatch(/\b(?:rofi|fuzzel)\b|monitor-menu\.py/);
     expect(hypr).not.toContain("workspace-manager.ts daemon");
     expect(hypr).toContain(':find("--verify-config", 1, true)');
-    expect(hypr).toContain('hl.env("PATH", (os.getenv("HOME") or "/home/firesquid") .. "/.bun/bin:"');
+    expect(hypr).toContain('hl.env("PATH", home .. "/.nix-profile/bin:" .. home .. "/.bun/bin:"');
+    expect(hypr).toContain('os.getenv("SYSTEM_CONFIG_DIR")');
+    expect(hypr).toContain('local scripts = configRoot .. "/scripts"');
+    expect(hypr).not.toContain('/home/firesquid/sysdef');
     expect(hypr).toContain('if os.getenv("WAYLAND_DISPLAY") and not');
     expect(hypr.indexOf('hl.env("PATH",')).toBeLessThan(hypr.indexOf('hl.on("hyprland.start"'));
     const startup = fs.readFileSync(path.join(root, "scripts/hypr-startup.sh"), "utf8");

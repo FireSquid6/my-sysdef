@@ -25,6 +25,12 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # AGS generated GI declarations (regenerate locally with ags/types.sh)
 ags/@girs/
 
+# Nix development/build outputs and Python test caches
+.direnv/
+/result
+/result-*
+__pycache__/
+
 # caches
 .eslintcache
 .cache
