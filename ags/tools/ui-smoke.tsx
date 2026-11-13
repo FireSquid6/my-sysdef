@@ -10,6 +10,7 @@ import { powerArgs } from "../menu-model"
 import { Bar, createMonitorName } from "../bar"
 import style from "../style.css"
 import type { DesktopStatus } from "../services/controller"
+import { createCaffeineModel, EMPTY_CAFFEINE } from "../caffeine-model"
 
 // Reproduce the GDK property ordering on wake without suspending the desktop.
 const PendingMonitor = GObject.registerClass({
@@ -51,7 +52,12 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
     run: async argv => { calls.push(argv); return "" },
     controller: async (command, ...args) => { calls.push([command, ...args]); return desktop() } })
   app.add_window(menus.window)
-  const sidebar = createSidebar({ close() {}, showError(error) { throw error }, copy(text) { copied.push(text) }, run: async argv => {
+  const [caffeineState, setCaffeine] = createState(EMPTY_CAFFEINE)
+  let caffeineReleases = 0
+  const caffeineModel = createCaffeineModel(async () => () => { caffeineReleases++ }, setCaffeine)
+  caffeineModel.ready(false)
+  const caffeine = { state: caffeineState, toggle: caffeineModel.toggle }
+  const sidebar = createSidebar({ caffeine, close() {}, showError(error) { throw error }, copy(text) { copied.push(text) }, run: async argv => {
     calls.push(argv)
     if (argv[0] === "bash") {
       assert(JSON.stringify(argv) === JSON.stringify(powerArgs("lock")), "Unexpected sidebar lock command")
@@ -66,7 +72,7 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
   const [items, setItems] = createState<any[]>([])
   const [trayItems] = createState<any[]>([])
   const [empty] = createState("")
-  const bar = Bar({ monitor, controller: { desktop, error: empty, controller: async () => desktop() } as any,
+  const bar = Bar({ monitor, caffeine, controller: { desktop, error: empty, controller: async () => desktop() } as any,
     system: { state: systemState, update: async () => {} } as any, tray: { items: trayItems, error: empty } as any,
     notifications: { items } as any, open() {}, report(error) { throw error } })
   bar.visible = false
@@ -143,7 +149,7 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         const controller = keyboard(sidebar.window, "sysdef-sidebar-keys")
         const press = (value: number, modifiers = 0) => controller.emit("key-pressed", value, 0, modifiers)
         press(Gdk.KEY_End)
-        assert(details().focusindex === 10, "End did not reach the last tailnet device")
+        assert(details().focusindex === 11, "End did not reach the last tailnet device")
         const last = widgets(sidebar.window, "sidebar-row").at(-1)!
         const detail = last.get_first_child()!.get_last_child()!
         assert(!detail.visible, "Device details should start collapsed")
@@ -158,7 +164,7 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         press(Gdk.KEY_j); assert(details().focusindex === 1, "j did not move down")
         press(Gdk.KEY_k); assert(details().focusindex === 0, "k did not move up")
         press(Gdk.KEY_j, Gdk.ModifierType.CONTROL_MASK); assert(details().focusindex === 0, "Ctrl+j was incorrectly treated as plain j")
-        press(Gdk.KEY_G); assert(details().focusindex === 10, "G did not reach the last row")
+        press(Gdk.KEY_G); assert(details().focusindex === 11, "G did not reach the last row")
         press(Gdk.KEY_Home)
         const actions = widgets(sidebar.window, "sidebar-power") as Gtk.Button[]
         assert(actions.length === 5, "Sidebar omitted a session action")
@@ -167,6 +173,22 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
           assert(icon instanceof Gtk.Label && icon.has_css_class("sidebar-power-icon") && /^[\uE000-\uF8FF]$/.test(icon.label), "Session action omitted its Nerd Font glyph")
         }
         assert(details().focusindex === 0, "Home must select the first session row")
+        const caffeineButton = widgets(sidebar.window, "sidebar-caffeine")[0] as Gtk.Button
+        const caffeineIndicator = widgets(bar, "caffeine")[0] as Gtk.Button
+        assert(!caffeineIndicator.get_parent()!.visible, "Caffeine indicator must be hidden while off")
+        caffeineButton.emit("clicked")
+        await Promise.resolve(); await Promise.resolve()
+        assert(caffeineState().enabled && caffeineIndicator.get_parent()!.visible, "Power-menu toggle did not enable the bar indicator")
+        caffeineIndicator.emit("clicked")
+        assert(!caffeineState().enabled && !caffeineIndicator.get_parent()!.visible && caffeineReleases === 1, "Bar toggle did not release the inhibitor")
+        caffeineButton.emit("clicked")
+        await Promise.resolve(); await Promise.resolve()
+        caffeineModel.ready(true)
+        assert(caffeineState().enabled && caffeineButton.sensitive && caffeineReleases === 1, "Lid closure must preserve Caffeine and its inhibitor")
+        caffeineModel.ready(false)
+        assert(caffeineState().enabled && caffeineButton.sensitive, "Opening the lid must preserve Caffeine")
+        caffeineIndicator.emit("clicked")
+        assert(!caffeineState().enabled && caffeineReleases === 2, "Toggle-off after reopening must release the inhibitor")
         const closeButton = sidebar.window.get_child()?.get_first_child()?.get_last_child() as Gtk.Button
         assert(closeButton.label === "✕" && !closeButton.focusable, "Close button must remain mouse-only")
         const labels = (root: Gtk.Widget): string[] => {
@@ -195,7 +217,7 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         assert(calls.filter(c => c[0] === "bash").length === locksBefore + 1, "Sidebar Lock did not run exactly once")
         assert(!sidebar.window.visible, "Sidebar did not close after locking")
       } finally { sidebar.close() }
-      console.log("GTK UI smoke passed: delayed monitor identity/workspace recovery, native constant widths, menu/search/keyboard, controller routing, power repeat safety, sidebar sections/offline devices/navigation/details and Escape. No desktop actions executed.")
+      console.log("GTK UI smoke passed: Caffeine sidebar/bar toggles and lid-close persistence, delayed monitor identity/workspace recovery, native constant widths, menu/search/keyboard, controller routing, power repeat safety, sidebar sections/offline devices/navigation/details and Escape. No desktop actions executed.")
       app.quit(0)
     } catch (error) { console.error(error); menus.close(); sidebar.close(); app.quit(1) }
   })()

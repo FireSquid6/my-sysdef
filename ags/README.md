@@ -42,6 +42,7 @@ workspace controller and development tools, not GTK widgets.
 | Audio status | Open pavucontrol; scroll adjusts volume; right-click toggles mute |
 | Super+B / bell | Notification history, dismiss/actions, Do Not Disturb, clear history |
 | Tray icons | StatusNotifier activation, middle click, and right-click DBusMenu |
+| Caffeine (in Power & session) / coffee cup on bar | Toggle idle and lid-close inhibition; stays on with the lid closed |
 
 Search menus support arrows, Enter and Escape, mouse selection, and automatic
 search focus. In the monitor menu, Tab switches Primary/Workspaces; left/right
@@ -57,6 +58,22 @@ only clickable items highlight on hover. Audio, battery, notifications and each
 workspace tab use fixed pixel widths with ellipsized labels, so changing contents
 does not shift their boundaries. The Arch logo is removed. Native tray icons and bounded ARGB pixmaps are supported. DBusMenu
 submenus are presented as indented rows rather than cascading windows.
+
+### Caffeine
+
+Open the system/power sidebar with **Super+P**, then toggle **Caffeine** in
+**Power & session**. A coffee cup appears on every bar while enabled; click it
+to disable Caffeine. It prevents hypridle's idle locking, display power-off and
+idle-suspend actions using a logind **idle:handle-lid-switch** block inhibitor.
+While enabled, closing the lid does not trigger logind's sleep/lock policy, and
+Caffeine stays on when the lid closes or reopens. Manual lock and manual suspend
+are not blocked. Turn Caffeine off to restore normal idle and lid-close behavior.
+
+State is session-only and defaults off after shell restart; no preference or
+compositor setting is changed. The inhibitor is also
+released on shell exit or loss of logind. Errors are visible in the sidebar and
+bar rather than falsely showing Caffeine as enabled. This requires hypridle's
+`ignore_systemd_inhibit = false` (already set in the supplied config).
 
 Notifications implement `org.freedesktop.Notifications`, including replacement,
 expiry, actions, close signals and critical urgency. History is bounded to 100
@@ -159,6 +176,7 @@ ags bundle ags/app.tsx /tmp/sysdef-ags-check --gtk 4
 bun test
 bash ags/check.sh                       # Actual GTK widgets + private D-Bus/resource tests
 bash ags/check.sh layout                # Opt-in: briefly displays a read-only panel, validates full height through refresh
+bash ags/check.sh caffeine              # Opt-in: briefly acquires an idle + lid inhibitor; checks toggle-off and shutdown release
 bash -n ags/*.sh scripts/hypr-startup.sh scripts/open-menu.sh scripts/proj.sh
 Hyprland --verify-config -c "$PWD/dotfiles/hypr/hyprland.lua"
 hyprctl configerrors
