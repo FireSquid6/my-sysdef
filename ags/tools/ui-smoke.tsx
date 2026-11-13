@@ -2,13 +2,29 @@
 // Windows are hidden again before GTK's rendering turn, so tests don't grab input.
 import app from "ags/gtk4/app"
 import { Astal, Gdk, Gtk } from "ags/gtk4"
-import { createState } from "ags"
+import { createComputed, createState } from "ags"
+import GObject from "gi://GObject?version=2.0"
 import { createMenus } from "../menus"
 import { createSidebar } from "../sidebar"
 import { powerArgs } from "../menu-model"
-import { Bar } from "../bar"
+import { Bar, createMonitorName } from "../bar"
 import style from "../style.css"
 import type { DesktopStatus } from "../services/controller"
+
+// Reproduce the GDK property ordering on wake without suspending the desktop.
+const PendingMonitor = GObject.registerClass({
+  Properties: {
+    connector: GObject.ParamSpec.string("connector", null, null, GObject.ParamFlags.READWRITE, null),
+    model: GObject.ParamSpec.string("model", null, null, GObject.ParamFlags.READWRITE, null),
+  },
+}, class PendingMonitor extends GObject.Object {
+  get connector(): string | null { return this._connector ?? null }
+  set connector(value: string | null) { this._connector = value; this.notify("connector") }
+  get model(): string | null { return this._model ?? null }
+  set model(value: string | null) { this._model = value; this.notify("model") }
+  private _connector?: string | null
+  private _model?: string | null
+})
 
 app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
   const monitor = app.get_monitors()[0]!
@@ -60,6 +76,22 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
   const open = (name: string) => { menus.open(name); menus.window.visible = false }
   void (async () => {
     try {
+      const pending = new PendingMonitor()
+      const outputName = createMonitorName(pending as unknown as Gdk.Monitor)
+      const recoveredWorkspaces = createComputed(() => desktop().workspaces.filter(w => w.monitor === outputName()))
+      const probe = <box><label label={outputName(value => `bar-${value}`)} /><label label={recoveredWorkspaces(ws => String(ws.length))} /></box> as Gtk.Box
+      const identity = probe.get_first_child() as Gtk.Label
+      const workspaceCount = probe.get_last_child() as Gtk.Label
+      assert(identity.label === "bar-output" && workspaceCount.label === "0", "Missing connector must not claim another output's workspaces")
+      pending.model = "Test display"
+      assert(identity.label === "bar-Test display", "Delayed model did not update the fallback identity")
+      pending.connector = monitor.connector
+      assert(identity.label === `bar-${monitor.connector}` && workspaceCount.label === "1", "Workspace list did not recover when connector arrived after wake")
+      pending.connector = "disconnected-output"
+      assert(workspaceCount.label === "0", "Workspace list retained a stale connector")
+      pending.connector = monitor.connector
+      assert(workspaceCount.label === "1", "Workspace list did not recover after repeated output changes")
+
       const widths = () => ["volume", "battery", "notifications-chip", "workspace"].map(css => {
         const widget = widgets(bar, css)[0]!
         return widget.measure(Gtk.Orientation.HORIZONTAL, -1).slice(0, 2)
@@ -163,7 +195,7 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         assert(calls.filter(c => c[0] === "bash").length === locksBefore + 1, "Sidebar Lock did not run exactly once")
         assert(!sidebar.window.visible, "Sidebar did not close after locking")
       } finally { sidebar.close() }
-      console.log("GTK UI smoke passed: native constant widths, menu/search/keyboard, controller routing, power repeat safety, sidebar sections/offline devices/navigation/details and Escape. No desktop actions executed.")
+      console.log("GTK UI smoke passed: delayed monitor identity/workspace recovery, native constant widths, menu/search/keyboard, controller routing, power repeat safety, sidebar sections/offline devices/navigation/details and Escape. No desktop actions executed.")
       app.quit(0)
     } catch (error) { console.error(error); menus.close(); sidebar.close(); app.quit(1) }
   })()

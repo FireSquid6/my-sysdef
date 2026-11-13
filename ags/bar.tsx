@@ -3,13 +3,21 @@ import GLib from "gi://GLib?version=2.0"
 import Gio from "gi://Gio?version=2.0"
 import { run } from "./services/controller"
 import { Astal, Gdk, Gtk } from "ags/gtk4"
-import { createComputed, For, onCleanup } from "ags"
+import { createBinding, createComputed, For, onCleanup } from "ags"
 import { createPoll } from "ags/time"
 import type { createController } from "./services/controller"
 import type { createSystemService } from "./services/system"
 import { Tray } from "./indicators"
 import type { createTrayService } from "./services/tray"
 import type { createNotificationService } from "./services/notifications"
+
+// Wayland can announce an output before its connector/model properties arrive,
+// especially after DPMS/suspend. Never freeze that incomplete identity at creation.
+export function createMonitorName(monitor: Gdk.Monitor) {
+  const connector = createBinding(monitor, "connector")
+  const model = createBinding(monitor, "model")
+  return createComputed(() => connector() ?? model() ?? "output")
+}
 
 export const BAR_WIDTHS = { audio: 96, battery: 84, notifications: 64 } as const
 function Divider() {
@@ -25,17 +33,17 @@ export function Bar({ monitor, controller, system, tray, notifications, open, re
   open: (name: string, monitor?: Gdk.Monitor) => void
   report: (error: unknown) => void
 }) {
-  const name = monitor.connector ?? monitor.model ?? "output"
+  const name = createMonitorName(monitor)
   const compact = monitor.geometry.width < 1800
   const workspaceWidth = compact ? 52 : 64
-  const workspaces = createComputed(() => controller.desktop().workspaces.filter(w => w.monitor === name))
+  const workspaces = createComputed(() => controller.desktop().workspaces.filter(w => w.monitor === name()))
   const title = createComputed(() => {
-    const output = controller.desktop().monitors.find(m => m.name === name)
+    const output = controller.desktop().monitors.find(m => m.name === name())
     const active = output?.activeWorkspace?.name
     return controller.desktop().clients.filter(c => c.workspace.name === active).sort((a, b) => (a.focusHistoryID ?? 999) - (b.focusHistoryID ?? 999))[0]?.title ?? ""
   })
   const clock = createPoll("", 1000, () => GLib.DateTime.new_now_local().format(compact ? "%a %d %b · %H:%M" : "%A, %B %d | %I:%M:%S %p") ?? "")
-  const window = <window name={`bar-${name}`} application={app} namespace="sysdef-bar" visible
+  const window = <window name={name(value => `bar-${value}`)} application={app} namespace="sysdef-bar" visible
     gdkmonitor={monitor} layer={Astal.Layer.TOP} exclusivity={Astal.Exclusivity.EXCLUSIVE}
     anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.LEFT | Astal.WindowAnchor.RIGHT}
     class="sysdef-bar">
