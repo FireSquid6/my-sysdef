@@ -9,6 +9,7 @@ import { createMenus } from "./menus"
 import { createSidebar } from "./sidebar"
 import { createController, run } from "./services/controller"
 import { createSystemService } from "./services/system"
+import { createCaffeineService } from "./services/caffeine"
 import { createNotificationService } from "./services/notifications"
 import { createTrayService } from "./services/tray"
 import { NotificationList, NotificationPopups } from "./indicators"
@@ -29,6 +30,7 @@ app.start({
     const report = (cause: unknown) => { console.error(String(cause)); setError(String(cause)) }
     const controller = createController(root, report)
     const system = createSystemService()
+    const caffeine = createCaffeineService()
     const notifications = createNotificationService()
     const tray = createTrayService()
     const monitors = createBinding(app, "monitors")
@@ -41,7 +43,7 @@ app.start({
     const menus = createMenus({ run, controller: controller.controller, desktop: controller.desktop, root,
       close() { active = "" }, showError: report })
     app.add_window(menus.window)
-    const sidebar = createSidebar({ run, close() { active = "" }, showError: report })
+    const sidebar = createSidebar({ run, caffeine, close() { active = "" }, showError: report })
     app.add_window(sidebar.window)
     const history = <window name="sysdef-history" application={app} namespace="sysdef-menu" visible={false}
       layer={Astal.Layer.OVERLAY} keymode={Astal.Keymode.NONE} class="sysdef-menu" resizable={false}
@@ -69,7 +71,7 @@ app.start({
       } else menus.open(name, monitor)
     }
     const bars = <For each={monitors}>{monitor => <This this={app}>
-      <Bar monitor={monitor} controller={controller} system={system} tray={tray} notifications={notifications} open={open} report={report} />
+      <Bar monitor={monitor} controller={controller} system={system} caffeine={caffeine} tray={tray} notifications={notifications} open={open} report={report} />
     </This>}</For>
     const popupMonitors = createComputed(() => {
       const all = monitors()
@@ -79,6 +81,7 @@ app.start({
     void bars; void popups
     void controller.start()
     system.start()
+    caffeine.start()
     // Disposable test instances must not compete for desktop-wide D-Bus names.
     if (GLib.getenv("SYSDEF_AGS_SERVICES") !== "0") { notifications.start(); tray.start() }
     const cssWatcher = Gio.File.new_for_path(`${root}/ags`).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null)
@@ -87,12 +90,12 @@ app.start({
         try { app.apply_css(`${root}/ags/style.css`, true) } catch (e) { report(e) }
       }
     })
-    onCleanup(() => { controller.stop(); system.stop(); notifications.stop(); tray.stop(); cssWatcher.cancel(); menus.window.destroy(); history.destroy() })
+    onCleanup(() => { controller.stop(); system.stop(); caffeine.stop(); notifications.stop(); tray.stop(); cssWatcher.cancel(); menus.window.destroy(); history.destroy() })
     dispatch = ([command, name]) => {
       if (command === "ping") return "pong"
       if (command === "status") return { instance, menu: active, menus: menus.describe(), sidebar: sidebar.describe(), windows: app.windows.map(w => ({ name: w.name, visible: w.visible })),
         primary: controller.desktop().primary, workspaces: controller.desktop().workspaces.length,
-        notifications: notifications.items().length, notificationError: notifications.error(), tray: tray.items().length, trayError: tray.error(), error: error() }
+        caffeine: caffeine.state(), notifications: notifications.items().length, notificationError: notifications.error(), tray: tray.items().length, trayError: tray.error(), error: error() }
       if (command === "toggle" || command === "show") {
         if (command === "show" && active === (name === "power" ? "sidebar" : name)) close()
         open(name)

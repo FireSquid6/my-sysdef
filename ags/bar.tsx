@@ -7,6 +7,7 @@ import { createBinding, createComputed, For, onCleanup } from "ags"
 import { createPoll } from "ags/time"
 import type { createController } from "./services/controller"
 import type { createSystemService } from "./services/system"
+import type { CaffeineService } from "./services/caffeine"
 import { Tray } from "./indicators"
 import type { createTrayService } from "./services/tray"
 import type { createNotificationService } from "./services/notifications"
@@ -24,10 +25,11 @@ function Divider() {
   return <Gtk.Separator orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} class="bar-divider" />
 }
 
-export function Bar({ monitor, controller, system, tray, notifications, open, report }: {
+export function Bar({ monitor, controller, system, caffeine, tray, notifications, open, report }: {
   monitor: Gdk.Monitor
   controller: ReturnType<typeof createController>
   system: ReturnType<typeof createSystemService>
+  caffeine: Pick<CaffeineService, "state" | "toggle">
   tray: ReturnType<typeof createTrayService>
   notifications: ReturnType<typeof createNotificationService>
   open: (name: string, monitor?: Gdk.Monitor) => void
@@ -63,6 +65,12 @@ export function Bar({ monitor, controller, system, tray, notifications, open, re
       </box>
       <box $type="center" />
       <box $type="end" spacing={0}>
+        <box visible={caffeine.state(s => s.enabled || s.busy || !!s.error)}>
+          <button class={caffeine.state(s => `status-chip caffeine${s.error ? " danger" : ""}`)}
+            label={caffeine.state(s => s.error ? " !" : "")}
+            tooltipText={caffeine.state(s => s.error || (s.busy ? "Enabling Caffeine…" : "Caffeine on · idle disabled · click to turn off · lid closure turns it off"))}
+            onClicked={() => { void caffeine.toggle(); }} /><Divider />
+        </box>
         <box visible={createComputed(() => tray.items().length > 0 || !!tray.error())}><Tray service={tray} /><Divider /></box>
         <box visible={createComputed(() => !!(controller.error() || system.state().error))}>
           <button class="bar-error" label="" tooltipText={createComputed(() => [controller.error(), system.state().error].filter(Boolean).join("\n"))}

@@ -7,8 +7,9 @@ import Pango from "gi://Pango?version=1.0";
 import { confirmPower, powerArgs, POWER_ACTIONS, POWER_LABELS, POWER_ICONS, type PowerAction } from "./menu-model";
 import { normalizeTailnet, formatBytes, deviceIP, visibleTailnetHealth, type TailDevice } from "./sidebar-model";
 import { createResourceSampler, EMPTY_RESOURCES } from "./services/resources";
+import type { CaffeineService } from "./services/caffeine";
 
-type Dependencies = { run: (argv: string[]) => Promise<string>; close: () => void; showError: (error: unknown) => void; copy?: (text: string) => void };
+type Dependencies = { caffeine: Pick<CaffeineService, "state" | "toggle">; run: (argv: string[]) => Promise<string>; close: () => void; showError: (error: unknown) => void; copy?: (text: string) => void };
 type DeviceRow = { button: Gtk.Button; title: Gtk.Label; summary: Gtk.Label; detail: Gtk.Label; device: TailDevice; expanded: boolean; dispose: () => void };
 
 export function createSidebar(deps: Dependencies): { window: Astal.Window; open: (monitor?: Gdk.Monitor) => void; close: () => void; describe: () => unknown } {
@@ -193,6 +194,15 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
         <label label={POWER_LABELS[action]} xalign={0} hexpand />
       </box>
     </button>);
+  const caffeineRow = <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track}
+    class="sidebar-row sidebar-caffeine" sensitive={deps.caffeine.state(s => s.available && !s.lidClosed)}
+    tooltipText={deps.caffeine.state(s => s.error || (s.lidClosed ? "Unavailable while the lid is closed" : "Prevents idle locking, screen blanking and idle sleep. Turns off when the lid closes."))}
+    onClicked={() => { setPending(null); void deps.caffeine.toggle(); }}>
+    <box spacing={10}>
+      <label label="" class="sidebar-power-icon" widthRequest={22} />
+      <label label={deps.caffeine.state(s => `Caffeine: ${s.busy ? "Enabling…" : s.enabled ? "On" : "Off"}`)} xalign={0} hexpand />
+    </box>
+  </button>;
   const resourceRows = (["cpu", "memory", "load", "disk"] as const).map(field =>
     <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track} class="sidebar-row resource">
       <label label={resources(r => r[field])} xalign={0} wrap />
@@ -216,6 +226,8 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
           <box orientation={Gtk.Orientation.VERTICAL} class="sidebar-section" spacing={6}>
             <label label="Power & session" class="sidebar-heading" xalign={0} />
             {powerRows}
+            {caffeineRow}
+            <label class="danger" visible={deps.caffeine.state(s => !!s.error)} label={deps.caffeine.state(s => s.error)} wrap xalign={0} />
             <label class="menu-confirm" visible={pending(p => p !== null)} label={pending(p => p ? `Choose ${p} again to confirm. Escape closes.` : "")} wrap xalign={0} />
             <label class="danger" visible={error(e => !!e)} label={error} wrap xalign={0} />
           </box>

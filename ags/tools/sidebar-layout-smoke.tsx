@@ -6,13 +6,16 @@ import GLib from "gi://GLib?version=2.0"
 import { execAsync } from "ags/process"
 import { readFile } from "ags/file"
 import { createSidebar } from "../sidebar"
+import { createState } from "ags"
+import { EMPTY_CAFFEINE } from "../caffeine-model"
 import style from "../style.css"
 const pause = (ms: number) => new Promise<void>(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => { resolve(); return GLib.SOURCE_REMOVE }))
 app.start({ instanceName: "sysdef-layout-smoke", css: style, main() {
   const monitor = app.get_monitors()[0]!
   const pid = Number(readFile("/proc/self/stat").split(" ")[0])
   let polls = 0
-  const sidebar = createSidebar({ close() {}, showError(error) { console.error(error) }, copy() {}, run: async argv => {
+  const [caffeineState] = createState(EMPTY_CAFFEINE)
+  const sidebar = createSidebar({ caffeine: { state: caffeineState, toggle: async () => {} }, close() {}, showError(error) { console.error(error) }, copy() {}, run: async argv => {
     if (!argv.includes("tailscale")) throw Error("Desktop actions disabled in the layout test")
     polls++
     return JSON.stringify({ BackendState: "Running", Self: { ID: "self", HostName: "layout-self", Online: true }, Peer: polls > 1 ? { peer: { ID: "peer", HostName: "layout-peer", Online: false } } : {} })
