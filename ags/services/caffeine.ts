@@ -17,17 +17,17 @@ export function createCaffeineService() {
     const connection = proxy?.get_connection()
     const owner = proxy?.get_name_owner()
     if (!connection || !owner) { reject(Error("logind is unavailable")); return }
-    // Only idle: never inhibit sleep or handle-lid-switch. Explicit suspend and
-    // normal lid-close policy continue to work even while Caffeine is enabled.
+    // Inhibit idle actions and logind's lid handling, including the suspend
+    // that would trigger hypridle's before-sleep lock. Manual suspend still works.
     connection.call_with_unix_fd_list(owner, PATH, IFACE, "Inhibit",
-      new GLib.Variant("(ssss)", ["idle", "sysdef Caffeine", "Keep the desktop awake", "block"]),
+      new GLib.Variant("(ssss)", ["idle:handle-lid-switch", "sysdef Caffeine", "Keep the desktop awake, including with the lid closed", "block"]),
       new GLib.VariantType("(h)"), Gio.DBusCallFlags.NONE, 5000, null, cancellation,
       (conn, result) => {
         let descriptors: number[] = []
         try {
           const [reply, list] = conn!.call_with_unix_fd_list_finish(result)
           // Steal rather than get(): the FD list otherwise retains another copy
-          // until GC, delaying the release after toggling off or closing the lid.
+          // until GC, delaying the release after toggling off or shutting down.
           descriptors = list?.steal_fds() ?? []
           const [index] = reply.deep_unpack() as [number]
           if (!Number.isInteger(index) || index < 0 || index >= descriptors.length) throw Error("logind returned no inhibitor handle")

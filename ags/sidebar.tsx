@@ -195,8 +195,8 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
       </box>
     </button>);
   const caffeineRow = <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track}
-    class="sidebar-row sidebar-caffeine" sensitive={deps.caffeine.state(s => s.available && !s.lidClosed)}
-    tooltipText={deps.caffeine.state(s => s.error || (s.lidClosed ? "Unavailable while the lid is closed" : "Prevents idle locking, screen blanking and idle sleep. Turns off when the lid closes."))}
+    class="sidebar-row sidebar-caffeine" sensitive={deps.caffeine.state(s => s.available)}
+    tooltipText={deps.caffeine.state(s => s.error || "Prevents idle locking, screen blanking and lid-close sleep/locking. Stays on with the lid closed.")}
     onClicked={() => { setPending(null); void deps.caffeine.toggle(); }}>
     <box spacing={10}>
       <label label="" class="sidebar-power-icon" widthRequest={22} />

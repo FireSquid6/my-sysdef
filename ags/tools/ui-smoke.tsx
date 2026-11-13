@@ -180,13 +180,15 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         await Promise.resolve(); await Promise.resolve()
         assert(caffeineState().enabled && caffeineIndicator.get_parent()!.visible, "Power-menu toggle did not enable the bar indicator")
         caffeineIndicator.emit("clicked")
-        assert(!caffeineState().enabled && !caffeineIndicator.get_parent()!.visible && caffeineReleases === 1, "Bar toggle did not release the idle inhibitor")
+        assert(!caffeineState().enabled && !caffeineIndicator.get_parent()!.visible && caffeineReleases === 1, "Bar toggle did not release the inhibitor")
         caffeineButton.emit("clicked")
         await Promise.resolve(); await Promise.resolve()
         caffeineModel.ready(true)
-        assert(!caffeineState().enabled && !caffeineButton.sensitive && caffeineReleases === 2, "Lid closure did not turn Caffeine off")
+        assert(caffeineState().enabled && caffeineButton.sensitive && caffeineReleases === 1, "Lid closure must preserve Caffeine and its inhibitor")
         caffeineModel.ready(false)
-        assert(!caffeineState().enabled && caffeineButton.sensitive, "Opening the lid must not re-enable Caffeine")
+        assert(caffeineState().enabled && caffeineButton.sensitive, "Opening the lid must preserve Caffeine")
+        caffeineIndicator.emit("clicked")
+        assert(!caffeineState().enabled && caffeineReleases === 2, "Toggle-off after reopening must release the inhibitor")
         const closeButton = sidebar.window.get_child()?.get_first_child()?.get_last_child() as Gtk.Button
         assert(closeButton.label === "✕" && !closeButton.focusable, "Close button must remain mouse-only")
         const labels = (root: Gtk.Widget): string[] => {
@@ -215,7 +217,7 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         assert(calls.filter(c => c[0] === "bash").length === locksBefore + 1, "Sidebar Lock did not run exactly once")
         assert(!sidebar.window.visible, "Sidebar did not close after locking")
       } finally { sidebar.close() }
-      console.log("GTK UI smoke passed: Caffeine sidebar/bar toggles and lid-close reset, delayed monitor identity/workspace recovery, native constant widths, menu/search/keyboard, controller routing, power repeat safety, sidebar sections/offline devices/navigation/details and Escape. No desktop actions executed.")
+      console.log("GTK UI smoke passed: Caffeine sidebar/bar toggles and lid-close persistence, delayed monitor identity/workspace recovery, native constant widths, menu/search/keyboard, controller routing, power repeat safety, sidebar sections/offline devices/navigation/details and Escape. No desktop actions executed.")
       app.quit(0)
     } catch (error) { console.error(error); menus.close(); sidebar.close(); app.quit(1) }
   })()

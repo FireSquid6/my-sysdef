@@ -8,7 +8,7 @@ export type CaffeineState = {
 export const EMPTY_CAFFEINE: CaffeineState = { enabled: false, busy: false, available: false, lidClosed: false, error: "" };
 
 // Own exactly one inhibitor. Invalidated asynchronous acquisitions must release
-// their handle too (lid closure and shutdown can race with the D-Bus reply).
+// their handle too (toggle-off and shutdown can race with the D-Bus reply).
 export function createCaffeineModel(acquire: () => Promise<() => void>, publish: (state: CaffeineState) => void) {
   let state = { ...EMPTY_CAFFEINE };
   let generation = 0;
@@ -24,7 +24,6 @@ export function createCaffeineModel(acquire: () => Promise<() => void>, publish:
     state: () => state,
     ready(lidClosed: boolean) {
       if (disposed) return;
-      if (lidClosed) disable();
       update({ available: true, lidClosed, error: "" });
     },
     unavailable(error: string) {
@@ -34,7 +33,7 @@ export function createCaffeineModel(acquire: () => Promise<() => void>, publish:
     async toggle() {
       if (disposed) return;
       if (state.enabled || state.busy) { disable(); return; }
-      if (!state.available || state.lidClosed) return;
+      if (!state.available) return;
       const token = ++generation;
       update({ busy: true, error: "" });
       try {

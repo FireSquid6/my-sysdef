@@ -1,4 +1,4 @@
-// Opt-in host integration: briefly acquire/release an idle-only inhibitor.
+// Opt-in host integration: briefly acquire/release an idle + lid inhibitor.
 // No windows, lid events, locks, suspend requests or persistent state changes.
 import GLib from "gi://GLib?version=2.0"
 import Gio from "gi://Gio?version=2.0"
@@ -32,14 +32,14 @@ createRoot(dispose => {
       await service.toggle()
       if (!service.state().enabled) throw Error(service.state().error || "Inhibitor was not enabled")
       const rows = await inhibitors()
-      if (own(rows) !== before + 1 || rows.some(row => row[1] === "sysdef Caffeine" && (row[0] !== "idle" || row[3] !== "block"))) throw Error("Expected an idle-only block inhibitor")
+      if (own(rows) !== before + 1 || rows.some(row => row[1] === "sysdef Caffeine" && (row[0].split(":").sort().join(":") !== "handle-lid-switch:idle" || row[3] !== "block"))) throw Error("Expected an idle + handle-lid-switch block inhibitor")
       await service.toggle()
       await waitFor(async () => own(await inhibitors()) === before)
       await service.toggle()
       if (!service.state().enabled) throw Error("Could not enable for cleanup check")
       service.stop()
       await waitFor(async () => own(await inhibitors()) === before)
-      console.log("Caffeine host smoke passed: logind lid state, idle-only acquisition, immediate toggle-off release and shutdown release. No suspend or lid events triggered.")
+      console.log("Caffeine host smoke passed: logind lid state, idle + lid acquisition, immediate toggle-off release and shutdown release. No suspend or lid events triggered.")
     } catch (error) { console.error(error); failed = true }
     finally { service.stop(); dispose(); loop.quit() }
   })()

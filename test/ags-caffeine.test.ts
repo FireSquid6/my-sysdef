@@ -7,7 +7,7 @@ function harness() {
   return { model, acquisitions: () => acquisitions, releases: () => releases };
 }
 
-describe("Caffeine idle inhibition", () => {
+describe("Caffeine idle and lid inhibition", () => {
   test("starts off, only enables when ready, and releases on toggle off", async () => {
     const h = harness();
     await h.model.toggle();
@@ -20,21 +20,45 @@ describe("Caffeine idle inhibition", () => {
     expect(h.model.state().enabled).toBe(false);
     expect(h.releases()).toBe(1);
   });
-  test("lid closure releases inhibition; reopening never re-enables it", async () => {
+  test("lid closure and reopening preserve the active inhibitor", async () => {
     const h = harness();
     h.model.ready(false);
     await h.model.toggle();
     h.model.ready(true);
-    expect(h.model.state()).toMatchObject({ enabled: false, busy: false, lidClosed: true });
-    expect(h.releases()).toBe(1);
-    await h.model.toggle();
-    expect(h.acquisitions()).toBe(1);
+    expect(h.model.state()).toMatchObject({ enabled: true, busy: false, lidClosed: true });
+    expect(h.releases()).toBe(0);
     h.model.ready(false);
+    expect(h.model.state().enabled).toBe(true);
+    expect(h.acquisitions()).toBe(1);
+    await h.model.toggle();
+    expect(h.releases()).toBe(1);
+  });
+  test("can enable and disable while the lid is closed", async () => {
+    const h = harness();
+    h.model.ready(true);
     expect(h.model.state().enabled).toBe(false);
     await h.model.toggle();
     expect(h.model.state().enabled).toBe(true);
+    await h.model.toggle();
+    expect(h.model.state().enabled).toBe(false);
+    expect(h.releases()).toBe(1);
   });
-  for (const reason of ["lid", "off", "shutdown", "disconnect"] as const) {
+  test("lid closure does not invalidate a pending acquisition", async () => {
+    let resolve!: (release: () => void) => void;
+    let released = 0;
+    const model = createCaffeineModel(() => new Promise(r => { resolve = r; }), () => {});
+    model.ready(false);
+    const pending = model.toggle();
+    model.ready(true);
+    expect(model.state()).toMatchObject({ busy: true, lidClosed: true });
+    resolve(() => { released++; });
+    await pending;
+    expect(model.state()).toMatchObject({ enabled: true, busy: false, lidClosed: true });
+    expect(released).toBe(0);
+    model.stop();
+    expect(released).toBe(1);
+  });
+  for (const reason of ["off", "shutdown", "disconnect"] as const) {
     test(`${reason} invalidates a pending acquisition and releases its late handle`, async () => {
       let resolve!: (release: () => void) => void;
       let released = 0;
@@ -42,7 +66,6 @@ describe("Caffeine idle inhibition", () => {
       model.ready(false);
       const pending = model.toggle();
       expect(model.state().busy).toBe(true);
-      if (reason === "lid") { model.ready(true); model.ready(false); }
       if (reason === "off") await model.toggle();
       if (reason === "shutdown") model.stop();
       if (reason === "disconnect") model.unavailable("Lost logind");

@@ -68,7 +68,7 @@ export function Bar({ monitor, controller, system, caffeine, tray, notifications
         <box visible={caffeine.state(s => s.enabled || s.busy || !!s.error)}>
           <button class={caffeine.state(s => `status-chip caffeine${s.error ? " danger" : ""}`)}
             label={caffeine.state(s => s.error ? " !" : "")}
-            tooltipText={caffeine.state(s => s.error || (s.busy ? "Enabling Caffeine…" : "Caffeine on · idle disabled · click to turn off · lid closure turns it off"))}
+            tooltipText={caffeine.state(s => s.error || (s.busy ? "Enabling Caffeine…" : "Caffeine on · idle and lid-close sleep/locking disabled · click to turn off"))}
             onClicked={() => { void caffeine.toggle(); }} /><Divider />
         </box>
         <box visible={createComputed(() => tray.items().length > 0 || !!tray.error())}><Tray service={tray} /><Divider /></box>
