@@ -81,6 +81,9 @@ calendar:selected { color: #1a1b26; background: #bb9af7; }
 scrollbar { background: transparent; }
 scrollbar slider { background: #414868; min-width: 4px; border-radius: 4px; }
 
+/* The power menu is intentionally opaque, unlike wallpaper-facing app chrome. */
+window.sidebar { background: #1a1b26; border-radius: 10px; }
+
 /* Keyboard-first system sidebar; shared Tokyo Night palette. */
 .sidebar-panel { background: #1a1b26; border: 2px solid #bb9af7; border-radius: 10px; padding: 20px; }
 .sidebar-heading { color: #bb9af7; font-size: 17px; font-weight: bold; }

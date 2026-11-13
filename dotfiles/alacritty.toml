@@ -22,6 +22,10 @@ yellow = "#e0af68"
 background = "#1a1b26"
 foreground = "#a9b1d6"
 
+# Background-only translucency; text, cursor and selections stay crisp.
+[window]
+opacity = 0.90
+
 [font]
 normal = { family = "JetBrainsMono NF", style = "Regular"}
 bold = { family = "JetBrainsMono NF", style = "Bold"}

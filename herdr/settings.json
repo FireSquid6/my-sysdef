@@ -7,6 +7,17 @@
   "minimum_contrast": 1,
   "appearance": "dark",
   "theme": "tokyonight-night",
+  "colors": {
+    "background": "#1a1b2600",
+    "canvas": "#16161e00",
+    "chrome": "#16161ecc",
+    "surface": "#1a1b26e6",
+    "popover": "#1f2335e6",
+    "raised": "#24283be6",
+    "hover": "#292e42e6",
+    "selected": "#283457e6",
+    "input": "#1a1b26e6"
+  },
   "font": "JetBrains Mono",
   "ui_font": "JetBrains Mono",
   "font_size": 15

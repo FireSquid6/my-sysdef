@@ -9,7 +9,14 @@ require("lazy").setup({
       vim.o.timeoutlen = 200
     end,
   },
-  "folke/tokyonight.nvim",
+  {
+    "folke/tokyonight.nvim",
+    opts = {
+      -- Inherit the terminal background (Alacritty translucent, Herdr opaque).
+      transparent = true,
+      styles = { sidebars = "transparent", floats = "dark" },
+    },
+  },
 
   "nvim-lua/popup.nvim",
   "nvim-lua/plenary.nvim",
