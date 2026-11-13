@@ -40,6 +40,14 @@ describe("background-only desktop translucency", () => {
     expect(theme.background).toBe("#1a1b26")
     expect(theme.ansi.every((color: string) => /^#[0-9a-f]{6}$/i.test(color))).toBe(true)
   })
+  test("Herdr sidebar paints its chrome tint once, rather than compounding 80% to 96%", () => {
+    const layout = json("herdr/layouts/tty.json")
+    const sidebar = layout.children.find((node: { id: string }) => node.id === "sidebar")
+    expect(sidebar.background).toBe("#00000000")
+    for (const mod of ["tty-spaces", "tty-agents", "tty-workspace-chrome"]) {
+      expect(text(`herdr/mods/${mod}/main.js`)).toContain(".bg(t.chrome)")
+    }
+  })
   test("OpenCode selects its custom Tokyo Night theme and only clears main surfaces", () => {
     expect(json("opencode/cli.json").theme.name).toBe("tokyonight-transparent")
     const { theme, defs } = json("opencode/themes/tokyonight-transparent.json")

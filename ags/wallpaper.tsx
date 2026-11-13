@@ -5,8 +5,13 @@ import GLib from "gi://GLib?version=2.0"
 import Cairo from "cairo"
 import { drawLandscape } from "./wallpaper-scene"
 import type { WallpaperService } from "./services/wallpaper"
+import { advanceMotion, type LandscapeMotion, type Resources } from "./wallpaper-resources"
 
-export function Wallpaper({ monitor, service }: { monitor: Gdk.Monitor; service: Pick<WallpaperService, "animated"> }) {
+export function Wallpaper({ monitor, service, resources = () => ({ cpu: 0, memory: 0 }) }: {
+  monitor: Gdk.Monitor; service: Pick<WallpaperService, "animated">; resources?: () => Resources
+}) {
+  let motion: LandscapeMotion = { cpu: 0, memory: resources().memory, flow: 0 }
+  let lastFrame = GLib.get_monotonic_time() / 1_000_000
   const area = new Gtk.DrawingArea({ hexpand: true, vexpand: true, can_target: false })
   area.set_draw_func((_area, cr, width, height) => {
     // Integer device-aligned rectangles: crisp pixels at fractional output scales too.
@@ -16,7 +21,7 @@ export function Wallpaper({ monitor, service }: { monitor: Gdk.Monitor; service:
       const left = Math.round(x * scale), top = Math.round(y * scale)
       cr.rectangle(left, top, Math.round((x + w) * scale) - left, Math.round((y + h) * scale) - top)
       cr.fill()
-    }, logicalWidth, new Date(), GLib.get_monotonic_time() / 1_000_000)
+    }, logicalWidth, new Date(), GLib.get_monotonic_time() / 1_000_000, motion)
   })
   const window = <window name={`wallpaper-${monitor.connector ?? monitor.model ?? "output"}`} application={app}
     namespace="sysdef-wallpaper" gdkmonitor={monitor} visible={service.animated}
@@ -26,7 +31,12 @@ export function Wallpaper({ monitor, service }: { monitor: Gdk.Monitor; service:
     onRealize={(self: Astal.Window) => self.get_surface()?.set_input_region(new Cairo.Region())}>{area}</window> as Astal.Window
   // Eight frames/sec is sufficient for slow wind, water and aurora; static mode does no drawing.
   const timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT_IDLE, 125, () => {
-    if (window.visible && monitor.is_valid()) area.queue_draw()
+    const now = GLib.get_monotonic_time() / 1_000_000
+    if (window.visible && monitor.is_valid()) {
+      motion = advanceMotion(motion, resources(), now - lastFrame)
+      area.queue_draw()
+    }
+    lastFrame = now
     return GLib.SOURCE_CONTINUE
   })
   onCleanup(() => { GLib.source_remove(timer); area.set_draw_func(null); window.destroy() })

@@ -97,6 +97,47 @@ ags run ags/tools/wallpaper-smoke.tsx --gtk 4 # two-second live window test only
 
 After updating sources, restart AGS or log in again to load the wallpaper toggle.
 
+### Resource-driven landscape (desktop verification handoff)
+
+The animated landscape now has a rocky waterfall and a timber/stone mill on the
+pasture bank, with a clockwise water wheel connected to the mill by an axle.
+River highlights, falling water, splash and wheel share one continuously integrated
+phase. Aggregate CPU load smoothly changes their speed (slow at idle, faster under
+load); changing load never resets the wheel angle. The field on the opposite bank
+has 96 planting sites: 0% used RAM leaves bare furrows, 50% plants half, and 100%
+plants all sites, filling from the back rows forward. Used RAM is
+`1 - MemAvailable / MemTotal`, so reclaimable filesystem cache does not count as
+occupied memory. The display eases toward new samples over roughly 1.5 seconds.
+
+One app-wide service reads `/proc/stat` and `/proc/meminfo` once per second, shared
+by all outputs. There are no per-frame reads or new subprocesses. A first CPU
+sample establishes the baseline; counter resets or read errors retain the last
+valid usage. Unsupported readings warn once per resource. Existing 8 FPS,
+non-interactive background-layer behavior, day/night lighting and Hyprpaper mode
+are retained; hidden wallpapers do not advance motion or queue frames.
+
+Headless checks:
+
+```sh
+bun test test/wallpaper.test.ts test/wallpaper-resources.test.ts
+```
+
+For desktop verification, restart AGS and:
+
+1. Run `ags run ags/tools/wallpaper-preview.ts --gtk 4`. Inspect the existing
+   four day/night PNGs and `/tmp/sysdef-wallpaper-ram-{0,50,100}.png` for the mill,
+   waterfall and empty/half/full field. These static RAM previews intentionally
+   hold the water phase fixed; they do not prove live animation speed.
+2. Observe the live animated wallpaper at idle, during a CPU-heavy build, and
+   after the build finishes. Check that water flows downstream, the right side
+   of the wheel moves downward with it, and acceleration/deceleration is smooth.
+3. Observe planting as real memory demand increases/decreases; allow a few
+   seconds for sampling/smoothing. Avoid deliberately filling all system RAM.
+4. Check multiple monitors, narrow/ultrawide outputs, night lighting, switching
+   to/from Hyprpaper, and suspend/resume. Confirm no catch-up spin or focus/input
+   capture. GTK/Cairo/Wayland execution still needs verification on the desktop;
+   software raster tests alone do not establish native rendering correctness.
+
 ### Caffeine
 
 Open the system/power sidebar with **Super+P**, then toggle **Caffeine** in

@@ -15,6 +15,7 @@ import { createTrayService } from "./services/tray"
 import { NotificationList, NotificationPopups } from "./indicators"
 import { Wallpaper } from "./wallpaper"
 import { createWallpaperService } from "./services/wallpaper"
+import { createWallpaperResources } from "./services/wallpaper-resources"
 
 const root = GLib.getenv("SYSDEF_ROOT_DIR") || `${GLib.get_home_dir()}/sysdef`
 const instance = GLib.getenv("SYSDEF_AGS_INSTANCE") || "sysdef"
@@ -34,6 +35,7 @@ app.start({
     const system = createSystemService()
     const caffeine = createCaffeineService()
     const wallpaper = createWallpaperService(GLib.getenv("SYSDEF_AGS_SERVICES") !== "0")
+    const wallpaperResources = createWallpaperResources()
     const notifications = createNotificationService()
     const tray = createTrayService()
     const monitors = createBinding(app, "monitors")
@@ -81,8 +83,9 @@ app.start({
       return all.filter(m => m.connector === controller.desktop().primary).slice(0, 1)
     })
     const popups = <For each={popupMonitors}>{monitor => <This this={app}><NotificationPopups service={notifications} monitor={monitor} /></This>}</For>
-    const wallpapers = <For each={monitors}>{monitor => <This this={app}><Wallpaper monitor={monitor} service={wallpaper} /></This>}</For>
+    const wallpapers = <For each={monitors}>{monitor => <This this={app}><Wallpaper monitor={monitor} service={wallpaper} resources={wallpaperResources.sample} /></This>}</For>
     void bars; void popups; void wallpapers
+    wallpaperResources.start()
     if (GLib.getenv("SYSDEF_AGS_SERVICES") !== "0") void wallpaper.start()
     void controller.start()
     system.start()
@@ -95,7 +98,7 @@ app.start({
         try { app.apply_css(`${root}/ags/style.css`, true) } catch (e) { report(e) }
       }
     })
-    onCleanup(() => { controller.stop(); system.stop(); caffeine.stop(); wallpaper.stop(); notifications.stop(); tray.stop(); cssWatcher.cancel(); menus.window.destroy(); history.destroy() })
+    onCleanup(() => { controller.stop(); system.stop(); caffeine.stop(); wallpaper.stop(); wallpaperResources.stop(); notifications.stop(); tray.stop(); cssWatcher.cancel(); menus.window.destroy(); history.destroy() })
     dispatch = ([command, name]) => {
       if (command === "ping") return "pong"
       if (command === "status") return { instance, menu: active, menus: menus.describe(), sidebar: sidebar.describe(), windows: app.windows.map(w => ({ name: w.name, visible: w.visible })),

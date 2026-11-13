@@ -1,4 +1,5 @@
 /** Pure, deterministic pixel scene. All colors derive from Tokyo Night's palette. */
+import { cropCount, type LandscapeMotion } from "./wallpaper-resources"
 export type RGB = readonly [number, number, number]
 export const TOKYO = {
   night: [26, 27, 38], storm: [36, 40, 59], blue: [122, 162, 247],
@@ -18,10 +19,15 @@ export type Paint = (x: number, y: number, width: number, height: number, color:
 const hash = (n: number) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x) }
 export function river(y: number, width: number) {
   const depth = Math.max(0, (y - 157) / 113)
-  return { center: width * (0.53 + Math.sin(depth * 6.4 - 0.4) * (0.015 + depth * 0.13)), half: 1 + depth * depth * width * 0.13 }
+  // A straight reach gives the waterfall a continuous channel into the lower river.
+  const reach = y < 192 ? y : y <= 218 ? 192 : 192 + (y - 218) * 78 / 52
+  const bend = Math.max(0, (reach - 157) / 113)
+  return { center: width * (0.53 + Math.sin(bend * 6.4 - 0.4) * (0.015 + bend * 0.13)), half: 1 + depth * depth * width * 0.13 }
 }
 /** Logical height is 270px; width follows the output so ultrawides aren't stretched. */
-export function drawLandscape(paint: Paint, width: number, date: Date, seconds: number) {
+export function drawLandscape(paint: Paint, width: number, date: Date, seconds: number,
+  activity: Pick<LandscapeMotion, "flow" | "memory"> = { flow: seconds * 0.35, memory: 0 }) {
+  const flow = Number.isFinite(activity.flow) ? activity.flow : 0
   const { daylight: day, dusk, night } = lighting(date)
   const shade = (c: RGB, strength = 1) => mix(TOKYO.night, c, (0.25 + day * 0.55) * strength)
   const skyTop = mix(TOKYO.night, mix(TOKYO.storm, TOKYO.blue, 0.42), day)
@@ -68,8 +74,8 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
     const r = river(y, width), left = Math.floor(r.center - r.half), span = Math.ceil(r.half * 2)
     paint(left - 2, y, span + 4, 1, shade(TOKYO.gold, 0.6))
     paint(left, y, span, 1, mix(shade(TOKYO.blue, 0.8), TOKYO.teal, day * 0.15))
-    if ((y + Math.floor(seconds * 3)) % 7 === 0) {
-      const offset = Math.sin(y * 1.7 + seconds * 0.8) * r.half * 0.5
+    if ((y - Math.floor(flow * 6)) % 7 === 0) {
+      const offset = Math.sin(y * 1.7 + flow * 0.8) * r.half * 0.5
       paint(Math.floor(r.center + offset - r.half * 0.2), y, Math.max(1, Math.floor(r.half * 0.4)), 1, mix(TOKYO.blue, TOKYO.white, 0.35), 0.25 + day * 0.2)
     }
   }
@@ -80,6 +86,73 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
     const h = 1 + Math.floor((y - 157) / 38), sway = Math.sin(seconds * 0.9 + i) > 0 ? 1 : -1
     paint(x, y, 1, h, shade(TOKYO.teal, 0.65)); paint(x + sway, y - 1, 1, 1, shade(i % 9 === 0 ? TOKYO.pink : TOKYO.green, 0.8))
   }
+  // Cultivated field across the river from the mill and open pasture. Its 96
+  // planting sites fill back-to-front with used RAM, leaving visible bare furrows.
+  const planted = cropCount(activity.memory)
+  for (let y = 207; y <= 250; y++) {
+    const depth = (y - 207) / 43
+    const left = Math.floor(width * (0.73 - depth * 0.09))
+    const right = Math.floor(width * (0.84 + depth * 0.035))
+    paint(left, y, right - left + 1, 1, shade(TOKYO.gold, 0.46))
+    if ((y - 207) % 5 === 0) paint(left, y, right - left + 1, 1, shade(TOKYO.storm, 0.7))
+    paint(left - 1, y, 1, 1, shade(TOKYO.gold, 0.85))
+    paint(right + 1, y, 1, 1, shade(TOKYO.gold, 0.85))
+  }
+  for (let row = 0; row < 8; row++) for (let column = 0; column < 12; column++) {
+    const y = 211 + row * 5, depth = (y - 207) / 43
+    const left = width * (0.73 - depth * 0.09), right = width * (0.84 + depth * 0.035)
+    const x = Math.floor(left + (column + 0.5) * (right - left) / 12)
+    if (row * 12 + column >= planted) continue
+    const height = 2 + Math.floor(row / 3)
+    paint(x, y - height, 1, height, shade(TOKYO.green, 0.95))
+    paint(x - 1, y - height + 1, 3, 1, shade(TOKYO.teal, 0.8))
+    paint(x, y - height - 1, 1, 1, shade(TOKYO.gold, 1.1))
+  }
+  // Rocky lip, falling water and a small plunge pool. All flow marks travel
+  // downstream using the SAME integrated phase as the mechanically linked wheel.
+  const lip = river(192, width)
+  paint(Math.floor(lip.center - lip.half - 4), 190, Math.ceil(lip.half * 2) + 8, 4, shade(TOKYO.storm, 1.2))
+  for (let y = 192; y <= 218; y++) {
+    const r = river(y, width), left = Math.floor(r.center - r.half), span = Math.ceil(r.half * 2)
+    paint(left, y, span, 1, shade(TOKYO.cyan, 0.9))
+    for (let strand = 0; strand < 5; strand++) {
+      const x = Math.floor(left + (strand + 0.5) * span / 5)
+      paint(x, y, 1, 1, TOKYO.white, (y + strand * 3 - Math.floor(flow * 6)) % 6 === 0 ? 0.8 : 0.18)
+    }
+  }
+  const pool = river(219, width)
+  for (let i = 0; i < 9; i++) {
+    const x = Math.floor(pool.center + (i / 8 - 0.5) * pool.half * 2)
+    paint(x, 219 + Math.floor((i + flow * 3) % 3), 2, 1, TOKYO.white, 0.45)
+  }
+  // Stone-and-timber mill on the pasture bank; axle enters its right-hand wall.
+  const wheelX = Math.floor(river(207, width).center - river(207, width).half - 1), wheelY = 207
+  const millX = wheelX - 35
+  paint(millX - 2, 212, 35, 4, shade(TOKYO.storm, 1.1))
+  paint(millX, 187, 29, 26, shade(TOKYO.gold, 0.85))
+  for (let y = 0; y < 12; y++) {
+    const half = Math.floor(y * 1.5)
+    paint(millX + 14 - half, 176 + y, half * 2 + 1, 1, shade(TOKYO.pink, 0.65))
+  }
+  for (const x of [millX + 2, millX + 25]) paint(x, 188, 2, 25, shade(TOKYO.storm))
+  paint(millX + 12, 200, 7, 13, shade(TOKYO.storm))
+  for (const x of [millX + 5, millX + 20]) {
+    paint(x, 192, 5, 5, shade(TOKYO.blue))
+    paint(x + 2, 192, 1, 5, shade(TOKYO.gold))
+  }
+  paint(wheelX - 10, wheelY - 1, 12, 3, shade(TOKYO.gold, 1.1))
+  // Pixel ring and eight radial paddle/spoke assemblies rotate clockwise.
+  const angle = flow * 0.65
+  for (let i = 0; i < 64; i++) {
+    const a = i / 64 * Math.PI * 2
+    paint(wheelX + Math.round(Math.cos(a) * 10), wheelY + Math.round(Math.sin(a) * 10), 2, 2, shade(TOKYO.gold, 0.7))
+  }
+  for (let i = 0; i < 8; i++) {
+    const a = angle + i * Math.PI / 4
+    for (let radius = 2; radius <= 10; radius++) paint(wheelX + Math.round(Math.cos(a) * radius), wheelY + Math.round(Math.sin(a) * radius), 1, 1, shade(TOKYO.gold, 1.1))
+    paint(wheelX + Math.round(Math.cos(a) * 11) - 1, wheelY + Math.round(Math.sin(a) * 11) - 1, 3, 3, shade(TOKYO.gold, 0.9))
+  }
+  paint(wheelX - 1, wheelY - 1, 3, 3, shade(TOKYO.storm, 1.2))
   // Foreground pines frame the river without obscuring the vista.
   for (const [u, base, size] of [[0.07, 240, 32], [0.12, 227, 23], [0.91, 245, 38], [0.96, 232, 27]]) {
     const x = Math.floor(width * u!)

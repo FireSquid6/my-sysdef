@@ -68,7 +68,7 @@
       },
       "min": 44,
       "max": 480,
-      "background": "chrome",
+      "background": "#00000000",
       "resizable": false
     },
     {
