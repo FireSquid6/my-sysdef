@@ -69,6 +69,8 @@ in
     (lib.mkIf cfg.agents.hermes.enable (
       {
         "${cfg.paths.hermes}/SOUL.md" = "hermes/SOUL.md";
+        "${cfg.paths.hermes}/config.yaml" = "hermes/config.yaml";
+        ".config/Hermes/translucency.json" = "hermes/translucency.json";
         "${cfg.paths.hermes}/skins/tokyonight-night.yaml" = "hermes/skins/tokyonight-night.yaml";
         "${cfg.paths.hermes}/skills/aihero/AIHERO-LICENSE.txt" = "hermes/skills/aihero/AIHERO-LICENSE.txt";
         "${cfg.paths.hermes}/skills/creative/impeccable" = "hermes/skills/creative/impeccable";

@@ -23,9 +23,9 @@ locally when closed; action games reopen paused. See [TTY.md](TTY.md#arcade) for
 ## Desktop notifications (Linux)
 
 The `tty` layout routes its existing toast stream through `mods/tty-toast` to
-`notify-send`, displayed by AGS instead of an in-app toast. `modules/herdr.ts`
-declares Bun and libnotify; install dependencies with a normal `sysdef sync`
-(`--files-only` does not install them). Other layouts retain their own toast handler.
+`notify-send`, displayed by AGS instead of an in-app toast. The Nix configuration
+supplies Bun and libnotify; on an application-only deployment the host must also
+provide these desktop dependencies. Other layouts retain their own toast handler.
 
 Herdr remains responsible for agent events and sounds. Its existing “not looking
 at the agent” suppression is preserved; the forwarder also drops `agent.focus`

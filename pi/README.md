@@ -2,7 +2,7 @@
 
 Managed by Home Manager's `personal.agents.pi.enable` in `nix/modules/files.nix`.
 See the [migration guide](../docs/nix-migration.md) for preview, backup and switch.
-The historical `modules/pi.ts`/local `config.yaml` writer is retired.
+Only the selected configuration files and individual skills are managed; private agent state remains local.
 
 | Pi path | Repository source |
 | --- | --- |

@@ -57,12 +57,12 @@ The dedicated `ags` module links the shared Tokyo Night AGS shell. Each output s
 
 ## Login screen
 
-SDDM uses a Qt6 Astronaut theme configured with the same Tokyo Night palette, flat background and centered login form. Sources and deployment instructions live in [`dotfiles/sddm/`](../sddm/README.md); `modules/desktop.ts` declares dependencies. System-wide deployment is an explicit sudo step, not a home-directory symlink or display-manager restart.
+SDDM uses a Qt6 Astronaut theme configured with the same Tokyo Night palette, flat background and centered login form. Sources and deployment instructions live in [`dotfiles/sddm/`](../sddm/README.md); NixOS owns its system dependencies. System-wide deployment is an explicit sudo step, not a home-directory symlink or display-manager restart.
 
 ## Locking and idle
 
-`modules/desktop.ts` installs stable Arch `hyprlock` and `hypridle` packages, not
-Git snapshots. Verified against upstream releases: hyprlock **0.9.7** and hypridle
+On EndeavourOS, the host supplies stable Arch `hyprlock` and `hypridle` packages, not
+Git snapshots. On NixOS these are owned by the native desktop module. Verified against upstream releases: hyprlock **0.9.7** and hypridle
 **0.1.8**. Keep them updated through normal full-system Arch upgrades (`pacman -Syu`),
 not partial repository refreshes.
 
@@ -102,7 +102,7 @@ Sources: [hyprlock configuration](https://github.com/hyprwm/hyprland-wiki/blob/m
 - Controller log: `$XDG_RUNTIME_DIR/sysdef-workspace-manager.log`.
 - No preferences, monitor choices, app credentials, or session state belong in Git.
 
-`modules/ags.ts` owns AGS/native dependencies and its config symlink; enable `ags` and the `aur` provider in local config. `modules/desktop.ts` retains compositor, idle, wallpaper and other non-shell dependencies. The Python popup and Waybar/Fuzzel/Rofi/Dunst shell dependencies are retired. Install Herdr, Hermes Desktop, Proton Mail, and Obsidian separately. A missing required S/R/G launcher is reported and aborts app startup rather than silently skipping it; a missing legacy Notes application is reported visibly.
+The Nix desktop modules own dependencies and configuration links; standalone Home Manager still requires the compatible host-managed AGS/Hyprland runtime documented in the migration guide. The Python popup and Waybar/Fuzzel/Rofi/Dunst shell dependencies are retired. Install Herdr, Hermes Desktop, Proton Mail, and Obsidian separately. A missing required S/R/G launcher is reported and aborts app startup rather than silently skipping it; a missing legacy Notes application is reported visibly.
 
 Useful checks:
 

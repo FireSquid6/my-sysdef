@@ -26,11 +26,16 @@ describe("background-only desktop translucency", () => {
     expect(theme.colors.searchMatchBg).toMatch(/^#[0-9a-f]{6}$/i)
     expect(theme.export).toEqual({ pageBg: "bg", cardBg: "bgDark", infoBg: "bgHighlight" })
   })
-  test("Herdr inherits solid Tokyo Night UI colors instead of alpha over a black backing", () => {
+  test("Herdr keeps chrome opaque with translucent terminal backgrounds", () => {
     const settings = json("herdr/settings.json")
     expect(settings.theme).toBe("tokyonight-night")
-    expect(settings.colors).toBeUndefined()
-    expect(json("herdr/layouts/tty.json").terminal_opacity).toBe(1)
+    expect(settings.colors).toEqual({ background: "#1a1b2600", canvas: "#16161e00", chrome: "#16161eff" })
+    const layout = json("herdr/layouts/tty.json")
+    expect(layout.terminal_opacity).toBeGreaterThan(0)
+    expect(layout.terminal_opacity).toBeLessThan(1)
+    expect(layout.children.find((node: { id: string }) => node.id === "work").children
+      .find((node: { id: string }) => node.id === "work-body").children[0].content.pane.background).toBe("#00000000")
+    expect(text("herdr/mods/tty-changes/main.js")).toContain(".bg(t.chrome)")
     const theme = json("herdr/themes/tokyonight-night.json")
     expect(theme.colors.chrome).toBe("#16161e")
     expect(theme.colors.canvas).toBe("#16161e")

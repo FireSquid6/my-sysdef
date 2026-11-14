@@ -1,5 +1,0 @@
-import path from "path";
-import { cli } from "../sysdef-src/index";
-
-process.env.SYSDEF_ROOT_DIR = path.resolve(import.meta.dir, "..");
-cli.parse();

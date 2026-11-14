@@ -1,67 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import fs from "fs";
-import os from "os";
-import path from "path";
-import pi from "../modules/pi";
-import { normalFilesystem } from "../sysdef-src/connections";
-import { dryShell, syncFiles, VariableStore } from "../sysdef-src/sysdef";
+import fs from "node:fs";
+import path from "node:path";
 
-describe("Pi managed skills", () => {
-  test("links the individual skill under the default agent directory", async () => {
-    const previous = process.env.PI_CODING_AGENT_DIR;
-    try {
-      delete process.env.PI_CODING_AGENT_DIR;
-      const mod = await pi(dryShell);
-      expect(mod.files[path.join(os.homedir(), ".pi/agent/AGENTS.md")]).toBe("./pi/AGENTS.md");
-      expect(mod.directories[path.join(os.homedir(), ".pi/agent/skills/herdr-orchestration")])
-        .toBe("./pi/skills/herdr-orchestration");
-      expect(mod.directories[path.join(os.homedir(), ".pi/agent/skills/ags")]).toBe("./pi/skills/ags");
-      expect(mod.directories[path.join(os.homedir(), ".pi/agent/skills")]).toBeUndefined();
-    } finally {
-      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
-      else process.env.PI_CODING_AGENT_DIR = previous;
-    }
+const root = path.resolve(import.meta.dir, "..");
+const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
+
+describe("Vendored Pi skills", () => {
+  test("Herdr skill documents safe orchestration", () => {
+    const content = read("pi/skills/herdr-orchestration/SKILL.md");
+    expect(content).toMatch(/^---\nname: herdr-orchestration\ndescription: .+\n/);
+    expect(content).toContain("hc --skill");
+    expect(content).toContain("hc send --if idle");
   });
-
-  test("respects the agent-directory override and preserves unrelated skills on repeat sync", async () => {
-    const previous = process.env.PI_CODING_AGENT_DIR;
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), "sysdef-pi-skills-"));
-    try {
-      process.env.PI_CODING_AGENT_DIR = home;
-      fs.mkdirSync(path.join(home, "skills/local-only"), { recursive: true });
-      const local = path.join(home, "skills/local-only/SKILL.md");
-      fs.writeFileSync(local, "local skill");
-      const mod = await pi(dryShell);
-      const root = path.resolve(import.meta.dir, "..");
-      const destination = path.join(home, "skills/herdr-orchestration");
-      for (let pass = 0; pass < 2; pass++) {
-        await syncFiles([mod], new VariableStore(), normalFilesystem, root);
-        expect(fs.lstatSync(destination).isSymbolicLink()).toBe(true);
-        expect(fs.realpathSync(destination)).toBe(path.join(root, "pi/skills/herdr-orchestration"));
-        expect(fs.readFileSync(local, "utf8")).toBe("local skill");
-        const ags = path.join(home, "skills/ags");
-        expect(fs.lstatSync(ags).isSymbolicLink()).toBe(true);
-        expect(fs.realpathSync(ags)).toBe(path.join(root, "pi/skills/ags"));
-        const instructions = path.join(home, "AGENTS.md");
-        expect(fs.lstatSync(instructions).isSymbolicLink()).toBe(true);
-        expect(fs.realpathSync(instructions)).toBe(path.join(root, "pi/AGENTS.md"));
-        expect(fs.readFileSync(instructions, "utf8")).toBe(fs.readFileSync(path.join(root, "pi/AGENTS.md"), "utf8"));
-      }
-      const content = fs.readFileSync(path.join(destination, "SKILL.md"), "utf8");
-      expect(content).toMatch(/^---\nname: herdr-orchestration\ndescription: .+\n/);
-      expect(content).toContain("hc --skill");
-      expect(content).toContain("hc send --if idle");
-      const agsContent = fs.readFileSync(path.join(home, "skills/ags/SKILL.md"), "utf8");
-      expect(agsContent).toMatch(/^---\nname: ags\ndescription: .+\n/);
-      expect(agsContent).toContain("references/current-api.md");
-      expect(agsContent).toContain("ags --version");
-      expect(agsContent).toContain("GJS");
-      const reference = fs.readFileSync(path.join(home, "skills/ags/references/current-api.md"), "utf8");
-      expect(reference).toContain("https://aylur.github.io/ags/");
-    } finally {
-      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
-      else process.env.PI_CODING_AGENT_DIR = previous;
-      fs.rmSync(home, { recursive: true, force: true });
-    }
+  test("AGS skill includes its versioned API references", () => {
+    const content = read("pi/skills/ags/SKILL.md");
+    expect(content).toMatch(/^---\nname: ags\ndescription: .+\n/);
+    expect(content).toContain("references/current-api.md");
+    expect(content).toContain("ags --version");
+    expect(content).toContain("GJS");
+    expect(read("pi/skills/ags/references/current-api.md")).toContain("https://aylur.github.io/ags/");
   });
 });

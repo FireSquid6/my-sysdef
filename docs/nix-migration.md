@@ -249,9 +249,10 @@ arrange the native session's environment explicitly before launching Hyprland.
   Set them in a host module and keep the process environment consistent. The
   standard layout assumes `~/.config`; other XDG layouts need explicit review.
 - Pi auth, sessions, npm installs, snapshots/inbox/receipts and local registries
-  remain outside managed entries. Hermes only owns SOUL, skin, the 27 individual
-  vendored AI Hero skills/license, and Impeccable/assets. Hermes runtime
-  `config.yaml`, credentials, sessions, memory, databases and caches stay local.
+  remain outside managed entries. Hermes owns SOUL, skin, shared `config.yaml`,
+  Linux desktop `~/.config/Hermes/translucency.json`, the 27 individual vendored
+  AI Hero skills/license, and Impeccable/assets. Credentials, sessions, memory,
+  databases and caches stay local. Keep secrets out of the shared configuration.
 - Herdr/OpenCode root directories remain local. Only tracked shared children are
   linked; runtime databases, sockets, auth, updater metadata and other skill
   namespaces are not owned. Never turn an application home into a whole-root link.

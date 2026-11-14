@@ -334,7 +334,7 @@ warning is hidden in this menu only; other health warnings remain visible and no
 Tailscale settings are changed. Keyboard controls remain active without a bottom
 controls-guide footer.
 Tailscale commands have a four-second timeout. Closing cancels resource reads and
-discards stale asynchronous results. `modules/ags.ts` declares the Tailscale CLI.
+discards stale asynchronous results. the Nix desktop/network modules declares the Tailscale CLI.
 
 ## Startup, control and logs
 

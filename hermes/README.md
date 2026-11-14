@@ -19,9 +19,22 @@ These are snapshots imported from the existing Hermes installation. The module l
 The destination defaults to `~/.hermes`. Configure home-relative
 `personal.paths.hermes` for another location; HM exports matching `HERMES_HOME`.
 Named profiles require an explicit home; automatic profile discovery is not supported.
-The historical `modules/hermes.ts` writer is retired.
 
-Persona, skills, and the Tokyo Night Night skin (`skins/tokyonight-night.yaml`) are managed. The skin uses the same palette as Kitty, Neovim, and Pi. After syncing on another machine, activate it with `hermes config set display.skin tokyonight-night`; skin selection stays local. `config.yaml`, `.env`, credentials, memories, sessions, databases, logs, caches, cron jobs, and service state stay local. No installation, updater, or service restart runs during sync.
+Persona, skills, the Tokyo Night Night skin (`skins/tokyonight-night.yaml`),
+`config.yaml`, and desktop `translucency.json` are managed. The skin uses the same
+palette as Kitty, Neovim, and Pi. Skin selection in `config.yaml` is shared too;
+use `hermes config set display.skin tokyonight-night` to select it.
+`.env`, credentials, memories, sessions, databases, logs, caches, cron jobs, and
+service state stay local. Never put secrets in the shared config. Messaging IDs,
+model/provider selections, and enabled-plugin settings in it are shared.
+No installation, updater, or service restart runs during sync.
+
+The Linux desktop link is `~/.config/Hermes/translucency.json`. On macOS, link
+`~/Library/Application Support/Hermes/translucency.json` to the same repository
+file; on Windows the destination is `%APPDATA%\\Hermes\\translucency.json`.
+Only settings are portable; translucency support depends on the platform.
+Home Manager currently declares the Linux destination, not those other paths.
+The main config links from `$HERMES_HOME/config.yaml` (default `~/.hermes/config.yaml`).
 
 ## Editing and rollback
 

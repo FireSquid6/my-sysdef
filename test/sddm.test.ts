@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import desktop from "../modules/desktop";
 
 const repo = path.resolve(import.meta.dir, "..");
 const configDir = path.join(repo, "dotfiles/sddm");
@@ -55,13 +54,6 @@ function fixture() {
 }
 
 describe("SDDM Astronaut integration", () => {
-  test("desktop declares the Qt6 theme and its runtime dependencies", () => {
-    const config = desktop({} as never);
-    for (const dependency of ["sddm", "qt6-declarative", "qt6-svg", "qt6-virtualkeyboard", "qt6-multimedia-ffmpeg", "qt6-5compat", "ttf-jetbrains-mono-nerd"]) {
-      expect(config.packages["arch-official"]).toContain(dependency);
-    }
-    expect(config.packages.aur).toContain("sddm-astronaut-theme");
-  });
   test("uses only verified upstream settings and keeps authentication/session UI", () => {
     const settings = ini(read("theme.conf"));
     expect(Object.keys(settings).sort()).toEqual(upstreamKeys.toSorted());

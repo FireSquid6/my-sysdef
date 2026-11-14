@@ -1,17 +1,11 @@
 {
-  "name": "sysdef",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
+  "name": "personal-linux-config",
   "devDependencies": {
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
-  "dependencies": {
-    "@commander-js/extra-typings": "^14.0.0",
-    "commander": "^14.0.2",
-    "yaml": "^2.8.1"
-  }
+  "private": true,
+  "type": "module"
 }

@@ -1,42 +1,11 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import ags from "../modules/ags";
 import { trayPixels } from "../ags/tray-model";
-import desktop from "../modules/desktop";
-import { normalFilesystem } from "../sysdef-src/connections";
-import { dryShell, syncFiles, VariableStore } from "../sysdef-src/sysdef";
 import { batteryClass, batteryLabel, networkLabel, nmFields } from "../ags/system-model";
 const root = path.resolve(import.meta.dir, "..");
-const dirs: string[] = [];
-afterEach(() => { for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
 
 describe("AGS module and integration", () => {
-  test("links only its config directory, respects XDG, and is repeatable", async () => {
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), "sysdef-ags-")); dirs.push(home);
-    const previous = process.env.XDG_CONFIG_HOME;
-    process.env.XDG_CONFIG_HOME = home;
-    try {
-      const module = await ags(dryShell);
-      const source = path.join(home, "ags");
-      expect(module.name).toBe("ags");
-      expect(module.directories).toEqual({ [source]: "./ags" });
-      expect(module.packages.aur).toContain("aylurs-gtk-shell");
-      fs.mkdirSync(path.join(home, "other-app"));
-      fs.writeFileSync(path.join(home, "other-app/settings"), "untouched");
-      for (let i = 0; i < 2; i++) await syncFiles([module], new VariableStore(), normalFilesystem, root);
-      expect(fs.realpathSync(source)).toBe(path.join(root, "ags"));
-      expect(fs.readFileSync(path.join(home, "other-app/settings"), "utf8")).toBe("untouched");
-    } finally { if (previous === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = previous; }
-  });
-  test("desktop no longer manages old shell dependencies or their files", async () => {
-    const module = await desktop(dryShell);
-    const packages = Object.values(module.packages).flat();
-    for (const obsolete of ["waybar", "fuzzel", "rofi", "wofi", "dunst", "python-gobject", "gtk-layer-shell"])
-      expect(packages).not.toContain(obsolete);
-    expect(Object.keys(module.files).join("\n")).not.toMatch(/waybar|fuzzel|rofi|dunst/);
-  });
   test("startup and shortcuts route through the single AGS shell", () => {
     const hypr = fs.readFileSync(path.join(root, "dotfiles/hypr/hyprland.lua"), "utf8");
     for (const menu of ["sidebar", "notifications", "projects", "monitors", "windows"]) expect(hypr).toContain(`ags .. "${menu}"`);

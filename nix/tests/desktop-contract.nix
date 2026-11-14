@@ -137,6 +137,15 @@ assert !(home.services.hypridle.enable or false);
 assert !(builtins.hasAttr ".config/i3/config" home.personal.managedLinks);
 assert home.personal.managedLinks.".config/hypr" == "dotfiles/hypr";
 assert home.personal.managedLinks.".config/ags" == "ags";
+# Manage individual agent files/skills, never private state or entire homes.
+assert home.personal.managedLinks."${home.personal.paths.pi}/AGENTS.md" == "pi/AGENTS.md";
+assert home.personal.managedLinks."${home.personal.paths.pi}/skills/ags" == "pi/skills/ags";
+assert !(builtins.hasAttr "${home.personal.paths.pi}/skills" home.personal.managedLinks);
+assert home.personal.managedLinks."${home.personal.paths.hermes}/SOUL.md" == "hermes/SOUL.md";
+assert !(builtins.hasAttr "${home.personal.paths.hermes}/.env" home.personal.managedLinks);
+assert !(builtins.hasAttr "${home.personal.paths.hermes}/auth.json" home.personal.managedLinks);
+assert !(builtins.hasAttr "${home.personal.paths.hermes}/state.db" home.personal.managedLinks);
+assert !(builtins.hasAttr "${home.personal.paths.hermes}/skills" home.personal.managedLinks);
 pkgs.runCommand "desktop-contract" { } ''
   # Prove the actual packaged session selects Lua, rather than the legacy conf.
   session=${

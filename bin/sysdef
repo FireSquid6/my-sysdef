@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-# Retired intentionally: do not let two managers overwrite the same home files.
-printf '%s\n' \
-  'sysdef is retired in this checkout. Configuration is now a Nix flake + Home Manager.' \
-  'Read README.md and docs/nix-migration.md before installing or activating anything.' \
-  'No files were changed.' >&2
-exit 1

@@ -115,7 +115,7 @@ Primary-source audit (raw upstream files were fetched, not package-search snippe
 
 ## Complete legacy inventory
 
-Every package entry from every `modules/*.ts` is accounted for below. Attributes
+Every package entry from the historical root `modules/*.ts` (now removed; available in Git history) is accounted for below. Attributes
 are under `pkgs` unless stated otherwise. **User** means installed when the named
 option is enabled, on both target architectures unless explicitly marked.
 **Host** means deliberately not installed in HM. **External** means no verified

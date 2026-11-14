@@ -2,18 +2,10 @@ import { describe, expect, test } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import desktop from "../modules/desktop";
 const root = path.resolve(import.meta.dir, "..");
 const read = (name: string) => fs.readFileSync(path.join(root, name), "utf8");
 
 describe("Hyprlock and hypridle", () => {
-  test("desktop owns both stable packages and the shared Hypr config directory", () => {
-    const config = desktop({} as never);
-    expect(config.packages?.["arch-official"]).toContain("hyprlock");
-    expect(config.packages?.["arch-official"]).toContain("hypridle");
-    expect(config.packages?.["arch-official"]).toContain("util-linux");
-    expect(config.directories?.["{HOME}/.config/hypr"]).toBe("./dotfiles/hypr");
-  });
   test("locks before sleep and preserves idle timings without automatic suspend or unlock", () => {
     const idle = read("dotfiles/hypr/hypridle.conf");
     expect(idle).toContain("lock_cmd = bash ~/.config/hypr/hyprlock.sh");

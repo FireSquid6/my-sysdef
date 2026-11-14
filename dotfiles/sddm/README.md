@@ -15,22 +15,13 @@ This is a **configuration of the maintained [sddm-astronaut-theme](https://githu
 
 ## Packages
 
-`modules/desktop.ts` declares these dependencies using the existing providers. Enable both `arch-official` and `aur` in your local `config.yaml`, then run `sysdef sync` to install them:
-
-```ts
-packages: {
-  "arch-official": [
-    "sddm",                    // already present; >= 0.21.0, Qt6 build
-    "qt6-declarative",         // QtQuick, Controls, Layouts, Effects
-    "qt6-svg",
-    "qt6-virtualkeyboard",
-    "qt6-multimedia-ffmpeg",   // pulls in qt6-multimedia, even for a flat background
-    "ttf-jetbrains-mono-nerd",
-    "qt6-5compat",             // declared by the AUR package, not imported by current QML
-  ],
-  aur: ["sddm-astronaut-theme"],
-}
-```
+On NixOS, the native desktop module installs SDDM and its packaged Tokyo Night
+theme; see [the NixOS guide](../../docs/nixos-desktop.md). On EndeavourOS,
+system packages and privileged theme deployment remain host-managed. The Arch
+dependencies are `sddm`, `qt6-declarative`, `qt6-svg`, `qt6-virtualkeyboard`,
+`qt6-multimedia-ffmpeg`, `qt6-5compat`, `ttf-jetbrains-mono-nerd`, and the reviewed
+AUR `sddm-astronaut-theme` package. The application-only Nix updater does not
+install or activate a system greeter.
 
 Qt modules must be a consistent Arch installation, **Qt >= 6.8** per upstream. Do not use Qt5 greeter/theme packages. `qt6-multimedia` is a transitive dependency of the FFmpeg backend, not an alternative to specifying that backend. `qt6-5compat` is retained to match the package's declared dependencies even though the verified upstream revision no longer imports Qt5Compat. No extra video codecs or upstream bundled fonts are needed for our flat background and system font.
 
@@ -47,11 +38,10 @@ The implementation was checked against upstream revision **`abb3163c724935af888b
 
 ## Safe deployment
 
-Sysdef's file connection layer (`sysdef-src/connections.ts`) uses direct filesystem operations, not privileged writes for `/etc` or `/usr/local`. User-owned symlinks into a home checkout are also a poor dependency for a system greeter. Therefore deployment is explicit, separate from normal sysdef sync:
+On non-NixOS hosts, deployment is explicit and privileged, separate from user package updates. User-owned symlinks into a home checkout are a poor dependency for a system greeter:
 
 ```sh
-# From the sysdef checkout:
-sysdef sync                                    # installs declared dependencies; requires sudo
+# From this checkout, after separately installing the host dependencies:
 bash scripts/install-sddm-theme.sh --help
 bash scripts/install-sddm-theme.sh                 # validation + dry run; no writes
 
@@ -70,7 +60,7 @@ After review/preview, a human may explicitly deploy:
 sudo bash scripts/install-sddm-theme.sh --apply
 ```
 
-No privileged deployment was performed during implementation; passwordless sudo is unavailable. This command is documentation, not part of a sysdef sync/test. The script never invokes sudo itself and **never enables, starts, stops or restarts SDDM**. Do not restart a running display manager to test it: that ends graphical sessions. Use a normal later login/reboot only after reviewing the configuration and preparing TTY recovery.
+No privileged deployment was performed during implementation; passwordless sudo is unavailable. This command is documentation, not part of a user-profile update/test. The script never invokes sudo itself and **never enables, starts, stops or restarts SDDM**. Do not restart a running display manager to test it: that ends graphical sessions. Use a normal later login/reboot only after reviewing the configuration and preparing TTY recovery.
 
 ### What the script owns
 

@@ -41,9 +41,3 @@ __pycache__/
 
 # Finder (MacOS) folder config
 .DS_Store
-
-bin/bun
-
-configuration.json
-
-config.yaml

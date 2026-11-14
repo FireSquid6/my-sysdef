@@ -31,9 +31,28 @@ external dependencies, and host-only exclusions.
   `ags` directories remain the editable sources. No private agent state is owned.
 - `scripts/prepare-home.py`: read-only adoption plan by default; explicit backups
   and guarded legacy-directory detachment only with `--apply`.
-- `modules/`, `providers/`, `sysdef-src/`, and `sysdef-*.json`: retained historical
-  implementation/test fixtures, **not the active configuration engine**. The old
-  `bin/sysdef` entry point is retired. Do not run both managers over the same files.
+- The retired TypeScript configuration engine, providers, local selection/state
+  files and engine-only tests have been removed. Live dotfiles and runtime state
+  remain; the `sysdef` repository/AGS instance name is not a second package manager.
+
+## Updating the installed applications on kotoko
+
+```sh
+./nix-update.sh
+# Optional parallelism overrides:
+./nix-update.sh --max-jobs 2 --cores 20
+```
+
+This updates every input in this checkout's flake lock, builds `.#kotoko-apps`
+(reusing unchanged/cached packages), then upgrades the installed `kotoko-apps`
+profile entry. A failed build stops before the profile upgrade. Review and commit
+`flake.lock`; dependency changes may require reviewed recipe/version/vendor-hash
+updates before the build succeeds. Reopen app windows normally afterward; services
+keep their current processes until explicitly restarted. Never kill core holders.
+
+**This is not an OS updater:** kotoko still runs EndeavourOS and has only an
+application-level Nix deployment. Its host packages remain managed by `pacman`.
+The script does not activate NixOS/Home Manager, run sudo, or garbage-collect.
 
 ## After installing Nix explicitly
 
