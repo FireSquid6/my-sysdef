@@ -59,21 +59,48 @@ smoke passed with desktop actions mocked, an isolated window used
 These checks do not prove a real compositor seat/login, every application's GPU
 behavior, or lock/suspend. The live compositor/AGS were not restarted.
 
-### deisslaptop: hardware confirmation required
+### deisslaptop: AMD Phoenix1 / Mesa
 
-The GPU configuration is explicitly **unset**. Hardware, driver and graphics
-compatibility have **not** been verified. Do not infer AMD, Intel or NVIDIA
-hardware from a host name, old install template or monitor preference. Confirm
-the actual device/driver and review graphics selection before a graphical rollout.
-No remote deployment, activation or working graphics is claimed for this host.
+Laptop inventory on 2026-11-14 confirmed AMD Phoenix1 **1002:15bf** with the
+**amdgpu** kernel driver (native kernel **7.3.4-arch1-1**). PCI and DRM inventory
+showed one GPU, with no NVIDIA device or hybrid-offload requirement. Native
+Mesa and vulkan-radeon were **26.2.7**. Its explicit graphics backend in
+`nix/hosts.nix` is therefore **mesa**; the nixGL Intel-named Mesa wrappers also
+support AMD. This selection does not replace the native kernel driver.
+
+The wrapped AGS widget smoke passed with desktop actions mocked; a temporary
+GTK window selected **GskVulkanRenderer** and **AMD Radeon 760M / RADV PHOENIX**
+through Nix Mesa 26.3.0. Isolated Nix Hyprland Lua parsing passed, with live IPC
+healthy afterward. These are not real session/login, lock or suspend acceptance.
+The laptop bundle, workstation contract, graphics-wrapper contract, shared
+desktop contract and AGS bundle built successfully with Herdr Core pinned to
+`92a49ad643c830920675de603d318ed57b1e7620` (the suspend-sensitive sweep test fix).
+Flake evaluation, Nix linting, 9 Python adoption tests and 457 workstation-Bun
+tests passed. The candidate's dedicated `start-nix-hyprland --version` check
+passed in a scratch environment without launching a desktop.
+
+The user confirmed authenticated SSH and a recovery path before package adoption.
+The **deisslaptop-apps** profile entry is now installed at priority 4 alongside the
+retained legacy Home Manager entry (priority 5), without whole-home activation.
+44 stable application/font/portal links were installed with three conflicting
+files backed up privately; Chromium/Godot native desktop IDs redirect to the Nix
+entries. Font/menu caches were refreshed and only user `daemon-reload` was run.
+Fresh fish/bash shells resolve the reviewed tools through `~/.nix-profile/bin`;
+the installed session launcher's `--version` and installed AGS widget smoke pass.
+All nine local terminal addresses present immediately before adoption survived,
+with original core/holder and portal/audio PIDs unchanged. Native locker/PAM,
+portals and audio remain distribution-owned. Privileged session registration and
+real login/lock/suspend acceptance are still pending.
 
 ## Deployment status and build/update procedure
 
-**Current state:** kotoko's expanded package profile is built, checked and
-installed. User menu entries, the profile font directory and native-portal
-boundary drop-ins are linked with private backups. The 40 terminal addresses
-present before the switch survived; core executable/PIDs and portal PIDs were
-unchanged. No whole-home activation, service restart or compositor cutover occurred.
+**Package-stage state:** both workstation package profiles are built, checked
+and installed. User menu entries, profile fonts and native-portal boundary drop-ins
+are linked with private backups. kotoko's 40 original terminal addresses and the
+laptop's nine pre-adoption local addresses survived their respective package
+changes; core/holder and portal/audio PIDs were unchanged. Neither package-stage
+rollout performed whole-home activation, service restart or compositor cutover.
+Kotoko's subsequent user-coordinated Nix login is distinct from laptop acceptance.
 Fresh shells use Nix first; already running shells/processes retain their previous
 environment/code until refreshed normally. The account login shell is unchanged.
 Builds alone do not install, log in, restart or test graphics.
@@ -82,8 +109,8 @@ Example build from the persistent checkout (choose the host explicitly):
 
 ```sh
 nix build --max-jobs 2 --cores 20 --no-link .#kotoko-apps
-# The other host uses the same inventory, but requires hardware review first:
-# nix build --no-link .#deisslaptop-apps
+# Laptop: same inventory, with its confirmed Mesa host settings:
+nix build --no-link .#deisslaptop-apps
 ```
 
 After a successful build and reviewed package checks,
@@ -101,8 +128,15 @@ never kill Herdr holders, restart the compositor or log out agents for migration
 
 ## Opt-in login session (pending privileged registration)
 
-The native SDDM entry uses an absolute native launcher; a Nix-first PATH does not
-silently replace the current compositor or next login. The shared bundle provides:
+**A native launcher path alone is not a safe fallback.** The native SDDM entry
+calls `/usr/bin/start-hyprland`, but that launcher can resolve `Hyprland` through
+PATH and select the unwrapped Nix compositor. This caused a post-authentication
+black screen on kotoko after adopting a Nix-first login PATH. Before profile
+adoption changes login-time command resolution, verify a recovery path (prefer
+XFCE X11, TTY or authenticated SSH). Keep native packages until the replacement
+and recovery path have been validated and removal is separately authorized.
+
+The shared bundle provides:
 
 - `start-nix-hyprland`
 - `share/wayland-sessions/hyprland-nix.desktop`, named **Hyprland (Nix)**
@@ -112,12 +146,12 @@ Before first login, the three native portal units need the shared
 `native-graphics.conf` linked as user drop-ins named
 `50-nix-graphics-boundary.conf` under each
 `~/.config/systemd/user/xdg-desktop-portal{,-hyprland,-gtk}.service.d/` directory.
-The shared Home Manager module declares these links. kotoko's package-only
-adoption installed the same conflict-backed-up links and ran
-`systemctl --user daemon-reload` without restarting services. Future hosts need
-the same reviewed adoption before first login. This keeps compositor-scoped Nix GPU library overrides out
-of native portal processes. User font discovery and application-menu links were also adopted on kotoko;
-these steps remain necessary before deploying another host.
+The shared Home Manager module declares these links. Both workstations'
+package-only adoptions installed the same conflict-backed-up links and ran
+`systemctl --user daemon-reload` without restarting services. This keeps
+compositor-scoped Nix GPU library overrides out of native portal processes.
+Both also adopted font discovery and application-menu links. Future hosts need
+the same reviewed integration before first login.
 
 After the profile is built, installed and reviewed, a human must register the
 additional session once:
@@ -128,10 +162,24 @@ sudo install -Dm644 \
   /usr/share/wayland-sessions/hyprland-nix.desktop
 ```
 
-**This is not done:** it requires sudo and passwordless sudo is unavailable.
-Profile installation alone cannot register SDDM sessions. Do not replace native
-binaries or restart SDDM during an active session. At a future planned login,
-select **Hyprland (Nix)**; retain the original **Hyprland** entry for fallback.
+Kotoko subsequently registered the correct custom entry and reached a working
+Nix desktop; that is not laptop acceptance. On deisslaptop registration remains
+pending: sudo requires a password. Profile installation alone cannot register
+SDDM sessions. Copy **hyprland-nix.desktop**, never the upstream
+`hyprland.desktop` under a renamed destination. Inspect the installed destination:
+
+```sh
+grep -E '^(Name|Exec)=' /usr/share/wayland-sessions/hyprland-nix.desktop
+# Name=Hyprland (Nix)
+# Exec=/home/firesquid/.nix-profile/bin/start-nix-hyprland
+"$HOME/.nix-profile/bin/start-nix-hyprland" --version
+```
+
+A successful non-graphical launcher check is necessary but does not validate a
+real seat or login. Do not replace native binaries or restart SDDM during an
+active session. At a future planned login, select **Hyprland (Nix)** only after
+saving work and verifying recovery. Do not assume the old Hyprland entry works
+just because its native packages remain installed.
 Review checkout/environment and host graphics selection before that login.
 The launcher should reject incompatible/unset graphics rather than guessing a GPU.
 Driver repairs may require a TTY and native `/usr/bin/...` tools.

@@ -83,11 +83,11 @@
     "herdr-core": {
       "flake": false,
       "locked": {
-        "lastModified": 1794327317,
-        "narHash": "sha256-YzKVuMPt8CPns3q+1gnD6AcoDhuuqeh5zNMOq79aZ0o=",
+        "lastModified": 1794686014,
+        "narHash": "sha256-r37rUK6qsAgWZ6HCeDpV8EIr9Frmip4cxaB2xZGgSxE=",
         "ref": "refs/heads/master",
-        "rev": "de97ea5ba5d6877a5e082316b4a1a5b4918e861f",
-        "revCount": 170,
+        "rev": "92a49ad643c830920675de603d318ed57b1e7620",
+        "revCount": 171,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/firesquid6/herdr-core"
