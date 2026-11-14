@@ -66,11 +66,11 @@ submenus are presented as indented rows rather than cascading windows.
 ### Wallpaper
 
 Open **Super+P → Power & session → Wallpaper** to switch renderers. The default
-is **Animated landscape**: a Tokyo Night pixel-art scene with layered mountains,
-fields, a winding river, pines, drifting clouds and gently moving grass/water.
-Lighting follows the **system's local clock**, with dawn around 05:00–07:00,
-dusk from 17:00–20:00, and stars, a moon and animated teal/purple aurora at night.
-These are fixed clock times, not location-based sunrise/sunset calculations.
+is **Animated landscape**: a Tokyo Night pixel-art scene with broad, nearby mountain
+ridges on a lower horizon, more open sky, dense layered woodland, fields, a winding
+river, a mill and a small campsite. Woodland leaves clearings for the river, mill,
+tent and crop field. After sunset the campsite's stone-ringed fire lights up, casts
+warm light, and emits wind-drifting smoke and embers; it fades before sunrise.
 All colors are blended from the Tokyo Night palette, including daytime lighting.
 
 The selection is saved in `$XDG_STATE_HOME/sysdef/wallpaper` (normally
@@ -86,57 +86,99 @@ its window and timer. Backgrounds do not reserve screen space or accept input.
 Animation redraws at 8 FPS and stops drawing in Hyprpaper mode. Disposable
 `SYSDEF_AGS_SERVICES=0` instances cannot change wallpapers or preferences.
 
+#### Weather, seasons and moon
+
+One app-owned service runs **curl `https://wttr.in/?format=j1`** on startup and
+approximately every 30 minutes (shared across outputs, not per frame). wttr.in
+uses the public IP's approximate location; VPN/proxy routing can affect it. The
+request sends no explicit coordinates. `curl` is included in the AGS dependencies.
+Requests are HTTPS-only, bounded to 15 seconds and 256 KiB, cancellable on exit,
+and disabled in `SYSDEF_AGS_SERVICES=0` test instances.
+
+- **Seasons:** local calendar plus returned latitude selects the hemisphere;
+  spring greens/flowers, summer greenery, autumn gold/pink foliage, and winter
+  bare deciduous trees and snow cover when cold. Snowy weather also coats terrain.
+- **Weather:** cloud cover changes sky brightness and sun/star/aurora visibility;
+  fog drifts through the valley; rain, snow and storms add moving precipitation.
+  Wind controls cloud drift, falling particles and campsite smoke. CPU-controlled
+  river/wheel speed and calendar-driven crops remain independent of weather.
+- **Astronomy:** reported sunrise/sunset drive lighting and the campfire. The moon
+  renders its actual waxing/waning terminator using reported phase and illuminated
+  area, rather than always drawing a full disk.
+
+Failures retain the last good observation in memory, but weather older than six
+hours falls back to a fair-weather scene. Offline startup uses seasonal/local-clock
+sunrise estimates, an approximate lunar cycle and 45° north until latitude is known.
+These are estimates, not live weather; no location or response is saved to disk.
+`ags request -i sysdef status` includes the weather source, error and environment.
+
 Checks and previews (no live shell restart):
 
 ```sh
-bun test test/wallpaper.test.ts
+bun test test/wallpaper.test.ts test/wallpaper-resources.test.ts test/wallpaper-weather.test.ts test/wallpaper-crops.test.ts
+bash ags/check.sh crops   # isolated real save files: restart, catch-up, corruption and write failures
+bash ags/check.sh weather # isolated fake curl: lifecycle, bounded args, parsing, throttling, cancellation
 bash ags/tools/wallpaper-service-smoke.sh # isolated stub renderer, state and session
 ags run ags/tools/wallpaper-preview.ts --gtk 4 # /tmp/sysdef-wallpaper-{0,6,12,18}.png
 ags run ags/tools/wallpaper-smoke.tsx --gtk 4 # two-second live window test only
 ```
 
-After updating sources, restart AGS or log in again to load the wallpaper toggle.
+The preview also writes `/tmp/sysdef-wallpaper-{spring,summer,autumn,winter}.png`
+and `/tmp/sysdef-wallpaper-moon-{new,waxing,quarter,full,waning}.png` for deterministic
+weather/season/moon comparisons without making network requests.
 
-### Resource-driven landscape (desktop verification handoff)
+After updating sources, restart AGS or log in again to load the changes.
 
-The animated landscape now has a rocky waterfall and a timber/stone mill on the
-pasture bank, with a clockwise water wheel connected to the mill by an axle.
-River highlights, falling water, splash and wheel share one continuously integrated
-phase. Aggregate CPU load smoothly changes their speed (slow at idle, faster under
-load); changing load never resets the wheel angle. The field on the opposite bank
-has 96 planting sites: 0% used RAM leaves bare furrows, 50% plants half, and 100%
-plants all sites, filling from the back rows forward. Used RAM is
-`1 - MemAvailable / MemTotal`, so reclaimable filesystem cache does not count as
-occupied memory. The display eases toward new samples over roughly 1.5 seconds.
+### CPU-driven water and persistent seasonal crops
 
-One app-wide service reads `/proc/stat` and `/proc/meminfo` once per second, shared
-by all outputs. There are no per-frame reads or new subprocesses. A first CPU
-sample establishes the baseline; counter resets or read errors retain the last
-valid usage. Unsupported readings warn once per resource. Existing 8 FPS,
-non-interactive background-layer behavior, day/night lighting and Hyprpaper mode
-are retained; hidden wallpapers do not advance motion or queue frames.
+River highlights, the waterfall, splash and clockwise mill wheel share one
+continuously integrated phase. Aggregate CPU load smoothly changes their speed;
+changing load never resets the wheel angle. One app-wide service reads `/proc/stat`
+once per second. The wallpaper no longer samples RAM or uses it to plant crops.
 
-Headless checks:
+The opposite bank has 96 planting sites. Crops now grow with **real calendar time**,
+not uptime or frame count: seedlings emerge, increase in height, ripen, and are
+harvested progressively from the front rows to the back, leaving stubble. Varieties
+have distinct green pea pods, golden wheat heads and rounded orange pumpkins.
+The northern-hemisphere yearly rotation is:
 
-```sh
-bun test test/wallpaper.test.ts test/wallpaper-resources.test.ts
-```
+| Crop | Sown | Fully grown | Harvest | Next phase |
+| --- | --- | --- | --- | --- |
+| Peas | March 1 | May 18 | May 25–31 | Wheat on June 1 |
+| Wheat | June 1 | August 13 | August 20–31 | Pumpkins on September 1 |
+| Pumpkins | September 1 | November 3 | November 10–30 | Winter fallow on December 1 |
+| Fallow | December 1 | — | — | Peas on March 1 |
+
+The southern-hemisphere schedule shifts six months. It follows weather latitude;
+an offline restart retains the saved hemisphere until location is known. Initial
+setup joins the current season rather than starting a summer crop in winter.
+
+One shared service stores the crop, annual cycle, growth fraction, harvested
+fraction and last-update timestamp in **`$XDG_STATE_HOME/sysdef/crops.json`**
+(normally `~/.local/state/sysdef/crops.json`). It updates once a minute and saves
+atomically with private permissions every five minutes, on crop changes, and on
+shutdown. No file I/O happens during drawing. Restarting, suspending or hiding the
+wallpaper does not reset farming; elapsed offline time catches up to today's
+season without replaying missed years. Clock rollback cannot shrink saved crops.
+
+Bad/unknown-version save files are preserved, with errors visible under `crops`
+in `ags request -i sysdef status`. Farming continues in memory if saving fails.
+To reset a damaged save, move it aside and restart AGS; the new field joins today's
+calendar. Disposable `SYSDEF_AGS_SERVICES=0` instances never read or write the save.
 
 For desktop verification, restart AGS and:
 
-1. Run `ags run ags/tools/wallpaper-preview.ts --gtk 4`. Inspect the existing
-   four day/night PNGs and `/tmp/sysdef-wallpaper-ram-{0,50,100}.png` for the mill,
-   waterfall and empty/half/full field. These static RAM previews intentionally
-   hold the water phase fixed; they do not prove live animation speed.
-2. Observe the live animated wallpaper at idle, during a CPU-heavy build, and
-   after the build finishes. Check that water flows downstream, the right side
-   of the wheel moves downward with it, and acceleration/deceleration is smooth.
-3. Observe planting as real memory demand increases/decreases; allow a few
-   seconds for sampling/smoothing. Avoid deliberately filling all system RAM.
-4. Check multiple monitors, narrow/ultrawide outputs, night lighting, switching
-   to/from Hyprpaper, and suspend/resume. Confirm no catch-up spin or focus/input
-   capture. GTK/Cairo/Wayland execution still needs verification on the desktop;
-   software raster tests alone do not establish native rendering correctness.
+1. Run `ags run ags/tools/wallpaper-preview.ts --gtk 4`. Inspect
+   `/tmp/sysdef-wallpaper-crop-{peas,wheat,pumpkins}-{sown,growing,ripe,harvesting,harvested}.png`.
+   These hold water and lighting fixed to isolate crop stages, without changing
+   your real save or waiting months.
+2. Observe the river and wheel at idle, during a build, and afterward. Check smooth
+   acceleration/deceleration, downstream flow and clockwise rotation.
+3. Check `crops` in the status response and the state file, then restart AGS and
+   verify growth persists. Do not change the system clock to test seasonal stages.
+4. Check multiple monitors, narrow/ultrawide outputs, night lighting, Hyprpaper
+   switching and suspend/resume. All monitors share one farm. Hidden backgrounds
+   stop queuing frames, but calendar growth continues.
 
 ### Caffeine
 
@@ -253,7 +295,8 @@ bun ags/tools/typecheck.ts              # Checks this project's sources
 bun ags/tools/typecheck.ts --upstream   # Also print installed-library diagnostics
 ags bundle ags/app.tsx /tmp/sysdef-ags-check --gtk 4
 bun test
-bash ags/check.sh                       # Actual GTK widgets + private D-Bus/resource tests
+bash ags/check.sh                       # Actual GTK widgets + private D-Bus/resource/weather/crop tests
+bash ags/check.sh weather               # Isolated fake curl; no network or desktop changes
 bash ags/check.sh layout                # Opt-in: briefly displays a read-only panel, validates full height through refresh
 bash ags/check.sh caffeine              # Opt-in: briefly acquires an idle + lid inhibitor; checks toggle-off and shutdown release
 bash -n ags/*.sh scripts/hypr-startup.sh scripts/open-menu.sh scripts/proj.sh

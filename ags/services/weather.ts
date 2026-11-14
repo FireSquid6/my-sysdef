@@ -1,5 +1,5 @@
-import Gio from "gi://Gio"
-import GLib from "gi://GLib"
+import Gio from "gi://Gio?version=2.0"
+import GLib from "gi://GLib?version=2.0"
 import { createState, type Accessor } from "ags"
 import { parseWttr, type WeatherObservation } from "../wallpaper-weather"
 
@@ -60,7 +60,9 @@ export function createWeatherService(enabled = true): WeatherService {
       if (!enabled || running) return
       running = true; generation++
       void refresh()
-      timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, INTERVAL_SECONDS, () => {
+      // A minute-resolution scheduler avoids skipping an entire refresh when
+      // GLib's second-aligned timer fires slightly before the monotonic deadline.
+      timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 60, () => {
         void refresh()
         return GLib.SOURCE_CONTINUE
       })

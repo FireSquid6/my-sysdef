@@ -67,9 +67,15 @@ export function parseWttr(json: unknown, now = new Date()): WeatherObservation {
   const today = days.find(day => day.date === dayKey(now))
   const astronomy = first(today?.astronomy)
   const name = typeof astronomy.moon_phase === "string" ? astronomy.moon_phase.trim().toLowerCase() : ""
-  const age = numeric(astronomy.moon_age)
-  const moonPhase = phases[name] ?? (age !== null && age >= 0 && age <= 30 ? cycle(age / LUNATION) : estimateMoon(now))
-  const light = numeric(astronomy.moon_illumination)
+  const age = numeric(astronomy.moon_age), light = numeric(astronomy.moon_illumination)
+  const namedPhase = phases[name]
+  let moonPhase = namedPhase ?? (age !== null && age >= 0 && age <= 30 ? cycle(age / LUNATION) : estimateMoon(now))
+  // Phase names cover multi-day spans. Use the reported illuminated area to
+  // place the terminator within a crescent/gibbous span, not a fixed eighth.
+  if (namedPhase !== undefined && namedPhase !== 0 && namedPhase !== 0.5 && light !== null && light >= 0 && light <= 100) {
+    const waxing = Math.acos(1 - 2 * light / 100) / (2 * Math.PI)
+    moonPhase = namedPhase > 0.5 ? cycle(1 - waxing) : waxing
+  }
   let observedAt = +now
   if (typeof current.localObsDateTime === "string") {
     const m = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}:\d{2}\s*[AP]M)$/i.exec(current.localObsDateTime.trim())

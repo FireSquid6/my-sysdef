@@ -26,7 +26,8 @@ describe("wallpaper weather", () => {
   test("maps named lunar phases and estimates unknown/malformed astronomy", () => {
     for (const [name, phase] of [["New Moon", 0], ["Waxing Crescent", 0.125], ["First Quarter", 0.25], ["Waxing Gibbous", 0.375], ["Full Moon", 0.5], ["Waning Gibbous", 0.625], ["Last Quarter", 0.75], ["Waning Crescent", 0.875]] as const) {
       const data = fixture(); data.weather[0]!.astronomy[0]!.moon_phase = name
-      expect(resolveEnvironment(now, parseWttr(data, now)).moonPhase).toBe(phase)
+      data.weather[0]!.astronomy[0]!.moon_illumination = String((1 - Math.cos(phase * Math.PI * 2)) * 50)
+      expect(resolveEnvironment(now, parseWttr(data, now)).moonPhase).toBeCloseTo(phase, 10)
     }
     const data = fixture(); data.weather = []
     const env = resolveEnvironment(now, parseWttr(data, now))
@@ -34,6 +35,15 @@ describe("wallpaper weather", () => {
     expect(env.sunrise).toBeLessThan(env.sunset)
     expect(env.moonPhase).toBeGreaterThanOrEqual(0)
     expect(env.moonPhase).toBeLessThan(1)
+  })
+  test("reported illuminated area refines crescent geometry in both halves of the cycle", () => {
+    const data = fixture(), astronomy = data.weather[0]!.astronomy[0]!
+    astronomy.moon_phase = "Waxing Crescent"; astronomy.moon_illumination = "5"
+    const waxing = resolveEnvironment(now, parseWttr(data, now)).moonPhase
+    expect(waxing).toBeLessThan(0.125)
+    expect((1 - Math.cos(waxing * 2 * Math.PI)) / 2).toBeCloseTo(0.05)
+    astronomy.moon_phase = "Waning Crescent"
+    expect(resolveEnvironment(now, parseWttr(data, now)).moonPhase).toBeCloseTo(1 - waxing)
   })
   test("saturates high wind/rain, estimates lunar age, and replaces invalid sun times", () => {
     const data = fixture()
