@@ -12,7 +12,7 @@ const m: ModuleGenerator = () => ({
   packages: {
     // AGS's package pulls matching Astal GTK4/IO libraries; don't mix GTK generations.
     aur: ["aylurs-gtk-shell"],
-    "arch-official": ["gjs", "gtk4", "gtk4-layer-shell", "gobject-introspection", "npm", "bun", "libnotify", "pamixer", "networkmanager", "nm-connection-editor", "pavucontrol", "tailscale", "util-linux", "coreutils"],
+    "arch-official": ["gjs", "gtk4", "gtk4-layer-shell", "gobject-introspection", "npm", "bun", "libnotify", "pamixer", "networkmanager", "nm-connection-editor", "pavucontrol", "tailscale", "util-linux", "coreutils", "curl"],
   },
 });
 export default m;

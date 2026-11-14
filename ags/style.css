@@ -81,6 +81,9 @@ calendar:selected { color: #1a1b26; background: #bb9af7; }
 scrollbar { background: transparent; }
 scrollbar slider { background: #414868; min-width: 4px; border-radius: 4px; }
 
+/* The power menu is intentionally opaque, unlike wallpaper-facing app chrome. */
+window.sidebar { background: #1a1b26; border-radius: 10px; }
+
 /* Keyboard-first system sidebar; shared Tokyo Night palette. */
 .sidebar-panel { background: #1a1b26; border: 2px solid #bb9af7; border-radius: 10px; padding: 20px; }
 .sidebar-heading { color: #bb9af7; font-size: 17px; font-weight: bold; }
@@ -94,3 +97,8 @@ scrollbar slider { background: #414868; min-width: 4px; border-radius: 4px; }
 .sidebar-power.danger { color: #f7768e; }
 .sidebar-power-icon { font-family: "JetBrainsMono Nerd Font"; font-size: 18px; }
 .resource { color: #c0caf5; }
+.landscape-slider { padding: 6px 0; }
+.landscape-slider trough { min-height: 4px; background: #24283b; border-radius: 4px; }
+.landscape-slider highlight { background: #bb9af7; border-radius: 4px; }
+.landscape-slider slider { min-width: 12px; min-height: 12px; background: #bb9af7; border: 1px solid #c0caf5; border-radius: 8px; box-shadow: none; }
+.landscape-slider:disabled slider, .landscape-slider:disabled highlight { background: #565f89; }

@@ -68,7 +68,7 @@
       },
       "min": 44,
       "max": 480,
-      "background": "chrome",
+      "background": "#00000000",
       "resizable": false
     },
     {
@@ -181,6 +181,7 @@
   "font": "JetBrains Mono",
   "font_size": 14,
   "ui_font": "JetBrains Mono",
+  "terminal_opacity": 1,
   "terminal_padding": [
     8,
     10

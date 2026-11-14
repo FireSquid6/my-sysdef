@@ -1,92 +1,82 @@
 import os from "node:os";
 import { callWorker, checked, onHost, type Run } from "./process.ts";
+import { coreRpcWorker } from "./core-rpc-worker.js";
+import { storageWorker } from "./storage-worker.js";
 
-// The old herdr-app control protocol actually used by this repo's project picker.
-export function appWorker(message: unknown) {
-  const net = require("node:net"), path = require("node:path"), os = require("node:os");
-  const home = process.env.HERDR_APP_HOME || path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"), "herdr-app");
-  return new Promise((resolve, reject) => {
-    const socket = net.createConnection(path.join(home, "herdr-app.sock"));
-    let received = "";
-    socket.setTimeout(7000, () => socket.destroy(new Error("Herdr app did not answer")));
-    socket.on("connect", () => socket.write(JSON.stringify(message) + "\n"));
-    socket.on("error", reject);
-    socket.on("end", () => { if (!received.includes("\n")) reject(new Error("Herdr closed without a complete response")); });
-    socket.on("data", (chunk: Buffer) => {
-      received += chunk.toString();
-      if (received.length > 8 * 1024 * 1024) { socket.destroy(new Error("Herdr response is too large")); return; }
-      if (!received.includes("\n")) return;
-      socket.end();
-      try {
-        const result = JSON.parse(received.split("\n")[0]!);
-        if (result.error) reject(new Error(String(result.error))); else resolve(result);
-      } catch (error) { reject(error); }
-    });
-  });
+export interface Target { machine: string; local: boolean; hostname: string }
+export interface CoreTerminal {
+  address: string; cwd: string; state: string; argv?: string[];
+  agent?: string | null; status?: { app?: string } | null;
+  foreground?: { cwd?: string; argv?: string[]; name?: string } | null;
+  labels?: Record<string, string>; reason?: string | null;
 }
-
-export interface Terminal { terminal: string; pane: string; app: string | null; status?: string }
-export interface Tab { id: string; name: string; terminals: Terminal[] }
-export interface Space { id: string; name: string; folder: string; machine?: string | null; tabs: Tab[] }
-export interface World { spaces: Space[] }
-export interface Selection { space?: string; tab?: string; focused_pane?: string }
 interface Machine { name: string; host: string; id: string; state: string; temporary?: boolean }
 
+export class CoreRpcError extends Error {
+  constructor(message: string, readonly kind?: string) { super(message); }
+}
+
+// All target operations run against that host's own core. Layout documents are
+// machine-owned too; any connected GUI can display them without reverse routing.
 export class Herdr {
-  constructor(readonly run: Run, readonly gui: string) {}
-  app<T>(message: unknown): Promise<T> { return callWorker(this.run, this.gui, appWorker, message); }
-  command = (name: string, args: unknown) => this.app<Record<string, unknown>>({ do: name, args });
-  async machines(): Promise<Machine[]> {
-    return (JSON.parse(await onHost(this.run, this.gui, "herdr-core", ["machine", "ls", "--json"])) as { machines: Machine[] }).machines;
+  constructor(readonly run: Run) {}
+  exec(machine: string, program: string, argv: string[], input = "") {
+    return onHost(this.run, machine, program, argv, input);
   }
-  async exec(machine: string, program: string, argv: string[], input = "") {
-    if (!this.gui) return onHost(this.run, machine, program, argv, input);
-    // A Pi on host A can reach GUI B, which owns the configured connection to C.
-    // Each exec envelope is decoded separately; payloads still travel over stdin.
-    if (!machine) return onHost(this.run, this.gui, program, argv, input);
-    const raw = await onHost(this.run, this.gui, "herdr-core", ["exec", "--json", "--on", machine, "--timeout", "180", "--stdin", "--", program, ...argv], input);
-    const result = JSON.parse(raw);
-    if (result.truncated || result.timed_out || result.code !== 0) throw new Error(`Remote command failed on ${machine}: ${Buffer.from(result.stderr || "", "base64").toString() || "timed out/truncated output"}`);
-    return Buffer.from(result.stdout, "base64").toString();
+  worker<T>(machine: string, worker: Function, request: unknown): Promise<T> {
+    return callWorker(this.run, machine, worker, request);
   }
-  async worker<T>(machine: string, worker: Function, request: unknown): Promise<T> {
-    const script = `const request=JSON.parse(require("node:fs").readFileSync(0,"utf8"));Promise.resolve((${worker.toString()})(request)).then(r=>process.stdout.write(JSON.stringify(r))).catch(e=>{console.error(e.message);process.exitCode=1});`;
-    return JSON.parse(await this.exec(machine, "node", ["-e", script], JSON.stringify(request))) as T;
+  async target(host?: string): Promise<Target> {
+    if (!host) return { machine: "", local: true, hostname: os.hostname() };
+    const { machines } = JSON.parse(await checked(this.run, "hc", ["machine", "ls", "--json"])) as { machines: Machine[] };
+    const matches = machines.filter(machine => machine.name === host || machine.id === host);
+    if (matches.length !== 1) throw new Error(`Cannot uniquely resolve ${host} in this core's saved machines. Add/connect it with hc machine, then retry.`);
+    const machine = matches[0]!;
+    const actual = await this.worker<{ hostname: string }>(machine.name, storageWorker, { action: "identity" });
+    // An explicit saved machine is always a remote filesystem route, even if
+    // another machine happens to share this host's hostname.
+    return { machine: machine.name, local: false, hostname: actual.hostname };
   }
-  async target(host?: string): Promise<{ machine: string; local: boolean; hostname: string }> {
-    const guiIdentity = await callWorker<{ hostname: string }>(this.run, this.gui, identityWorker, {});
-    const wanted = host || os.hostname();
-    if (wanted === guiIdentity.hostname) return { machine: "", local: wanted === os.hostname(), hostname: guiIdentity.hostname };
-    const matches = (await this.machines()).filter(machine => host ? machine.name === wanted || machine.id === wanted : machine.host === wanted);
-    if (matches.length !== 1) throw new Error(`Cannot uniquely resolve ${wanted} in the GUI's configured Herdr machines. Add/connect that host or specify its saved machine name.`);
-    const selected = matches[0]!;
-    const actual = await this.worker<{ hostname: string }>(selected.name, identityWorker, {});
-    if (!host && actual.hostname !== os.hostname()) throw new Error("The saved default-host identity changed. Reconnect the machine running Pi before retrying.");
-    return { machine: selected.name, local: actual.hostname === os.hostname(), hostname: actual.hostname };
+  async identity(machine: string): Promise<string> {
+    const status = JSON.parse(await this.exec(machine, "hc", ["server", "status", "--json"])) as { core?: { id?: string } };
+    if (!status.core?.id) throw new Error("Cannot identify destination Core namespace");
+    return status.core.id;
   }
-  async restore(selection: Selection) {
-    if (selection.tab) await this.command("tab.select", { id: selection.tab });
-    else if (selection.space) await this.command("space.select", { id: selection.space });
-    if (selection.focused_pane) await this.command("pane.focus", { pane: selection.focused_pane });
+  async terminals(machine: string): Promise<CoreTerminal[]> {
+    const listing = JSON.parse(await this.exec(machine, "hc", ["ls", "--json"])) as { terminals: CoreTerminal[] };
+    if (!Array.isArray(listing.terminals)) throw new Error("Core returned an invalid terminal list");
+    // A target's listing can include its own connected machines. Only inspect
+    // terminals owned by the target core, not unrelated hosts or terminal text.
+    return Promise.all(listing.terminals.filter(t => !t.address.includes("/") && t.state === "live")
+      .map(async t => JSON.parse(await this.exec(machine, "hc", ["get", "--json", t.address])) as CoreTerminal));
+  }
+  async launch(machine: string, folder: string, key: string, role: string, argv: string[], extraLabels: Record<string, string> = {}): Promise<CoreTerminal> {
+    const labels = { "branchfork.key": key, "branchfork.role": role, "branchfork.folder": folder, ...extraLabels };
+    // hc interprets bare argv[0] as a template first. An absolute executable
+    // bypasses templates and their automatic first messages, for Pi and nvim.
+    const executable = argv.length ? await this.worker<string>(machine, storageWorker, { action: "executable", program: argv[0] }) : undefined;
+    const command = executable ? [executable, ...argv.slice(1)] : [];
+    const result = JSON.parse(await this.exec(machine, "hc", ["run", "--json", "--bg", "--no-parent", "--outlive-parent", "--no-notify",
+      "--name", `bf-${key.slice(0, 16)}-${role}`, "--cwd", folder,
+      ...Object.entries(labels).flatMap(([k, v]) => ["--label", `${k}=${v}`]), "--", ...command])) as CoreTerminal;
+    if (!result.address || result.address.includes("/") || result.state !== "live" || result.reason === "spawn_pending") {
+      throw new Error(`Core launch was not confirmed (${result.address || "unknown terminal"}, ${result.reason || result.state}). Inspect retained terminals before retrying.`);
+    }
+    // hc run's CLI reply can omit labels even though Core persisted them.
+    return { ...result, labels: { ...result.labels, ...labels } };
+  }
+  async label(machine: string, terminal: string, labels: Record<string, string>) {
+    await this.exec(machine, "hc", ["label", "--json", terminal, ...Object.entries(labels).map(([k, v]) => `${k}=${v}`)]);
+  }
+  async rpc<T>(machine: string, method: string, params: unknown): Promise<T> {
+    const reply = await this.worker<{ result: T; error?: { kind?: string; message: string } }>(machine, coreRpcWorker, { method, params });
+    if (reply.error) throw new CoreRpcError(reply.error.message, reply.error.kind);
+    return reply.result;
   }
 }
 
-function identityWorker() { return { hostname: require("node:os").hostname() }; }
-
-export async function findHerdr(run: Run, explicit = process.env.BRANCHFORK_GUI_HOST): Promise<Herdr> {
-  if (explicit !== undefined) {
-    const app = new Herdr(run, explicit === os.hostname() ? "" : explicit);
-    await app.app<World>({ ls: true });
-    return app;
-  }
-  const local = new Herdr(run, "");
-  try { await local.app<World>({ ls: true }); return local; } catch { /* Try connected saved hosts. */ }
-  const machines = JSON.parse(await checked(run, "herdr-core", ["machine", "ls", "--json"])) as { machines: Machine[] };
-  const found: Herdr[] = [];
-  for (const machine of machines.machines.filter(m => m.state === "connected" && !m.temporary)) {
-    const app = new Herdr(run, machine.name);
-    try { await app.app<World>({ ls: true }); found.push(app); } catch { /* Not a GUI host. */ }
-  }
-  if (found.length !== 1) throw new Error(`Found ${found.length} reachable Herdr GUI hosts. Set BRANCHFORK_GUI_HOST to the saved Herdr machine name running the intended GUI (or start/connect Herdr).`);
-  return found[0]!;
+export async function findHerdr(run: Run): Promise<Herdr> {
+  // No GUI probe or discovery. A missing hc is an actionable prerequisite error.
+  await checked(run, "hc", ["--version"]);
+  return new Herdr(run);
 }

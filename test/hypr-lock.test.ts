@@ -35,6 +35,49 @@ describe("Hyprlock and hypridle", () => {
     expect(read("dotfiles/hypr/hyprland.lua")).not.toContain('hl.bind("SUPER + CTRL + L"');
     expect(read("dotfiles/hypr/hyprland.conf")).not.toContain("bind = $mainMod CONTROL, L,");
   });
+  test("reloads only dedicated scene images over an opaque base, never the desktop", () => {
+    const config = read("dotfiles/hypr/hyprlock.conf");
+    expect(config).toContain("zindex = -2");
+    expect(config).toContain("zindex = -1");
+    expect(config).toContain("reload_time = 1");
+    expect(config).toContain("hyprlock-background.sh");
+    expect(config).toContain("enabled = false");
+    expect(config).not.toContain("SIGUSR");
+    const png = fs.readFileSync(path.join(root, "dotfiles/hypr/lock-background.png"));
+    expect(png.subarray(1, 4).toString()).toBe("PNG");
+    expect(png[25]).toBe(2); // PNG RGB color type: no alpha channel.
+  });
+  test("lock image selection honors enabled mode, freshness, fallback and safe instance names", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sysdef-lock-image-"));
+    const runtime = path.join(dir, "run with spaces"), state = path.join(dir, "state"), home = path.join(dir, "home");
+    fs.mkdirSync(path.join(runtime, "sysdef-wallpaper-sysdef-test"), { recursive: true });
+    fs.mkdirSync(path.join(state, "sysdef"), { recursive: true });
+    const config = path.join(home, ".config");
+    fs.mkdirSync(path.join(config, "hypr"), { recursive: true });
+    const image = path.join(runtime, "sysdef-wallpaper-sysdef-test/frame.png"), fallback = path.join(config, "hypr/lock-background.png");
+    fs.writeFileSync(fallback, "static fixture");
+    const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: config, XDG_RUNTIME_DIR: runtime, XDG_STATE_HOME: state, SYSDEF_AGS_INSTANCE: "sysdef-test" };
+    const select = async (overrides = {}) => {
+      const child = Bun.spawn(["bash", path.join(root, "dotfiles/hypr/hyprlock-background.sh")], { env: { ...env, ...overrides }, stdout: "pipe", stderr: "pipe" });
+      const result = (await new Response(child.stdout).text()).trim();
+      expect(await child.exited).toBe(0); return result;
+    };
+    try {
+      expect(await select()).toBe(fallback);
+      fs.writeFileSync(image, "frame fixture");
+      expect(await select()).toBe(image);
+      fs.writeFileSync(path.join(state, "sysdef/wallpaper"), "hyprpaper\n");
+      expect(await select()).toBe(fallback);
+      fs.writeFileSync(path.join(state, "sysdef/wallpaper"), "animated\n");
+      fs.utimesSync(image, new Date(0), new Date(0));
+      expect(await select()).toBe(fallback);
+      fs.utimesSync(image, new Date(), new Date());
+      expect(await select({ SYSDEF_AGS_INSTANCE: "../unsafe" })).toBe(fallback);
+      expect(await select({ XDG_RUNTIME_DIR: "" })).toBe(fallback);
+      fs.unlinkSync(image); fs.unlinkSync(fallback);
+      expect(await select()).toBe("");
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
   test("serializes lock requests and requires authentication immediately (mock locker only)", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sysdef-hyprlock-test-"));
     const calls = path.join(dir, "calls");

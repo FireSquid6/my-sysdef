@@ -6,7 +6,7 @@ export default function (pi: ExtensionAPI) {
   registerInbox(pi);
   let running = false;
   pi.registerCommand("branchfork", {
-    description: "Fork context into a clean Git worktree and Herdr workspace: /branchfork <branch> [host]",
+    description: "Fork context into a Core terminal and clean Git worktree: /branchfork <branch> [host] [--headless]",
     handler: async (args, ctx) => {
       if (running) { ctx.ui.notify("A branchfork is already running in this Pi session. Wait for it to finish.", "warning"); return; }
       running = true;

@@ -2,6 +2,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { Herdr } from "./herdr.ts";
+import { run } from "./process.ts";
 
 export const stateRoot = () => path.join(process.env.PI_CODING_AGENT_DIR || path.join(os.homedir(), ".pi/agent"), "branchfork");
 export interface Handoff { id: string; text: string }
@@ -41,18 +43,20 @@ export function registerInbox(pi: ExtensionAPI) {
   let live: string | undefined;
   let context: ExtensionContext | undefined;
   let lastError = "";
+  let coreId = "";
   const cleanup = () => {
     if (timer) clearInterval(timer);
     timer = undefined;
     if (live) fs.rmSync(live, { force: true });
     live = undefined;
     context = undefined;
+    coreId = "";
   };
   const tick = () => {
     if (!context || !live) return;
     try {
       const registration = {
-        sessionId: context.sessionManager.getSessionId(), pid: process.pid,
+        sessionId: context.sessionManager.getSessionId(), pid: process.pid, coreId,
         cwd: fs.realpathSync(context.cwd), terminal: process.env.HC_TERMINAL_ID || process.env.HERDR_TERMINAL_ID || "",
         tab: process.env.HERDR_TAB_ID || "",
         received: context.sessionManager.getBranch().flatMap(entry => entry.type === "custom_message" && entry.customType === "branchfork-handoff" && typeof (entry.details as { id?: string } | undefined)?.id === "string" ? [(entry.details as { id: string }).id] : []),
@@ -68,8 +72,18 @@ export function registerInbox(pi: ExtensionAPI) {
       lastError = message;
     }
   };
-  pi.on("session_start", (_event, ctx) => {
+  pi.on("session_start", async (_event, ctx) => {
     cleanup();
+    if (process.env.HC_TERMINAL_ID) {
+      try {
+        // Core injects the owning socket into each terminal. Prefer it over a
+        // shell's subsequently changed HC_SESSION/HC_SOCKET environment.
+        const socket = process.env.HC_TERMINAL_SOCKET;
+        const ownerRun: typeof run = (program, argv, options) => run(program, argv, { ...options, ...(socket ? { env: { HC_SOCKET: socket } } : {}) });
+        coreId = await new Herdr(ownerRun).identity("");
+      }
+      catch (error) { ctx.ui.notify(`Branchfork cannot register its owning Core: ${String(error)}`, "error"); return; }
+    }
     context = ctx;
     const dir = path.join(stateRoot(), "live");
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });

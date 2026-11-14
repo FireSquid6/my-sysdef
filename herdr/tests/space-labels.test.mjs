@@ -37,14 +37,28 @@ test("space labels show live agent counts by exact space ID, then a Nerd Font ro
   for (const [id, count] of [["local", "4"], ["remote/local", "1"], ["empty", "0"]]) {
     const row = h.row(id), badge = find(row, `space-agents-${id}`);
     assert.equal(badge.children[0], count);
-    assert.deepEqual(badge.attrs.text_color, [count === "0" ? "#565f89" : count === "1" ? "#bb9af7" : "#e0af68"]);
+    assert.deepEqual(badge.attrs.text_color, [count === "0" ? "#565f89" : count === "1" ? "#ff9e64" : "#bb9af7"]);
     assert.equal(badge.children[1].children[0], "󰚩");
     assert.deepEqual(badge.children[1].attrs.font_family, ["JetBrainsMono Nerd Font"]);
     assert.ok(badge.attrs.flex_none);
     assert.equal(row.children[0].children.at(-1), badge, "badge belongs at the right edge");
   }
-  h.setAgents([{ space: "local" }, { space: "local" }]);
-  assert.deepEqual(find(h.row("local"), "space-agents-local").attrs.text_color, ["#e0af68"], "two agents use yellow");
+  for (const [statuses, color] of [
+    [["idle"], "#565f89"],
+    [["idle", "idle"], "#565f89"],
+    [["working"], "#ff9e64"],
+    [["working", "blocked", "done"], "#ff9e64"],
+    [["working", "idle"], "#bb9af7"],
+    [["working", "blocked", "idle"], "#bb9af7"],
+    [[undefined], "#565f89"],
+  ]) {
+    h.setAgents(statuses.map(status => ({ space: "local", status })));
+    const badge = find(h.row("local"), "space-agents-local");
+    assert.equal(badge.children[0], String(statuses.length), "count includes idle sessions");
+    assert.deepEqual(badge.attrs.text_color, [color], `activity color for ${statuses}`);
+    const active = statuses.filter(status => status && status !== "idle").length;
+    assert.deepEqual(badge.attrs.tooltip, [`${statuses.length} agent sessions · ${active} non-idle`]);
+  }
   h.setAgents([]);
   const empty = find(h.row("local", { tree: true }), "space-agents-local");
   assert.equal(empty.children[0], "0", "agent exits update worktree rows too");

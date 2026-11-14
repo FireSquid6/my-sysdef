@@ -8,8 +8,11 @@ import { confirmPower, powerArgs, POWER_ACTIONS, POWER_LABELS, POWER_ICONS, type
 import { normalizeTailnet, formatBytes, deviceIP, visibleTailnetHealth, type TailDevice } from "./sidebar-model";
 import { createResourceSampler, EMPTY_RESOURCES } from "./services/resources";
 import type { CaffeineService } from "./services/caffeine";
+import type { WallpaperService } from "./services/wallpaper";
+import { LandscapeControls } from "./landscape-controls";
+import type { LandscapeControlsService } from "./services/landscape-controls";
 
-type Dependencies = { caffeine: Pick<CaffeineService, "state" | "toggle">; run: (argv: string[]) => Promise<string>; close: () => void; showError: (error: unknown) => void; copy?: (text: string) => void };
+type Dependencies = { landscape?: LandscapeControlsService; wallpaper?: Pick<WallpaperService, "state" | "toggle">; caffeine: Pick<CaffeineService, "state" | "toggle">; run: (argv: string[]) => Promise<string>; close: () => void; showError: (error: unknown) => void; copy?: (text: string) => void };
 type DeviceRow = { button: Gtk.Button; title: Gtk.Label; summary: Gtk.Label; detail: Gtk.Label; device: TailDevice; expanded: boolean; dispose: () => void };
 
 export function createSidebar(deps: Dependencies): { window: Astal.Window; open: (monitor?: Gdk.Monitor) => void; close: () => void; describe: () => unknown } {
@@ -23,14 +26,16 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
   const held = new Set<number>();
   const deviceRows = new Map<string, DeviceRow>();
   const baseRows: Gtk.Button[] = [];
+  const landscapeRows: Gtk.Widget[] = [];
   let deviceOrder: string[] = [];
   let deviceBox: Gtk.Box;
   let timer = 0, generation = 0, disposed = false, busy = false, polling = false;
   let cancellation: Gio.Cancellable | null = null;
   let focusIndex = 0;
   let pendingG = false;
-  const allRows = () => [...baseRows, ...deviceOrder.map(id => deviceRows.get(id)?.button).filter((button): button is Gtk.Button => !!button)];
-  function track(self: Gtk.Button) {
+  let lastWidth = 420;
+  const allRows = (): Gtk.Widget[] => [...baseRows, ...deviceOrder.map(id => deviceRows.get(id)?.button).filter((button): button is Gtk.Button => !!button), ...landscapeRows.filter(widget => widget.is_sensitive())];
+  function track(self: Gtk.Widget) {
     if (self.has_focus) { self.add_css_class("selected"); focusIndex = allRows().indexOf(self); }
     else self.remove_css_class("selected");
   }
@@ -152,7 +157,7 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
       polling = false;
       if (cancellation === cancellable) cancellation = null;
       // Completion-based scheduling bounds requests, and never overlaps even across close/reopen.
-      if (!disposed && window.visible) schedule(token === generation ? 5000 : 1);
+      if (!disposed && window.visible) schedule(token === generation ? resources().cpu === "CPU: sampling…" ? 250 : 5000 : 1);
     }
   }
   function schedule(delay: number) {
@@ -165,6 +170,11 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
     const secondG = pendingG && vim && keyval === Gdk.KEY_g;
     pendingG = false;
     if (keyval === Gdk.KEY_Escape || (vim && keyval === Gdk.KEY_q)) { close(); return true; }
+    // Native scales/switches own arrows, Home/End, Space and Enter. Never let
+    // a slider key accidentally activate the previously selected power action.
+    for (let widget = window.get_focus(); widget; widget = widget.get_parent()) {
+      if (widget.has_css_class("landscape-controls")) return false;
+    }
     if (vim && keyval === Gdk.KEY_g) {
       if (secondG) focus(0); else pendingG = true;
       return true;
@@ -181,7 +191,7 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
     if (keyval === Gdk.KEY_Home || keyval === Gdk.KEY_End) { focus(keyval === Gdk.KEY_Home ? 0 : allRows().length - 1); return true; }
     if ([Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space].includes(keyval)) {
       // Capture prevents GtkButton's default activation and held Enter from confirming twice.
-      if (!held.has(keyval)) { held.add(keyval); allRows()[focusIndex]?.emit("clicked"); }
+      if (!held.has(keyval)) { held.add(keyval); const row = allRows()[focusIndex]; if (row instanceof Gtk.Button) row.emit("clicked"); }
       return true;
     }
     return false; // Tab/Shift-Tab use native GTK focus traversal.
@@ -203,6 +213,15 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
       <label label={deps.caffeine.state(s => `Caffeine: ${s.busy ? "Enabling…" : s.enabled ? "On" : "Off"}`)} xalign={0} hexpand />
     </box>
   </button>;
+  const wallpaperRow = deps.wallpaper ? <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track}
+    class="sidebar-row" sensitive={deps.wallpaper.state(s => !s.busy)}
+    tooltipText="Switch between the local-time pixel landscape and your Hyprpaper configuration"
+    onClicked={() => { setPending(null); void deps.wallpaper!.toggle(); }}>
+    <box spacing={10}>
+      <label label="▧" class="sidebar-power-icon" widthRequest={22} />
+      <label label={deps.wallpaper.state(s => `Wallpaper: ${s.busy ? "Switching…" : s.mode === "animated" ? "Animated landscape" : "Hyprpaper"}`)} xalign={0} hexpand />
+    </box>
+  </button> : null;
   const resourceRows = (["cpu", "memory", "load", "disk"] as const).map(field =>
     <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track} class="sidebar-row resource">
       <label label={resources(r => r[field])} xalign={0} wrap />
@@ -227,6 +246,8 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
             <label label="Power & session" class="sidebar-heading" xalign={0} />
             {powerRows}
             {caffeineRow}
+            {wallpaperRow}
+            {deps.wallpaper && <label class="danger" visible={deps.wallpaper.state(s => !!s.error)} label={deps.wallpaper.state(s => s.error)} wrap xalign={0} />}
             <label class="danger" visible={deps.caffeine.state(s => !!s.error)} label={deps.caffeine.state(s => s.error)} wrap xalign={0} />
             <label class="menu-confirm" visible={pending(p => p !== null)} label={pending(p => p ? `Choose ${p} again to confirm. Escape closes.` : "")} wrap xalign={0} />
             <label class="danger" visible={error(e => !!e)} label={error} wrap xalign={0} />
@@ -243,6 +264,7 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
             <label label={health} visible={health(h => !!h)} class="danger" wrap xalign={0} />
             <box orientation={Gtk.Orientation.VERTICAL} spacing={6} $={(self: Gtk.Box) => { deviceBox = self; }} />
           </box>
+          {deps.landscape && <LandscapeControls service={deps.landscape} register={widget => { landscapeRows.push(widget); }} track={track} />}
         </box>
       </scrolledwindow>
     </box>
@@ -250,10 +272,14 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
   onCleanup(() => { disposed = true; stop(); for (const row of deviceRows.values()) row.dispose(); deviceRows.clear(); window.destroy(); });
   function open(monitor?: Gdk.Monitor) {
     if (disposed) return;
-    stop(); sampler.reset(); setPending(null); setError(""); setFeedback("");
-    if (monitor) { window.gdkmonitor = monitor; window.set_default_size(Math.min(440, Math.max(400, Math.round(monitor.get_geometry().width * 0.24))), -1); }
+    stop(); setPending(null); setError(""); setFeedback("");
+    if (monitor) {
+      if (window.gdkmonitor !== monitor) window.gdkmonitor = monitor;
+      const width = Math.min(440, Math.max(400, Math.round(monitor.get_geometry().width * 0.24)));
+      if (width !== lastWidth) { window.set_default_size(width, -1); lastWidth = width; }
+    }
     window.keymode = Astal.Keymode.EXCLUSIVE; window.visible = true; focus(0);
     void poll();
   }
-  return { window, open, close, describe: () => ({ visible: window.visible, sectioncount: 3, devicecount: deviceRows.size, focusindex: focusIndex, error: error() || resources().error || (status().startsWith("Tailscale unavailable") || status().startsWith("Invalid") ? "Tailscale status unavailable" : "") }) };
+  return { window, open, close, describe: () => ({ visible: window.visible, sectioncount: deps.landscape ? 4 : 3, devicecount: deviceRows.size, focusindex: focusIndex, error: error() || resources().error || (status().startsWith("Tailscale unavailable") || status().startsWith("Invalid") ? "Tailscale status unavailable" : "") }) };
 }

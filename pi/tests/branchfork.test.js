@@ -2,12 +2,13 @@ import { afterEach, describe, expect, test } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { branchfork, parseArgs } from "../extensions/branchfork/orchestrator.ts";
+import { branchfork, destinationAgent, parseArgs } from "../extensions/branchfork/orchestrator.ts";
 import { receiveInbox } from "../extensions/branchfork/inbox.ts";
 import { handoffId, snapshot } from "../extensions/branchfork/context.ts";
 import { onHost, callWorker, run } from "../extensions/branchfork/process.ts";
 import { storageWorker } from "../extensions/branchfork/storage-worker.js";
 import { Herdr } from "../extensions/branchfork/herdr.ts";
+import { createHash } from "node:crypto";
 
 const temporary = [];
 afterEach(() => { for (const dir of temporary.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
@@ -21,15 +22,17 @@ function context() {
     sessionManager: { getBranch: () => entries, getSessionId: () => "source-session", getHeader: () => ({ type: "session", version: 3, id: "source-session", cwd: "/source/repo" }), getSessionFile: () => "/private/source.jsonl" },
   };
 }
-function harness({ existing = false, count = 1, registered = true, received = false, failEditor = false } = {}) {
+function harness({ existing = false, count = 1, registered = true, received = false, failPresentation = false } = {}) {
   const ctx = context(), calls = [], folder = "/worktrees/repo/feature/next";
-  const tabs = existing ? Array.from({ length: count }, (_, n) => ({ id: `tab${n}`, name: n ? `agent${n}` : "agent", terminals: [{ terminal: `host/t${n}`, pane: `p${n}`, app: "pi" }] })) : [];
-  const space = { id: "space", name: "anything", folder, machine: "host", tabs };
   let summaries = 0, queued = false;
+  const key = createHash("sha256").update(JSON.stringify(["git@example.com:repo", "repo", "feature/next"])).digest("hex");
   const id = handoffId("source-session", ctx.sessionManager.getBranch(), `destination:${folder}:main:sha:test/model:high`);
-  const registrations = registered ? tabs.map((tab, n) => ({ sessionId: `dest-${n}`, cwd: folder, terminal: `t${n}`, received: received ? [id] : [] })) : [];
+  const terminals = existing ? Array.from({ length: count }, (_, n) => ({ address: `t${n}`, cwd: folder, state: "live", argv: ["pi"], labels: {} })) : [];
+  const registrations = registered ? terminals.map((t, n) => ({ sessionId: `dest-${n}`, cwd: folder, terminal: t.address, coreId: "target-core", received: received ? [id] : [] })) : [];
   const herdr = {
     exec: async () => "1.5.2",
+    identity: async () => "target-core",
+    terminals: async () => terminals,
     target: async host => { calls.push(["target", host]); return { machine: "host", hostname: "destination", local: false }; },
     worker: async (_machine, _worker, request) => {
       calls.push([request.action, request]);
@@ -43,32 +46,33 @@ function harness({ existing = false, count = 1, registered = true, received = fa
         default: return { ok: true };
       }
     },
-    app: async request => request.ls ? { spaces: existing ? [space] : [] } : { space: "original", tab: "original-tab", focused_pane: "original-pane" },
-    command: async (name, args) => {
-      calls.push([name, args]);
-      if (failEditor && args.name === "editor") throw new Error("editor spawn failed");
-      return { space: "space", tab: name === "space.new" ? "new-agent" : `new-${args.name}` };
+    launch: async (machine, cwd, key, role, argv, labels) => {
+      calls.push(["launch", { machine, cwd, key, role, argv, labels }]);
+      const terminal = { address: "tnew", cwd, argv, state: "live", labels: { "branchfork.key": key, "branchfork.role": role, ...labels } };
+      terminals.push(terminal);
+      return terminal;
     },
-    restore: async selection => calls.push(["restore", selection]),
   };
   const deps = {
     run: async () => ({ code: 0, stdout: JSON.stringify({ ok: true, source: { root: "/source/repo", primary: "/source/repo", repo: "repo", origin: "git@example.com:repo", currentBranch: "main", head: "sha" } }), stderr: "" }),
     findHerdr: async () => herdr,
     summarize: async () => { summaries++; return "Relevant decisions and remaining work"; },
+    present: async () => { calls.push(["present"]); if (failPresentation) throw Error("editor spawn failed"); return "Herdr workspace ready"; },
   };
-  return { ctx, deps, calls, summaries: () => summaries, folder, tabs };
+  return { ctx, deps, calls, summaries: () => summaries, folder, terminals, registrations, key, id };
 }
 
 describe("branchfork orchestration", () => {
-  test("new workspace uses the shared picker layout, exact model/thinking, full fork and no kickoff prompt", async () => {
+  test("core launch preserves exact model/thinking, full fork and no kickoff prompt", async () => {
     const h = harness();
     const result = await branchfork("feature/next other-host", h.ctx, h.deps);
     expect(h.calls.find(call => call[0] === "target")[1]).toBe("other-host");
-    const create = h.calls.find(call => call[0] === "space.new")[1];
+    const create = h.calls.find(call => call[0] === "launch")[1];
     expect(create.argv).toEqual(["pi", "--fork", "/private/snapshot.jsonl", "--provider", "test", "--model", "model", "--thinking", "high", "--name", "repo:feature/next"]);
-    expect(create.focus).toBe(false);
-    expect(h.calls.filter(call => call[0] === "tab.new").map(call => call[1].name)).toEqual(["editor", "term1", "term2"]);
-    expect(h.calls.find(call => call[0] === "restore")[1].tab).toBe("original-tab");
+    expect(create.role).toBe("agent");
+    expect(create.labels["branchfork.handoff"]).toBe(h.id);
+    expect(result).toContain("hc attach host/tnew");
+    expect(h.calls.some(call => call[0] === "present")).toBe(true);
     const content = h.calls.find(call => call[0] === "snapshot")[1].content;
     expect(content).toContain("Important requirements");
     expect(content).toContain("CONTEXT ONLY");
@@ -80,8 +84,7 @@ describe("branchfork orchestration", () => {
     const h = harness({ existing: true });
     await branchfork("feature/next", h.ctx, h.deps);
     expect(h.calls.find(call => call[0] === "target")[1]).toBeUndefined();
-    expect(h.calls.some(call => call[0] === "space.new")).toBe(false);
-    expect(h.calls.filter(call => call[0] === "tab.new").some(call => call[1].name === "agent")).toBe(false);
+    expect(h.calls.some(call => call[0] === "launch")).toBe(false);
     const queue = h.calls.find(call => call[0] === "queue")[1];
     expect(queue.sessionId).toBe("dest-0");
     expect(queue.message.text).toContain("CONTEXT ONLY");
@@ -99,32 +102,61 @@ describe("branchfork orchestration", () => {
   test("stops whenever multiple Pi agents exist, even if only one has the extension", async () => {
     const h = harness({ existing: true, count: 2 });
     await expect(branchfork("feature/next", h.ctx, h.deps)).rejects.toThrow("More than one Pi agent");
-    expect(h.calls.some(call => call[0] === "queue" || call[0] === "space.new")).toBe(false);
+    expect(h.calls.some(call => call[0] === "queue" || call[0] === "launch")).toBe(false);
     expect(h.calls.at(-1)[0]).toBe("unlock");
   });
   test("asks for reload rather than typing into an unregistered Pi", async () => {
     const h = harness({ existing: true, registered: false });
-    await expect(branchfork("feature/next", h.ctx, h.deps)).rejects.toThrow("Run /reload");
+    await expect(branchfork("feature/next", h.ctx, h.deps)).rejects.toThrow("/reload");
     expect(h.summaries()).toBe(0);
   });
-  test("starts a fresh full fork in an existing workspace with no Pi agent", async () => {
-    const h = harness({ existing: true, count: 0 });
-    await branchfork("feature/next", h.ctx, h.deps);
-    expect(h.calls.some(call => call[0] === "space.new")).toBe(false);
-    const agent = h.calls.find(call => call[0] === "tab.new" && call[1].name === "agent")[1];
-    expect(agent.space).toBe("space");
-    expect(agent.argv).toContain("--fork");
+  test("headless runs never access presentation and still fork an independent agent", async () => {
+    const h = harness();
+    const result = await branchfork("feature/next --headless", h.ctx, h.deps);
+    expect(h.calls.some(call => call[0] === "present")).toBe(false);
+    expect(h.calls.find(call => call[0] === "launch")[1].argv).toContain("--fork");
+    expect(result).toContain("Headless");
   });
-  test("reports retained worktree and partial tabs and restores selection after launch failure", async () => {
-    const h = harness({ failEditor: true });
-    await expect(branchfork("feature/next", h.ctx, h.deps)).rejects.toThrow("Created worktree");
-    expect(h.calls.some(call => call[0] === "restore")).toBe(true);
+  test("presentation failure is success, retains the agent, and retry before registration never duplicates it", async () => {
+    const h = harness({ failPresentation: true });
+    const result = await branchfork("feature/next", h.ctx, h.deps);
+    expect(result).toContain("Branchfork succeeded; optional workspace presentation failed");
+    expect(result).toContain("host/tnew");
+    await expect(branchfork("feature/next", h.ctx, h.deps)).rejects.toThrow("no matching branchfork inbox registration");
+    expect(h.calls.filter(call => call[0] === "launch")).toHaveLength(1);
+    h.registrations.push({ sessionId: "new-session", cwd: h.folder, terminal: "tnew", coreId: "target-core", received: [h.id] });
+    expect(await branchfork("feature/next", h.ctx, h.deps)).toContain("not resent");
+    expect(h.calls.filter(call => call[0] === "launch")).toHaveLength(1);
+    expect(h.summaries()).toBe(0);
     expect(h.calls.some(call => /close|kill|delete/.test(call[0]))).toBe(false);
     expect(h.calls.at(-1)[0]).toBe("unlock");
   });
+  test("registered agents in hidden terminals are discovered without any GUI workspace", async () => {
+    const h = harness({ existing: true });
+    h.terminals[0].argv = ["fish"];
+    h.terminals[0].foreground = { argv: ["pi"], cwd: h.folder + "/src" };
+    await branchfork("feature/next --headless", h.ctx, h.deps);
+    expect(h.calls.some(call => call[0] === "queue")).toBe(true);
+    expect(h.calls.some(call => call[0] === "launch" || call[0] === "present")).toBe(false);
+  });
+  test("a Pi in a subdirectory without registration also blocks duplication", async () => {
+    const h = harness({ existing: true, registered: false });
+    h.terminals[0].cwd += "/src";
+    await expect(branchfork("feature/next --headless", h.ctx, h.deps)).rejects.toThrow("run /reload");
+  });
+  test("registrations from another core namespace cannot select an unrelated terminal with the same ID", async () => {
+    const h = harness({ existing: true });
+    h.registrations[0].coreId = "other-core";
+    h.terminals[0].argv = ["fish"];
+    h.terminals[0].cwd = "/unrelated";
+    expect(await destinationAgent({}, "", h.folder, h.key, h.terminals, h.registrations, "target-core")).toBeUndefined();
+    h.registrations[0].terminal = "other-core/t0";
+    expect(await destinationAgent({}, "", h.folder, h.key, h.terminals, h.registrations, "target-core")).toBeUndefined();
+  });
   test("usage errors occur before Git or Herdr mutations", () => {
-    for (const value of ["", "a b c", "-bad"]) expect(() => parseArgs(value)).toThrow("Usage:");
-    expect(parseArgs("feature/nested")).toEqual({ branch: "feature/nested", host: undefined });
+    for (const value of ["", "a b c", "-bad", "a --unknown", "a --headless --headless"]) expect(() => parseArgs(value)).toThrow("Usage:");
+    expect(parseArgs("feature/nested")).toEqual({ branch: "feature/nested", host: undefined, headless: false });
+    expect(parseArgs("feature/nested minibox-one --headless")).toEqual({ branch: "feature/nested", host: "minibox-one", headless: true });
   });
 });
 
@@ -203,15 +235,38 @@ describe("host transport", () => {
     await worker({ action: "unlock", key: "repo", token: "first" });
     expect(await worker({ action: "lock", key: "repo", token: "second" })).toEqual({ ok: true });
   });
-  test("nested routing via a remote GUI decodes both Core exec envelopes", async () => {
-    const inner = JSON.stringify({ code: 0, stdout: Buffer.from("destination answer").toString("base64"), stderr: "" });
-    const fake = async () => ({ code: 0, stdout: JSON.stringify({ code: 0, stdout: Buffer.from(inner).toString("base64"), stderr: "" }), stderr: "" });
-    expect(await new Herdr(fake, "gui-host").exec("target-host", "node", ["-e", "script"], "payload")).toBe("destination answer");
+  test("omitted host uses the Pi host without consulting a GUI or saved machines", async () => {
+    const herdr = new Herdr(async () => { throw Error("No external process should run"); });
+    expect(await herdr.target()).toEqual({ machine: "", hostname: os.hostname(), local: true });
   });
-  test("omitted host maps the Pi hostname to a GUI-configured remote, not GUI-local", async () => {
-    const herdr = new Herdr(async () => ({ code: 0, stdout: JSON.stringify({ hostname: "gui-machine" }), stderr: "" }), "");
-    herdr.machines = async () => [{ name: "source-host", host: os.hostname(), id: "id", state: "connected" }];
+  test("explicit host resolves using the invoking core's saved machine list", async () => {
+    const herdr = new Herdr(async (program, argv) => {
+      expect(program).toBe("hc");
+      expect(argv).toEqual(["machine", "ls", "--json"]);
+      return { code: 0, stdout: JSON.stringify({ machines: [{ name: "minibox-one", id: "remote-id", host: "minibox-one", state: "connected" }] }), stderr: "" };
+    });
     herdr.worker = async () => ({ hostname: os.hostname() });
-    expect(await herdr.target()).toEqual({ machine: "source-host", hostname: os.hostname(), local: true });
+    expect(await herdr.target("minibox-one")).toEqual({ machine: "minibox-one", hostname: os.hostname(), local: false });
+    await expect(herdr.target("missing")).rejects.toThrow("Cannot uniquely resolve");
+  });
+  test("an explicit saved machine named like this hostname is still a remote route", async () => {
+    const herdr = new Herdr(async () => ({ code: 0, stdout: JSON.stringify({ machines: [{ name: os.hostname(), id: "other-core", host: os.hostname(), state: "connected" }] }), stderr: "" }));
+    herdr.worker = async () => ({ hostname: os.hostname() });
+    expect(await herdr.target(os.hostname())).toEqual({ machine: os.hostname(), hostname: os.hostname(), local: false });
+  });
+  test("core launch owns an independent persistent terminal, with no task or GUI flags", async () => {
+    const calls = [];
+    const herdr = new Herdr(async (program, argv) => {
+      calls.push([program, argv]);
+      return { code: 0, stdout: JSON.stringify({ address: "t42", state: "live" }), stderr: "" };
+    });
+    herdr.worker = async (_machine, _worker, request) => {
+      expect(request).toEqual({ action: "executable", program: "pi" });
+      return "/absolute/pi";
+    };
+    await herdr.launch("", "/worktree", "abcdef", "agent", ["pi", "--fork", "/private/context"]);
+    expect(calls[0][0]).toBe("hc");
+    for (const flag of ["--bg", "--json", "--no-parent", "--outlive-parent", "--no-notify"]) expect(calls[0][1]).toContain(flag);
+    expect(calls[0][1].slice(-4)).toEqual(["--", "/absolute/pi", "--fork", "/private/context"]);
   });
 });

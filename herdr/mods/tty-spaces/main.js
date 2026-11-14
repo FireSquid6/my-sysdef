@@ -385,8 +385,10 @@ export default class Spaces extends View {
   }
 
   row({ w, i, g, tree }, t) {
-    const count = agents().filter(agent => agent.space === w.id).length;
-    const agentColor = count === 0 ? "#565f89" : count === 1 ? "#bb9af7" : "#e0af68";
+    const sessions = agents().filter(agent => agent.space === w.id);
+    const count = sessions.length;
+    const active = sessions.filter(agent => agent.status && agent.status !== "idle").length;
+    const agentColor = active === 0 ? "#565f89" : active === count ? "#ff9e64" : "#bb9af7";
     const on = w.active;
     const fromIndex = this.pressed === null ? -1 : spaces().findIndex(s => s.id === this.pressed);
     const colors = shared("space.colors") ?? {};
@@ -441,7 +443,7 @@ export default class Spaces extends View {
           .child(div().flex_shrink(0).max_w(150).truncate().text_color(t.foreground).child(w.name))
           .child(g ? this.gitTail(g, tree, w.name, t) : div().flex_1())
           .child(h_flex().id(`space-agents-${w.id}`).flex_none().gap(4).items_center().text_color(agentColor)
-            .tooltip("Live agents in this space")
+            .tooltip(`${count} agent sessions · ${active} non-idle`)
             .child(String(count))
             .child(div().font_family("JetBrainsMono Nerd Font").child("󰚩"))),
       );
