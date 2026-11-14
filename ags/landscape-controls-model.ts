@@ -13,7 +13,7 @@ export const SLIDERS = [
   { key: "temperature", label: "Temperature", min: -20, max: 40, step: 1 },
   { key: "growth", label: "Crop growth", min: 0, max: 1, step: 0.01 },
   { key: "harvest", label: "Harvest progress", min: 0, max: 1, step: 0.01 },
-  { key: "cpu", label: "River / mill speed", min: 0, max: 1, step: 0.01 },
+  { key: "cpu", label: "River / mill activity", min: 0, max: 1, step: 0.01 },
 ] as const
 export type SliderKey = typeof SLIDERS[number]["key"]
 export type ManualLandscape = Record<SliderKey, number>
@@ -32,6 +32,7 @@ export function parseLandscapeSettings(text: string): LandscapeSettings {
     if (typeof data.manual[key] !== "number" || !Number.isFinite(data.manual[key])) throw Error(`Invalid landscape slider: ${key}`)
     manual[key] = normalize(key, data.manual[key])
   }
+  if (manual.harvest > 0) manual.growth = 1
   return { version: 1, sync: data.sync, manual }
 }
 export function seedManual(date: Date, environment: LandscapeEnvironment, crops: CropState, cpu: number): ManualLandscape {
@@ -40,7 +41,11 @@ export function seedManual(date: Date, environment: LandscapeEnvironment, crops:
 }
 export function setManual(settings: LandscapeSettings, key: SliderKey, value: number): LandscapeSettings {
   if (settings.sync || !Number.isFinite(value) || !SLIDERS.some(s => s.key === key)) return settings
-  const manual = { ...settings.manual, [key]: normalize(key, value) }
+  const normalized = normalize(key, value)
+  // GTK's two-way bindings echo programmatic updates. An unchanged weather
+  // value must not reapply presets over a freshly captured live snapshot.
+  if (normalized === settings.manual[key]) return settings
+  const manual = { ...settings.manual, [key]: normalized }
   if (key === "growth" && manual.growth < 1) manual.harvest = 0
   if (key === "harvest" && manual.harvest > 0) manual.growth = 1
   if (key === "weather") {
@@ -55,9 +60,9 @@ export function setManual(settings: LandscapeSettings, key: SliderKey, value: nu
 export function manualScene(settings: LandscapeSettings, realDate: Date, liveEnvironment: LandscapeEnvironment, liveCrops: CropState) {
   if (settings.sync) return { date: realDate, environment: liveEnvironment, crops: liveCrops }
   const m = settings.manual, date = new Date(+realDate)
-  date.setHours(Math.floor(m.hour), Math.floor(m.hour % 1 * 60), 0, 0)
+  date.setHours(Math.floor(m.hour), Math.round(m.hour % 1 * 60), 0, 0)
   const season = SEASONS[m.season]!, weather = WEATHER[m.weather]!
-  const environment: LandscapeEnvironment = { ...liveEnvironment, season, weather, cloud: m.cloud, precip: m.precip, wind: m.wind, temperature: m.temperature, moonPhase: m.moonPhase % 1, moonIllumination: (1 - Math.cos(m.moonPhase * 2 * Math.PI)) / 2, sunrise: [6, 5, 6.5, 7.5][m.season]!, sunset: [18.5, 20, 18, 17][m.season]! }
+  const environment: LandscapeEnvironment = { ...liveEnvironment, season, weather, cloud: m.cloud, precip: m.precip, wind: m.wind, windDirection: 270, temperature: m.temperature, moonPhase: m.moonPhase % 1, moonIllumination: (1 - Math.cos(m.moonPhase * 2 * Math.PI)) / 2, sunrise: [6, 5, 6.5, 7.5][m.season]!, sunset: [18.5, 20, 18, 17][m.season]! }
   const crops = { ...advanceCrops(null, new Date(2026, [3, 6, 9, 0][m.season]!, 15)), growth: season === "winter" ? 0 : m.growth, harvest: season === "winter" ? 0 : m.harvest }
   return { date, environment, crops }
 }
@@ -65,6 +70,7 @@ export function sliderLabel(key: SliderKey, value: number) {
   if (key === "hour") { const minutes = Math.round(value * 60); return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}` }
   if (key === "season") return SEASONS[Math.round(value)]!
   if (key === "weather") return WEATHER[Math.round(value)]!
+  if (key === "cpu" && value === 0) return "Idle"
   if (key === "temperature") return `${Math.round(value)} °C`
   if (key === "moonPhase") return ["New", "Waxing crescent", "First quarter", "Waxing gibbous", "Full", "Waning gibbous", "Last quarter", "Waning crescent", "New"][Math.round(value * 8)]!
   return `${Math.round(value * 100)}%`

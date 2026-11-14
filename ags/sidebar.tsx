@@ -9,8 +9,10 @@ import { normalizeTailnet, formatBytes, deviceIP, visibleTailnetHealth, type Tai
 import { createResourceSampler, EMPTY_RESOURCES } from "./services/resources";
 import type { CaffeineService } from "./services/caffeine";
 import type { WallpaperService } from "./services/wallpaper";
+import { LandscapeControls } from "./landscape-controls";
+import type { LandscapeControlsService } from "./services/landscape-controls";
 
-type Dependencies = { wallpaper?: Pick<WallpaperService, "state" | "toggle">; caffeine: Pick<CaffeineService, "state" | "toggle">; run: (argv: string[]) => Promise<string>; close: () => void; showError: (error: unknown) => void; copy?: (text: string) => void };
+type Dependencies = { landscape?: LandscapeControlsService; wallpaper?: Pick<WallpaperService, "state" | "toggle">; caffeine: Pick<CaffeineService, "state" | "toggle">; run: (argv: string[]) => Promise<string>; close: () => void; showError: (error: unknown) => void; copy?: (text: string) => void };
 type DeviceRow = { button: Gtk.Button; title: Gtk.Label; summary: Gtk.Label; detail: Gtk.Label; device: TailDevice; expanded: boolean; dispose: () => void };
 
 export function createSidebar(deps: Dependencies): { window: Astal.Window; open: (monitor?: Gdk.Monitor) => void; close: () => void; describe: () => unknown } {
@@ -24,14 +26,15 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
   const held = new Set<number>();
   const deviceRows = new Map<string, DeviceRow>();
   const baseRows: Gtk.Button[] = [];
+  const landscapeRows: Gtk.Widget[] = [];
   let deviceOrder: string[] = [];
   let deviceBox: Gtk.Box;
   let timer = 0, generation = 0, disposed = false, busy = false, polling = false;
   let cancellation: Gio.Cancellable | null = null;
   let focusIndex = 0;
   let pendingG = false;
-  const allRows = () => [...baseRows, ...deviceOrder.map(id => deviceRows.get(id)?.button).filter((button): button is Gtk.Button => !!button)];
-  function track(self: Gtk.Button) {
+  const allRows = (): Gtk.Widget[] => [...baseRows, ...deviceOrder.map(id => deviceRows.get(id)?.button).filter((button): button is Gtk.Button => !!button), ...landscapeRows.filter(widget => widget.is_sensitive())];
+  function track(self: Gtk.Widget) {
     if (self.has_focus) { self.add_css_class("selected"); focusIndex = allRows().indexOf(self); }
     else self.remove_css_class("selected");
   }
@@ -166,6 +169,11 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
     const secondG = pendingG && vim && keyval === Gdk.KEY_g;
     pendingG = false;
     if (keyval === Gdk.KEY_Escape || (vim && keyval === Gdk.KEY_q)) { close(); return true; }
+    // Native scales/switches own arrows, Home/End, Space and Enter. Never let
+    // a slider key accidentally activate the previously selected power action.
+    for (let widget = window.get_focus(); widget; widget = widget.get_parent()) {
+      if (widget.has_css_class("landscape-controls")) return false;
+    }
     if (vim && keyval === Gdk.KEY_g) {
       if (secondG) focus(0); else pendingG = true;
       return true;
@@ -182,7 +190,7 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
     if (keyval === Gdk.KEY_Home || keyval === Gdk.KEY_End) { focus(keyval === Gdk.KEY_Home ? 0 : allRows().length - 1); return true; }
     if ([Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space].includes(keyval)) {
       // Capture prevents GtkButton's default activation and held Enter from confirming twice.
-      if (!held.has(keyval)) { held.add(keyval); allRows()[focusIndex]?.emit("clicked"); }
+      if (!held.has(keyval)) { held.add(keyval); const row = allRows()[focusIndex]; if (row instanceof Gtk.Button) row.emit("clicked"); }
       return true;
     }
     return false; // Tab/Shift-Tab use native GTK focus traversal.
@@ -255,6 +263,7 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
             <label label={health} visible={health(h => !!h)} class="danger" wrap xalign={0} />
             <box orientation={Gtk.Orientation.VERTICAL} spacing={6} $={(self: Gtk.Box) => { deviceBox = self; }} />
           </box>
+          {deps.landscape && <LandscapeControls service={deps.landscape} register={widget => { landscapeRows.push(widget); }} track={track} />}
         </box>
       </scrolledwindow>
     </box>
@@ -267,5 +276,5 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
     window.keymode = Astal.Keymode.EXCLUSIVE; window.visible = true; focus(0);
     void poll();
   }
-  return { window, open, close, describe: () => ({ visible: window.visible, sectioncount: 3, devicecount: deviceRows.size, focusindex: focusIndex, error: error() || resources().error || (status().startsWith("Tailscale unavailable") || status().startsWith("Invalid") ? "Tailscale status unavailable" : "") }) };
+  return { window, open, close, describe: () => ({ visible: window.visible, sectioncount: deps.landscape ? 4 : 3, devicecount: deviceRows.size, focusindex: focusIndex, error: error() || resources().error || (status().startsWith("Tailscale unavailable") || status().startsWith("Invalid") ? "Tailscale status unavailable" : "") }) };
 }

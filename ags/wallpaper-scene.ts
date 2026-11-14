@@ -107,9 +107,10 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
     const r = river(y, width), left = Math.floor(r.center - r.half), span = Math.ceil(r.half * 2)
     paint(left - 2, y, span + 4, 1, shade(TOKYO.gold, 0.6))
     paint(left, y, span, 1, mix(shade(TOKYO.blue, 0.8), TOKYO.teal, day * 0.15))
-    if ((y - Math.floor(flow * 6)) % 7 === 0) {
+    const ripple = Math.max(0, Math.cos((y - flow * 6) * Math.PI * 2 / 7)) ** 6
+    if (ripple > 0.005) {
       const offset = Math.sin(y * 1.7 + flow * 0.8) * r.half * 0.5
-      paint(Math.floor(r.center + offset - r.half * 0.2), y, Math.max(1, Math.floor(r.half * 0.4)), 1, mix(TOKYO.blue, TOKYO.white, 0.35), 0.25 + day * 0.2)
+      paint(r.center + offset - r.half * 0.2, y, Math.max(1, r.half * 0.4), 1, mix(TOKYO.blue, TOKYO.white, 0.35), (0.25 + day * 0.2) * ripple)
     }
   }
   // Sparse grasses / wildflowers; wind shifts only their tips.
@@ -203,13 +204,13 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
     paint(left, y, span, 1, shade(TOKYO.cyan, 0.9))
     for (let strand = 0; strand < 5; strand++) {
       const x = Math.floor(left + (strand + 0.5) * span / 5)
-      paint(x, y, 1, 1, TOKYO.white, (y + strand * 3 - Math.floor(flow * 6)) % 6 === 0 ? 0.8 : 0.18)
+      paint(x, y, 1, 1, TOKYO.white, 0.18 + 0.62 * Math.max(0, Math.cos((y + strand * 3 - flow * 6) * Math.PI / 3)) ** 4)
     }
   }
   const pool = river(219, width)
   for (let i = 0; i < 9; i++) {
     const x = Math.floor(pool.center + (i / 8 - 0.5) * pool.half * 2)
-    paint(x, 219 + Math.floor((i + flow * 3) % 3), 2, 1, TOKYO.white, 0.45)
+    paint(x, 219 + (i + flow * 3) % 3, 2, 1, TOKYO.white, 0.45)
   }
   // Stone-and-timber mill on the pasture bank; axle enters its right-hand wall.
   const wheelX = Math.floor(river(207, width).center - river(207, width).half - 1), wheelY = 207

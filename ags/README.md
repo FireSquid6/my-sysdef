@@ -83,17 +83,62 @@ in the sidebar; failed startup or an unexpected exit restores animation.
 
 Every output gets an independent background-layer window; hotplug cleanup removes
 its window and timer. Backgrounds do not reserve screen space or accept input.
-Animation redraws at 8 FPS and stops drawing in Hyprpaper mode. Disposable
+Animation redraws at about 24 FPS and stops drawing in Hyprpaper mode.
+River highlights and waterfall shimmer blend continuously between phases, and
+splash positions move at device-pixel precision instead of jumping whole scene pixels. Disposable
 `SYSDEF_AGS_SERVICES=0` instances cannot change wallpapers or preferences.
+
+#### Manual landscape controls
+
+Open **Super+P**, scroll to the bottom, and find **Landscape controls**. Turn off
+**Sync with real life** to capture the current scene and enable the sliders:
+
+- Time of day, season and weather (clear/cloudy/fog/rain/snow/storm).
+- Moon phase, cloud cover, precipitation, wind and temperature.
+- Crop growth, harvest progress, and river/mill activity (idle to fast).
+
+Season chooses peas, wheat, pumpkins or winter fallow. Increasing harvest forces
+crops to be mature; reducing growth resets the harvest preview. Weather selection
+sets sensible cloud/rain defaults, which can then be adjusted independently.
+Manual mode fixes the displayed time/conditions but still animates water, smoke,
+clouds and weather. It does **not** edit `crops.json`: the real farm continues its
+calendar cycle separately. Turn sync back on to restore the real clock, weather,
+moon, saved farm and CPU-driven water speed.
+
+The toggle and manual values persist in
+`$XDG_STATE_HOME/sysdef/landscape-controls.json` (normally
+`~/.local/state/sysdef/landscape-controls.json`). Writes are private, atomic and
+debounced while dragging; shutdown flushes pending changes. Damaged/unknown-version
+files are preserved and reported in this section. Test instances with
+`SYSDEF_AGS_SERVICES=0` can preview controls in memory without touching preferences.
+
+Use **Tab / Shift+Tab** between controls; native **arrow keys** adjust a focused
+slider. Home/End adjust its bounds rather than navigating to power actions.
+**Escape** closes the panel from any control. From the session/device rows,
+**End** jumps to the last enabled landscape control and scrolls it into view.
 
 #### Weather, seasons and moon
 
-One app-owned service runs **curl `https://wttr.in/?format=j1`** on startup and
-approximately every 30 minutes (shared across outputs, not per frame). wttr.in
-uses the public IP's approximate location; VPN/proxy routing can affect it. The
-request sends no explicit coordinates. `curl` is included in the AGS dependencies.
-Requests are HTTPS-only, bounded to 15 seconds and 256 KiB, cancellable on exit,
-and disabled in `SYSDEF_AGS_SERVICES=0` test instances.
+One app-owned service requests the wttr-compatible endpoint
+**`https://minibox-one.trex-city.ts.net:10443/<location>?format=j1`** on startup
+and approximately every 30 minutes (shared across outputs, not per frame).
+Every request includes an explicit, URL-encoded location; the proxy's public IP
+is never used to choose the city. Requests do not fall back to public wttr.in.
+
+Location precedence:
+
+1. `SYSDEF_WEATHER_LOCATION` environment override.
+2. The manually configured city in `$XDG_STATE_HOME/sysdef/weather-location`
+   (normally `~/.local/state/sysdef/weather-location`), for example `Waco,Texas`.
+3. **Austin** if no valid location is known or the file cannot be read.
+
+Determine the user's city independently before configuring that file; there is
+no automatic location lookup on each launch or refresh. A one-time public-IP
+lookup is only approximate, so correct the city manually if needed. The local
+location preference stays outside the repository. Changes take effect on the next
+refresh or shell restart. `curl` is included in the AGS dependencies; TLS certificate
+verification remains enabled. Requests are HTTPS-only, bounded to 15 seconds and
+256 KiB, cancellable on exit, and disabled in `SYSDEF_AGS_SERVICES=0` test instances.
 
 - **Seasons:** local calendar plus returned latitude selects the hemisphere;
   spring greens/flowers, summer greenery, autumn gold/pink foliage, and winter
@@ -109,15 +154,20 @@ and disabled in `SYSDEF_AGS_SERVICES=0` test instances.
 Failures retain the last good observation in memory, but weather older than six
 hours falls back to a fair-weather scene. Offline startup uses seasonal/local-clock
 sunrise estimates, an approximate lunar cycle and 45° north until latitude is known.
-These are estimates, not live weather; no location or response is saved to disk.
-`ags request -i sysdef status` includes the weather source, error and environment.
+These are estimates, not live weather. Weather responses stay in memory; only the
+manually chosen location is stored locally. `ags request -i sysdef status` includes
+the selected location, weather source, error and environment. The `wttr.in` source
+label identifies the compatible feed format, including the private endpoint.
 
 Checks and previews (no live shell restart):
 
 ```sh
 bun test test/wallpaper.test.ts test/wallpaper-resources.test.ts test/wallpaper-weather.test.ts test/wallpaper-crops.test.ts
 bash ags/check.sh crops   # isolated real save files: restart, catch-up, corruption and write failures
-bash ags/check.sh weather # isolated fake curl: lifecycle, bounded args, parsing, throttling, cancellation
+bash ags/check.sh controls # manual preferences, restart, sync restoration and farm isolation
+bun test test/landscape-controls.test.ts # preview rules and continuous water phases
+bash ags/check.sh weather # isolated fake curl: endpoint/location/fallback, lifecycle, bounded args, parsing, throttling, cancellation
+bun test test/weather-request.test.ts # explicit locations, URL escaping and Austin fallback
 bash ags/tools/wallpaper-service-smoke.sh # isolated stub renderer, state and session
 ags run ags/tools/wallpaper-preview.ts --gtk 4 # /tmp/sysdef-wallpaper-{0,6,12,18}.png
 ags run ags/tools/wallpaper-smoke.tsx --gtk 4 # two-second live window test only

@@ -7,10 +7,11 @@ import { drawLandscape } from "./wallpaper-scene"
 import type { WallpaperService } from "./services/wallpaper"
 import { advanceMotion, type LandscapeMotion, type Resources } from "./wallpaper-resources"
 import { resolveEnvironment, type WeatherObservation } from "./wallpaper-weather"
-import type { CropState } from "./wallpaper-crops"
+import { advanceCrops, type CropState } from "./wallpaper-crops"
+import { manualScene, type LandscapeSettings } from "./landscape-controls-model"
 
-export function Wallpaper({ monitor, service, resources = () => ({ cpu: 0 }), weather = () => null, crops }: {
-  monitor: Gdk.Monitor; service: Pick<WallpaperService, "animated">; resources?: () => Resources; weather?: () => WeatherObservation | null; crops?: () => CropState
+export function Wallpaper({ monitor, service, resources = () => ({ cpu: 0 }), weather = () => null, crops, controls }: {
+  monitor: Gdk.Monitor; service: Pick<WallpaperService, "animated">; resources?: () => Resources; weather?: () => WeatherObservation | null; crops?: () => CropState; controls?: () => LandscapeSettings
 }) {
   let motion: LandscapeMotion = { cpu: 0, flow: 0 }
   let lastFrame = GLib.get_monotonic_time() / 1_000_000
@@ -18,13 +19,14 @@ export function Wallpaper({ monitor, service, resources = () => ({ cpu: 0 }), we
   area.set_draw_func((_area, cr, width, height) => {
     // Integer device-aligned rectangles: crisp pixels at fractional output scales too.
     const scale = Math.max(1, height / 270), logicalWidth = Math.ceil(width / scale)
-    const date = new Date()
+    const now = new Date(), environment = resolveEnvironment(now, weather()), field = crops?.() ?? advanceCrops(null, now, environment.latitude)
+    const scene = controls ? manualScene(controls(), now, environment, field) : { date: now, environment, crops: field }
     drawLandscape((x, y, w, h, color, alpha = 1) => {
       cr.setSourceRGBA(color[0] / 255, color[1] / 255, color[2] / 255, alpha)
       const left = Math.round(x * scale), top = Math.round(y * scale)
       cr.rectangle(left, top, Math.round((x + w) * scale) - left, Math.round((y + h) * scale) - top)
       cr.fill()
-    }, logicalWidth, date, GLib.get_monotonic_time() / 1_000_000, motion, resolveEnvironment(date, weather()), crops?.())
+    }, logicalWidth, scene.date, GLib.get_monotonic_time() / 1_000_000, motion, scene.environment, scene.crops)
   })
   const window = <window name={`wallpaper-${monitor.connector ?? monitor.model ?? "output"}`} application={app}
     namespace="sysdef-wallpaper" gdkmonitor={monitor} visible={service.animated}
@@ -32,11 +34,13 @@ export function Wallpaper({ monitor, service, resources = () => ({ cpu: 0 }), we
     anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.BOTTOM | Astal.WindowAnchor.LEFT | Astal.WindowAnchor.RIGHT}
     canTarget={false} focusable={false} resizable class="sysdef-wallpaper"
     onRealize={(self: Astal.Window) => self.get_surface()?.set_input_region(new Cairo.Region())}>{area}</window> as Astal.Window
-  // Eight frames/sec is sufficient for slow wind, water and aurora; static mode does no drawing.
-  const timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT_IDLE, 125, () => {
+  // 24 FPS plus continuously blended water phases avoids the former 8 FPS
+  // stepping. Static mode still does no drawing; suspend never catches up motion.
+  const timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT_IDLE, 42, () => {
     const now = GLib.get_monotonic_time() / 1_000_000
     if (window.visible && monitor.is_valid()) {
-      motion = advanceMotion(motion, resources(), now - lastFrame)
+      const settings = controls?.()
+      motion = advanceMotion(motion, settings && !settings.sync ? { cpu: settings.manual.cpu } : resources(), now - lastFrame)
       area.queue_draw()
     }
     lastFrame = now

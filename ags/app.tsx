@@ -19,6 +19,7 @@ import { createWallpaperResources } from "./services/wallpaper-resources"
 import { createWeatherService } from "./services/weather"
 import { resolveEnvironment } from "./wallpaper-weather"
 import { createCropService } from "./services/crops"
+import { createLandscapeControls } from "./services/landscape-controls"
 
 const root = GLib.getenv("SYSDEF_ROOT_DIR") || `${GLib.get_home_dir()}/sysdef`
 const instance = GLib.getenv("SYSDEF_AGS_INSTANCE") || "sysdef"
@@ -41,6 +42,10 @@ app.start({
     const wallpaperResources = createWallpaperResources()
     const weather = createWeatherService(GLib.getenv("SYSDEF_AGS_SERVICES") !== "0")
     const crops = createCropService(GLib.getenv("SYSDEF_AGS_SERVICES") !== "0", () => weather.state().observation?.latitude ?? null)
+    const landscape = createLandscapeControls(() => {
+      const date = new Date()
+      return { date, environment: resolveEnvironment(date, weather.state().observation), crops: crops.sample(), cpu: wallpaperResources.sample().cpu }
+    }, GLib.getenv("SYSDEF_AGS_SERVICES") !== "0")
     const notifications = createNotificationService()
     const tray = createTrayService()
     const monitors = createBinding(app, "monitors")
@@ -53,7 +58,7 @@ app.start({
     const menus = createMenus({ run, controller: controller.controller, desktop: controller.desktop, root,
       close() { active = "" }, showError: report })
     app.add_window(menus.window)
-    const sidebar = createSidebar({ run, caffeine, wallpaper: GLib.getenv("SYSDEF_AGS_SERVICES") !== "0" ? wallpaper : undefined, close() { active = "" }, showError: report })
+    const sidebar = createSidebar({ run, caffeine, landscape, wallpaper: GLib.getenv("SYSDEF_AGS_SERVICES") !== "0" ? wallpaper : undefined, close() { active = "" }, showError: report })
     app.add_window(sidebar.window)
     const history = <window name="sysdef-history" application={app} namespace="sysdef-menu" visible={false}
       layer={Astal.Layer.OVERLAY} keymode={Astal.Keymode.NONE} class="sysdef-menu" resizable={false}
@@ -88,11 +93,12 @@ app.start({
       return all.filter(m => m.connector === controller.desktop().primary).slice(0, 1)
     })
     const popups = <For each={popupMonitors}>{monitor => <This this={app}><NotificationPopups service={notifications} monitor={monitor} /></This>}</For>
-    const wallpapers = <For each={monitors}>{monitor => <This this={app}><Wallpaper monitor={monitor} service={wallpaper} resources={wallpaperResources.sample} weather={() => weather.state().observation} crops={crops.sample} /></This>}</For>
+    const wallpapers = <For each={monitors}>{monitor => <This this={app}><Wallpaper monitor={monitor} service={wallpaper} resources={wallpaperResources.sample} weather={() => weather.state().observation} crops={crops.sample} controls={() => landscape.state().settings} /></This>}</For>
     void bars; void popups; void wallpapers
     wallpaperResources.start()
     weather.start()
     crops.start()
+    landscape.start()
     if (GLib.getenv("SYSDEF_AGS_SERVICES") !== "0") void wallpaper.start()
     void controller.start()
     system.start()
@@ -105,12 +111,12 @@ app.start({
         try { app.apply_css(`${root}/ags/style.css`, true) } catch (e) { report(e) }
       }
     })
-    onCleanup(() => { controller.stop(); system.stop(); caffeine.stop(); wallpaper.stop(); wallpaperResources.stop(); weather.stop(); crops.stop(); notifications.stop(); tray.stop(); cssWatcher.cancel(); menus.window.destroy(); history.destroy() })
+    onCleanup(() => { controller.stop(); system.stop(); caffeine.stop(); wallpaper.stop(); wallpaperResources.stop(); weather.stop(); crops.stop(); landscape.stop(); notifications.stop(); tray.stop(); cssWatcher.cancel(); menus.window.destroy(); history.destroy() })
     dispatch = ([command, name]) => {
       if (command === "ping") return "pong"
       if (command === "status") return { instance, menu: active, menus: menus.describe(), sidebar: sidebar.describe(), windows: app.windows.map(w => ({ name: w.name, visible: w.visible })),
         primary: controller.desktop().primary, workspaces: controller.desktop().workspaces.length,
-        wallpaper: wallpaper.state(), crops: crops.state(), weather: { ...weather.state(), environment: resolveEnvironment(new Date(), weather.state().observation) }, caffeine: caffeine.state(), notifications: notifications.items().length, notificationError: notifications.error(), tray: tray.items().length, trayError: tray.error(), error: error() }
+        wallpaper: wallpaper.state(), crops: crops.state(), landscape: landscape.state(), weather: { ...weather.state(), environment: resolveEnvironment(new Date(), weather.state().observation) }, caffeine: caffeine.state(), notifications: notifications.items().length, notificationError: notifications.error(), tray: tray.items().length, trayError: tray.error(), error: error() }
       if (command === "toggle" || command === "show") {
         if (command === "show" && active === (name === "power" ? "sidebar" : name)) close()
         open(name)

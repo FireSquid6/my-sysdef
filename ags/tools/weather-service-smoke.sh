@@ -15,5 +15,6 @@ printf '%s\n' '#!/usr/bin/env bash' \
   'good) printf '\''{"current_condition":[{"weatherCode":"296","cloudcover":"80","precipMM":"2","windspeedKmph":"24","winddirDegree":"270","temp_C":"12"}],"nearest_area":[{"latitude":"45"}]}'\'' ;;' \
   'esac' > "$tmp/bin/curl"
 chmod +x "$tmp/bin/curl"
-SYSDEF_WEATHER_CALLS="$tmp/calls" SYSDEF_WEATHER_ARGS="$tmp/args" SYSDEF_WEATHER_PID="$tmp/pid" \
+XDG_STATE_HOME="$tmp/state" SYSDEF_WEATHER_LOCATION="" \
+  SYSDEF_WEATHER_CALLS="$tmp/calls" SYSDEF_WEATHER_ARGS="$tmp/args" SYSDEF_WEATHER_PID="$tmp/pid" \
   PATH="$tmp/bin:$PATH" timeout 15 ags run "$root/ags/tools/weather-service-smoke.ts" --gtk 4

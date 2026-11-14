@@ -11,6 +11,9 @@ import { Bar, createMonitorName } from "../bar"
 import style from "../style.css"
 import type { DesktopStatus } from "../services/controller"
 import { createCaffeineModel, EMPTY_CAFFEINE } from "../caffeine-model"
+import { createLandscapeControls } from "../services/landscape-controls"
+import { advanceCrops } from "../wallpaper-crops"
+import { resolveEnvironment } from "../wallpaper-weather"
 
 // Reproduce the GDK property ordering on wake without suspending the desktop.
 const PendingMonitor = GObject.registerClass({
@@ -68,6 +71,14 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
       Peer: { peer: { ID: "peer", HostName: "offline-test", Online: false, TailscaleIPs: ["100.64.0.2"] } } })
   } })
   app.add_window(sidebar.window)
+  const liveDate = new Date(2026, 5, 15, 13, 30)
+  const landscape = createLandscapeControls(() => ({ date: liveDate, environment: { ...resolveEnvironment(liveDate), weather: "rain", cloud: 0.91, precip: 0.22 }, crops: advanceCrops(null, liveDate), cpu: 0.3 }), false)
+  const controlledSidebar = createSidebar({ caffeine, landscape, close() {}, showError(error) { throw error }, run: async argv => {
+    assert(argv.includes("tailscale"), "Landscape keyboard controls triggered a desktop action")
+    return JSON.stringify({ BackendState: "Running", Peer: {} })
+  } })
+  controlledSidebar.window.name = "sysdef-controls-test"
+  app.add_window(controlledSidebar.window)
   const [systemState, setSystem] = createState({ volume: " 9%", network: "Offline", battery: " 9%", batteryClass: "", batteryDetail: "", error: "" })
   const [items, setItems] = createState<any[]>([])
   const [trayItems] = createState<any[]>([])
@@ -217,8 +228,45 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         assert(calls.filter(c => c[0] === "bash").length === locksBefore + 1, "Sidebar Lock did not run exactly once")
         assert(!sidebar.window.visible, "Sidebar did not close after locking")
       } finally { sidebar.close() }
-      console.log("GTK UI smoke passed: Caffeine sidebar/bar toggles and lid-close persistence, delayed monitor identity/workspace recovery, native constant widths, menu/search/keyboard, controller routing, power repeat safety, sidebar sections/offline devices/navigation/details and Escape. No desktop actions executed.")
+      controlledSidebar.open(monitor)
+      try {
+        await Promise.resolve()
+        const sync = widgets(controlledSidebar.window, "landscape-sync")[0] as Gtk.Switch
+        const sliders = widgets(controlledSidebar.window, "landscape-slider") as Gtk.Scale[]
+        assert((controlledSidebar.describe() as any).sectioncount === 4 && sliders.length === 11, "Landscape controls missing from bottom section")
+        assert(widgets(controlledSidebar.window, "sidebar-section").at(-1)!.has_css_class("landscape-controls"), "Landscape section is not at the bottom")
+        assert(sync.active && sliders.every(s => !s.is_sensitive()), "Live mode must disable manual sliders")
+        const keys = keyboard(controlledSidebar.window, "sysdef-sidebar-keys")
+        keys.emit("key-pressed", Gdk.KEY_End, 0, 0)
+        assert(controlledSidebar.window.get_focus() === sync, "End did not reach the bottom sync toggle in live mode")
+        sync.active = false
+        assert(!landscape.state().settings.sync && sliders.every(s => s.is_sensitive()), "Sync toggle did not enable manual sliders")
+        assert(landscape.state().settings.manual.hour === 13.5, "Disabling sync did not seed the real clock")
+        assert(landscape.state().settings.manual.cloud === 0.91 && landscape.state().settings.manual.precip === 0.22, "GTK binding echoes replaced the live weather snapshot with presets")
+        const hour = widgets(controlledSidebar.window, "landscape-hour")[0] as Gtk.Scale
+        hour.set_value(22.5)
+        assert(landscape.state().settings.manual.hour === 22.5, "Native slider did not update manual settings")
+        landscape.set("growth", 0.8)
+        const growth = widgets(controlledSidebar.window, "landscape-growth")[0] as Gtk.Scale
+        assert(growth.get_value() === 0.8, "Settings did not update native slider value")
+        const firstPower = widgets(controlledSidebar.window, "sidebar-power")[0]!
+        firstPower.grab_focus()
+        keys.emit("key-pressed", Gdk.KEY_End, 0, 0)
+        assert(controlledSidebar.window.get_focus()?.has_css_class("landscape-cpu"), "End did not reach the last slider in manual mode")
+        hour.grab_focus()
+        for (const value of [Gdk.KEY_Left, Gdk.KEY_Right, Gdk.KEY_Home, Gdk.KEY_End, Gdk.KEY_Return, Gdk.KEY_space]) {
+          assert(!keys.emit("key-pressed", value, 0, 0), "Sidebar intercepted native slider keys")
+        }
+        const previous = hour.get_value()
+        hour.emit("move-slider", Gtk.ScrollType.STEP_FORWARD)
+        assert(hour.get_value() > previous && landscape.state().settings.manual.hour === hour.get_value(), "Native keyboard slider action did not adjust the value")
+        sync.active = true
+        assert(landscape.state().settings.sync && sliders.every(s => !s.is_sensitive()), "Re-enabling sync did not restore live mode")
+        keys.emit("key-pressed", Gdk.KEY_Escape, 0, 0)
+        assert(!controlledSidebar.window.visible, "Escape from landscape controls did not close the sidebar")
+      } finally { controlledSidebar.close(); landscape.stop() }
+      console.log("GTK UI smoke passed: landscape sync/sliders/native keyboard safety, Caffeine sidebar/bar toggles and lid-close persistence, delayed monitor identity/workspace recovery, native constant widths, menu/search/keyboard, controller routing, power repeat safety, sidebar sections/offline devices/navigation/details and Escape. No desktop actions executed.")
       app.quit(0)
-    } catch (error) { console.error(error); menus.close(); sidebar.close(); app.quit(1) }
+    } catch (error) { console.error(error); menus.close(); sidebar.close(); controlledSidebar.close(); landscape.stop(); app.quit(1) }
   })()
 } })

@@ -2,17 +2,28 @@ import Gio from "gi://Gio?version=2.0"
 import GLib from "gi://GLib?version=2.0"
 import { createState, type Accessor } from "ags"
 import { parseWttr, type WeatherObservation } from "../wallpaper-weather"
+import { DEFAULT_WEATHER_LOCATION, weatherLocation, weatherURL } from "../weather-request"
 
-export interface WeatherState { observation: WeatherObservation | null; error: string; updatedAt: number | null }
+export interface WeatherState { observation: WeatherObservation | null; error: string; updatedAt: number | null; location: string }
 export interface WeatherService { state: Accessor<WeatherState>; start(): void; stop(): void; refresh(): Promise<void> }
 const INTERVAL_SECONDS = 30 * 60
-const ARGV = ["curl", "--fail", "--silent", "--show-error", "--location", "--connect-timeout", "5", "--max-time", "15", "--max-filesize", "262144", "--proto", "=https", "--proto-redir", "=https", "https://wttr.in/?format=j1"]
+const ARGV = ["curl", "--fail", "--silent", "--show-error", "--location", "--connect-timeout", "5", "--max-time", "15", "--max-filesize", "262144", "--proto", "=https", "--proto-redir", "=https"]
+function configuredLocation() {
+  const override = GLib.getenv("SYSDEF_WEATHER_LOCATION")
+  if (override?.trim()) return weatherLocation(override)
+  const file = Gio.File.new_for_path(`${GLib.get_user_state_dir()}/sysdef/weather-location`)
+  try {
+    if (!file.query_exists(null)) return DEFAULT_WEATHER_LOCATION
+    if (file.query_info("standard::size", Gio.FileQueryInfoFlags.NONE, null).get_size() > 1024) return DEFAULT_WEATHER_LOCATION
+    return weatherLocation(new TextDecoder().decode(file.load_contents(null)[1]))
+  } catch (error) { console.warn(`Cannot read weather location; using Austin: ${String(error)}`); return DEFAULT_WEATHER_LOCATION }
+}
 
 /** Explicitly owned by the app: construction is inert, stop cancels and kills curl.
  * refresh is a rate-limited request, not a force-refresh; even failures are throttled.
  */
 export function createWeatherService(enabled = true): WeatherService {
-  const [state, setState] = createState<WeatherState>({ observation: null, error: "", updatedAt: null })
+  const [state, setState] = createState<WeatherState>({ observation: null, error: "", updatedAt: null, location: DEFAULT_WEATHER_LOCATION })
   let running = false, generation = 0, timer = 0
   let lastAttempt: number | null = null
   type Request = { process: Gio.Subprocess; cancellable: Gio.Cancellable }
@@ -25,7 +36,10 @@ export function createWeatherService(enabled = true): WeatherService {
     let request: Request | null = null
     let deadline = 0
     try {
-      const process = Gio.Subprocess.new(ARGV, Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE)
+      const location = configuredLocation()
+      // A city change must not relabel the previous city's cached conditions.
+      setState(previous => previous.location === location ? previous : ({ ...previous, location, observation: null, updatedAt: null }))
+      const process = Gio.Subprocess.new([...ARGV, weatherURL(location)], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE)
       const cancellable = new Gio.Cancellable()
       request = { process, cancellable }; active = request
       // Independent watchdog also bounds curl startup/communication failures.
@@ -47,7 +61,7 @@ export function createWeatherService(enabled = true): WeatherService {
       if (!running || generation !== token) return
       const now = new Date()
       const observation = parseWttr(JSON.parse(stdout), now)
-      setState({ observation, error: "", updatedAt: +now })
+      setState({ observation, error: "", updatedAt: +now, location })
     } catch (error) {
       if (running && generation === token) setState(previous => ({ ...previous, error: String(error) }))
     } finally {
