@@ -16,6 +16,9 @@ hl.monitor({ output = "HDMI-A-1", mode = "preferred", position = "auto-right", s
 -- Export it for startup scripts, workspace shortcuts, and AGS subprocesses.
 local home = os.getenv("HOME") or "/home/firesquid"
 hl.env("PATH", home .. "/.nix-profile/bin:" .. home .. "/.bun/bin:" .. (os.getenv("PATH") or "/usr/local/bin:/usr/bin"))
+-- XCursor has its own search path; XDG_DATA_DIRS alone does not expose Nix themes.
+-- Also set this here so reloading fixes sessions started with an older wrapper.
+hl.env("XCURSOR_PATH", home .. "/.nix-profile/share/icons:" .. home .. "/.icons:" .. home .. "/.local/share/icons:/usr/share/icons:/usr/share/pixmaps")
 hl.env("XCURSOR_SIZE", "24")
 hl.env("XCURSOR_THEME", "GoogleDot-Black")
 hl.env("HYPRSHOT_DIR", "Pictures")

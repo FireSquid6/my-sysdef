@@ -19,6 +19,10 @@ let
     export SCRIPTS_DIR="$SYSTEM_CONFIG_DIR/scripts"
     export PATH="$HOME/.nix-profile/bin:$PATH"
     export XDG_DATA_DIRS="$HOME/.nix-profile/share:''${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+    # XCursor does not discover Nix themes through XDG_DATA_DIRS.
+    export XCURSOR_PATH="$HOME/.nix-profile/share/icons:''${XCURSOR_PATH:-$HOME/.icons:$HOME/.local/share/icons:/usr/share/icons:/usr/share/pixmaps}"
+    export XCURSOR_THEME=GoogleDot-Black
+    export XCURSOR_SIZE=24
     exec ${pkgs.hyprland}/bin/start-hyprland --no-nixgl --path ${graphics.wrap pkgs.hyprland}/bin/Hyprland -- --config "$SYSTEM_CONFIG_DIR/dotfiles/hypr/hyprland.lua" "$@"
   '';
   hermes = pkgs.writeShellScript "workstation-hermes" ''
