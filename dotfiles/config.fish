@@ -31,7 +31,7 @@ if status is-interactive
   direnv hook fish | source
 
   fish_add_path --append --global "$HOME/.opencode/bin"
-  export PATH="$PATH:$SCRIPTS_DIR"
+  fish_add_path --append --global "$HOME/sysdef/scripts"
   export PATH="$PATH:$HOME/.bun/bin"
 
   export ANDROID_HOME="$HOME/Android/Sdk"
