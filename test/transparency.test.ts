@@ -26,21 +26,19 @@ describe("background-only desktop translucency", () => {
     expect(theme.colors.searchMatchBg).toMatch(/^#[0-9a-f]{6}$/i)
     expect(theme.export).toEqual({ pageBg: "bg", cardBg: "bgDark", infoBg: "bgHighlight" })
   })
-  test("Herdr only makes UI paint translucent; its terminal palette and opacity stay solid", () => {
+  test("Herdr inherits solid Tokyo Night UI colors instead of alpha over a black backing", () => {
     const settings = json("herdr/settings.json")
-    expect(settings.colors.background).toBe("#1a1b2600")
-    expect(settings.colors.canvas).toBe("#16161e00")
-    for (const name of ["chrome", "surface", "popover", "raised", "hover", "selected", "input"]) {
-      expect(settings.colors[name]).toMatch(/^#[0-9a-f]{8}$/i)
-      const alpha = parseInt(settings.colors[name].slice(-2), 16)
-      expect(alpha).toBeGreaterThan(0); expect(alpha).toBeLessThan(255)
-    }
+    expect(settings.theme).toBe("tokyonight-night")
+    expect(settings.colors).toBeUndefined()
     expect(json("herdr/layouts/tty.json").terminal_opacity).toBe(1)
     const theme = json("herdr/themes/tokyonight-night.json")
+    expect(theme.colors.chrome).toBe("#16161e")
+    expect(theme.colors.canvas).toBe("#16161e")
+    for (const color of Object.values(theme.colors)) expect(color).toMatch(/^#[0-9a-f]{6}$/i)
     expect(theme.background).toBe("#1a1b26")
     expect(theme.ansi.every((color: string) => /^#[0-9a-f]{6}$/i.test(color))).toBe(true)
   })
-  test("Herdr sidebar paints its chrome tint once, rather than compounding 80% to 96%", () => {
+  test("Herdr sidebar mods paint the theme chrome over a clear layout container", () => {
     const layout = json("herdr/layouts/tty.json")
     const sidebar = layout.children.find((node: { id: string }) => node.id === "sidebar")
     expect(sidebar.background).toBe("#00000000")

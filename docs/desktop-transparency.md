@@ -9,17 +9,18 @@ opacity rules. Text and cursors are not faded.
 | Neovim | Tokyo Night options in `neovim/lua/plugins.lua` | Main buffers, inactive windows and sidebars inherit the terminal background. Floating dialogs retain a solid background. |
 | Pi | `pi/themes/tokyonight-night.json` | Message/tool panels use the terminal-default background (`""`). Selections and search matches retain their contrasting fills; HTML export colors are unchanged. |
 | OpenCode | `opencode/cli.json` and `opencode/themes/tokyonight-transparent.json` | Main canvas, panels and unchanged diff lines inherit the terminal background (`"none"`). Menus and added/removed diff lines retain contrast. |
-| Herdr | UI alpha overrides in `herdr/settings.json`; `terminal_opacity = 1` in `herdr/layouts/tty.json` | Alpha configuration is prepared, but the installed 0.1.15 native window remains opaque. A native app fix is still required; terminal panes must stay fully opaque. |
+| Herdr | `tokyonight-night` in `herdr/settings.json`; `terminal_opacity = 1` in `herdr/layouts/tty.json` | Solid theme colors for sidebar and topbar. UI alpha overrides were removed because they darkened the chrome over the opaque native backing. Terminal panes stay fully opaque. |
 | Power menu | `window.sidebar` in `ags/style.css` | The entire menu window has a fully opaque Tokyo Night background, including behind the scroller. |
 | Hermes Desktop | No change on Linux | The installed build disables translucency on Linux. Sidebar-only glass needs an application patch/rebuild; whole-window opacity is not an acceptable substitute. |
 
 ## Herdr's two backgrounds
 
 Keep the theme's **top-level** `background` as the six-digit terminal color
-`#1a1b26`. The `settings.json` **UI paint token** named `colors.background` is
-a separate setting; its alpha must be zero, as must `colors.canvas`, so there is
-no solid full-window layer underneath translucent chrome. Other UI surfaces use
-80–90% alpha. Nested surfaces can compound to a more opaque appearance.
+`#1a1b26`. UI paint tokens are separate from this terminal palette. Leave
+`settings.json` without `colors` overrides so the sidebar and topbar inherit
+solid Tokyo Night colors (`chrome` and `canvas` are `#16161e`). The previous
+alpha overrides made these surfaces appear black or too dark over the native
+window's opaque backing.
 
 The current installed Herdr 0.1.15 is **not transparent**, even on native
 Wayland. A live desktop capture with `colors.chrome` temporarily set to zero
@@ -33,7 +34,8 @@ there is no exposed settings/command option for that backing. A candidate native
 fix is `window_background: WindowBackgroundAppearance::Transparent`, but this
 has not been built or verified. The Rust toolchain is not installed locally.
 Do not work around this with compositor-wide opacity: that would fade terminal
-panes too. Config tests below validate alpha values, not native transparency.
+panes too. Config tests below validate solid theme colors and terminal opacity,
+not native transparency.
 
 Pi, Neovim and OpenCode inherit **their host terminal's** background. Therefore
 they are translucent in Alacritty but remain opaque inside Herdr, intentionally.

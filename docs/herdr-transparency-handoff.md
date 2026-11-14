@@ -1,5 +1,11 @@
 # Handoff: native Herdr chrome transparency, opaque terminals
 
+> Historical investigation: the UI alpha overrides described below have since
+> been removed from `herdr/settings.json` because they made the sidebar/topbar
+> look black over the opaque native backing. The current configuration inherits
+> solid Tokyo Night UI colors. Do not reapply these overrides without verifying
+> native transparency first. See `docs/desktop-transparency.md` for current behavior.
+
 ## Goal and scope
 
 Make the desktop wallpaper visible through **Herdr's sidebar and surrounding UI chrome**, with a subtle Tokyo Night tint. **Terminal panes must remain completely opaque**, including their text and default background.
