@@ -23,10 +23,9 @@ in
   };
   "firesquid@deisslaptop" = workstation // {
     hostname = "deisslaptop";
-    # Unverified: do not reuse kotoko's NVIDIA driver or infer a GPU from a CPU.
-    # Set { backend = "mesa"; } for a confirmed Mesa GPU, or provide the actual
-    # NVIDIA version/hash. GUI/session launches fail clearly until configured.
-    graphics = null;
+    # Confirmed on deisslaptop: AMD Phoenix1 [1002:15bf], amdgpu kernel driver.
+    # One DRM GPU; native Mesa/RADV, no NVIDIA or hybrid offload requirement.
+    graphics = { backend = "mesa"; };
   };
   "firesquid@minibox-one" = user // {
     checkout = "/home/firesquid/my-sysdef";
