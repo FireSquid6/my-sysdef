@@ -1,89 +1,12 @@
-github-cli
-go
-python
-python-pyqt6
-neovim
-vim
-cloc
-lazygit
-lazydocker
-npm
-networkmanager
-networkmanager-openvpn
-tailscale
-waypipe
-ttf-jetbrains-mono-nerd
-noto-fonts
-noto-fonts-extra
-endeavouros-branding
-endeavouros-mirrorlist
-eos-apps-info
-welcome
-linux
-linux-firmware
-linux-headers
-kernel-install-for-dracut
-systemd-sysvcompat
-cryptsetup
-lvm2
-exfatprogs
-device-mapper
-amd-ucode
-brightnessctl
-xf86-video-amdgpu
-xf86-video-ati
-pipewire-alsa
-pipewire-jack
-pipewire-pulse
-pamixer
-rtkit
-gst-libav
-gst-plugin-pipewire
-gst-plugins-bad
-gst-plugins-ugly
-ffmpegthumbnailer
-sof-firmware
-chromium
-firefox
-discord
-steam
-spotify-launcher
-spotify-player
-obsidian
-alacritty
-inkscape
-libgsf
-poppler-glib
-hyprland
-hypridle
-hyprpicker
-hyprpaper
-hyprshot
-waybar
-fuzzel
-dunst
-rofi
-wofi
-lightdm-slick-greeter
-xterm
-xdg-desktop-portal-hyprland
-xdg-user-dirs-gtk
-xdg-utils
-kvantum
-sassc
-htop
-tmux
-fish
-starship
-pv
-bash-completion
-direnv
-unrar
-xclip
-wmctrl
-dmidecode
-usb_modeswitch
-bind
-yay
-yazi
-pacman-contrib
+Installation has moved to README.md and docs/nix-migration.md.
+
+This repository now uses a pinned Nix flake with standalone Home Manager on an
+existing Linux distribution. Review nix/hosts.nix and the documented assumptions
+before explicitly installing Nix, building, backing up conflicts, or activating.
+
+The old sysdef executable is retired. modules/, providers/ and sysdef-src/ remain
+historical implementation/test references, not installation instructions.
+Never run the legacy writer and Home Manager against the same files concurrently.
+
+No bootstrap script installs Nix, invokes sudo, changes native services, or
+activates the home automatically.

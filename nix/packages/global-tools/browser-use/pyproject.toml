@@ -1,0 +1,9 @@
+[project]
+name = "browser-use-nix-environment"
+version = "0.1.0"
+requires-python = ">=3.12,<3.14"
+dependencies = ["browser-use==0.13.8"]
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'linux'"]

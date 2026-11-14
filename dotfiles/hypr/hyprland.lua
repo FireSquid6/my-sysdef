@@ -1,10 +1,11 @@
 -- Main config for Hyprland 0.57+ (Lua). Migrated from hyprland.conf.
--- ~/.config/hypr is linked to this directory by modules/desktop.ts.
+-- ~/.config/hypr is linked to this editable directory by Home Manager.
 local terminal = "alacritty"
 local fileManager = "dolphin"
 local ags = 'bash "${XDG_CONFIG_HOME:-$HOME/.config}/ags/control.sh" '
 local menu = ags .. "launcher"
-local scripts = "/home/firesquid/sysdef/scripts"
+local configRoot = os.getenv("SYSTEM_CONFIG_DIR") or ((os.getenv("HOME") or "/home/firesquid") .. "/my-sysdef")
+local scripts = configRoot .. "/scripts"
 
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
 hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1 })
@@ -13,13 +14,14 @@ hl.monitor({ output = "HDMI-A-1", mode = "preferred", position = "auto-right", s
 
 -- Display-manager sessions don't inherit the interactive shell's Bun PATH.
 -- Export it for startup scripts, workspace shortcuts, and AGS subprocesses.
-hl.env("PATH", (os.getenv("HOME") or "/home/firesquid") .. "/.bun/bin:" .. (os.getenv("PATH") or "/usr/local/bin:/usr/bin"))
+local home = os.getenv("HOME") or "/home/firesquid"
+hl.env("PATH", home .. "/.nix-profile/bin:" .. home .. "/.bun/bin:" .. (os.getenv("PATH") or "/usr/local/bin:/usr/bin"))
 hl.env("XCURSOR_SIZE", "24")
 hl.env("XCURSOR_THEME", "GoogleDot-Black")
 hl.env("HYPRSHOT_DIR", "Pictures")
-hl.env("QT_QPA_PLATFORMTHEME", "qt5ct")
+hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
 hl.env("SCRIPTS_DIR", scripts)
-hl.env("SYSTEM_CONFIG_DIR", "/home/firesquid/sysdef")
+hl.env("SYSTEM_CONFIG_DIR", configRoot)
 
 -- Run only at session start, not on config reload.
 hl.on("hyprland.start", function()

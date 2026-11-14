@@ -28,7 +28,6 @@ if status is-interactive
   fish_add_path --prepend --global "$HOME/.opencode/bin"
   export PATH="$PATH:$SCRIPTS_DIR"
   export PATH="$PATH:$HOME/.bun/bin"
-  export PATH="$PATH:$HOME/sysdef/bin"
 
   export ANDROID_HOME="$HOME/Android/Sdk"
   export PATH="$PATH:$ANDROID_HOME/platform-tools"

@@ -1,9 +1,10 @@
 # Claude Code configuration
 
-`modules/claude.ts` links settings, agents, skills, and output styles into
-`$CLAUDE_CONFIG_DIR`, or `~/.claude` when unset. Enable `claude` in each
-machine's local `config.yaml`, then run sysdef's `sync --files-only`.
-Back up and move existing destination directories aside before syncing.
+Home Manager's `personal.agents.claude.enable` links settings, agents, skills,
+and output styles into `~/.claude`. For an override, configure home-relative
+`personal.paths.claude`; Home Manager exports matching `CLAUDE_CONFIG_DIR`.
+Follow the [migration guide](../docs/nix-migration.md) to preview/adopt conflicts
+and switch explicitly. The historical `modules/claude.ts` writer is retired.
 
 Only these configuration entries are linked, not the whole Claude directory.
 Credentials, history, sessions, caches, installed plugins, and `~/.claude.json`

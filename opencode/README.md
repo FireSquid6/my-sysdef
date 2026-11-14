@@ -1,11 +1,14 @@
 # OpenCode configuration
 
-`modules/opencode.ts` links this directory to `$XDG_CONFIG_HOME/opencode`,
-or `~/.config/opencode` when `XDG_CONFIG_HOME` is unset. Enable `opencode` in
-each machine's local `config.yaml`, then run sysdef's `sync --files-only`.
-Back up and move any existing real destination directory aside first.
+Home Manager's `personal.agents.opencode.enable` links tracked settings, agents,
+skills and plugins under `~/.config/opencode`, leaving the root local. Configure
+home-relative `personal.paths.opencode` for another location and launch OpenCode
+with the corresponding XDG/application override; evaluation does not read ambient
+XDG variables. Follow the [migration guide](../docs/nix-migration.md), including
+explicit detachment of a legacy whole-root link while OpenCode is stopped.
+The historical `modules/opencode.ts` writer is retired.
 
-Settings, agents, skills, plugins, and custom themes are shared. Dependencies,
+Tracked settings, agents, skills and plugins are shared. Dependencies,
 generated package manifests/locks, credentials, and `service.json` stay local
 and ignored. Install OpenCode separately; it manages its plugin dependencies.
 Existing local files were preserved during migration.

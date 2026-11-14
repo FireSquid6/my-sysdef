@@ -6,7 +6,7 @@ if ! pgrep -u "$(id -u)" -x hypridle >/dev/null; then
 fi
 
 "$SCRIPTS_DIR"/tmux-startup.sh
-hyprctl setcursor Google-DotBlack 24
+hyprctl setcursor GoogleDot-Black 24
 
 # AGS owns wallpaper selection and the Hyprpaper process (power-menu toggle).
 bash "$SCRIPTS_DIR/../ags/start.sh" >>"$XDG_RUNTIME_DIR/sysdef-ags-start.log" 2>&1 &

@@ -1,16 +1,17 @@
 # Herdr configuration
 
-`modules/herdr.ts` links this directory to `~/.config/herdr-app`, using the
-current user's home directory. Add `herdr` to the modules in each machine's
-`config.yaml` (that file is local and ignored by Git).
+Home Manager's `personal.herdr.enable` manages selected settings, keys, layouts,
+themes and custom mods under `~/.config/herdr-app`, plus Bun/libnotify helpers.
+It deliberately does **not** link the whole runtime root. Install Herdr separately.
 
-Run sysdef's usual `sync --files-only` to install links. If the destination
-already exists as a real directory, back it up and move it aside first; sysdef
-will not overwrite directories. Install Herdr separately on each machine.
+Follow the [migration guide](../docs/nix-migration.md) before the first switch.
+Existing legacy whole-root links need explicit guarded detachment **with Herdr
+stopped, from an independent terminal**; local runtime state is preserved and
+tracked checkout files are not moved. Unknown directory symlinks fail closed.
 
-To use another config location, set `HERDR_APP_HOME` to the same absolute path
-when running both sysdef and Herdr. Windows symlink creation may require
-Developer Mode or elevated permissions; this setup has only been tested on Linux.
+For another location, configure home-relative `personal.paths.herdr`; HM exports
+matching `HERDR_APP_HOME`. The historical `modules/herdr.ts` writer is retired.
+This flake targets Linux, not Windows.
 
 ## Arcade
 

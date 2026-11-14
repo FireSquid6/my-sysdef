@@ -6,23 +6,20 @@ purple `#bb9af7`, green `#9ece6a`, red `#f7768e`, and cyan `#7dcfff`.
 
 ## Managed installation
 
-Enable **`ags`** alongside **`desktop`** in local `config.yaml`, and enable the
-`aur` provider alongside `arch-official`. `modules/ags.ts` declares the AGS and
-native/tool dependencies. The AGS package supplies matching Astal dependencies.
+The [fresh-install NixOS desktop](../docs/nixos-desktop.md) supplies the pinned
+upstream AGS 3 flake and matching runtime. The stable-package/runtime caveat below
+applies only to the **standalone Home Manager** outputs.
 
-```yaml
-providers:
-  - arch-official
-  - aur
-modules:
-  - desktop
-  - ags
-  # Keep your other modules.
-```
+The repository now uses Nix + standalone Home Manager; see
+[the migration guide](../docs/nix-migration.md). Workstation profiles enable
+`personal.modules.ags.enable` alongside `personal.modules.desktop.enable`.
+The pinned Nixpkgs AGS is **2.3.0**, incompatible with this AGS 3/Gnim code, so the
+module installs helper tools only and requires a compatible **native AGS 3 +
+GJS/GTK4/Astal/Gnim** runtime. Do not replace it with the pinned `pkgs.ags`.
+Native services, portal/PAM and the compositor remain host-owned.
 
-The module links this **individual directory** to `$XDG_CONFIG_HOME/ags` (default
-`~/.config/ags`). Check for destination conflicts and back up personal files
-before syncing. No credentials or monitor preferences are copied. Enabling a
+Home Manager links this **individual directory** to `~/.config/ags`. Check the
+adoption preview and back up personal files before the first switch. No credentials or monitor preferences are copied. Enabling a
 module does not itself start the application. Project launch preserves the
 existing Alacritty/tmux `scripts/proj.sh` workflow.
 
