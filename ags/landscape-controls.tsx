@@ -29,7 +29,7 @@ export function LandscapeControls({ service, register, track }: {
     <label class="sidebar-detail" wrap xalign={0} label={service.state(s => s.settings.sync
       ? "Live conditions. Turn sync off to adjust the landscape below."
       : "Manual preview · saved farm growth is untouched. Season selects the crop; winter is fallow. Tab between sliders; arrows adjust.")} />
-    <box orientation={Gtk.Orientation.VERTICAL} spacing={8} sensitive={service.state(s => !s.settings.sync)}>{sliders}</box>
+    <box orientation={Gtk.Orientation.VERTICAL} spacing={8} visible={service.state(s => !s.settings.sync)} sensitive={service.state(s => !s.settings.sync)}>{sliders}</box>
     <label class="danger" wrap xalign={0} visible={service.state(s => !!s.error)} label={service.state(s => s.error)} />
   </box>
 }

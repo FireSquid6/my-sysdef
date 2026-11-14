@@ -33,6 +33,7 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
   let cancellation: Gio.Cancellable | null = null;
   let focusIndex = 0;
   let pendingG = false;
+  let lastWidth = 420;
   const allRows = (): Gtk.Widget[] => [...baseRows, ...deviceOrder.map(id => deviceRows.get(id)?.button).filter((button): button is Gtk.Button => !!button), ...landscapeRows.filter(widget => widget.is_sensitive())];
   function track(self: Gtk.Widget) {
     if (self.has_focus) { self.add_css_class("selected"); focusIndex = allRows().indexOf(self); }
@@ -156,7 +157,7 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
       polling = false;
       if (cancellation === cancellable) cancellation = null;
       // Completion-based scheduling bounds requests, and never overlaps even across close/reopen.
-      if (!disposed && window.visible) schedule(token === generation ? 5000 : 1);
+      if (!disposed && window.visible) schedule(token === generation ? resources().cpu === "CPU: sampling…" ? 250 : 5000 : 1);
     }
   }
   function schedule(delay: number) {
@@ -271,8 +272,12 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
   onCleanup(() => { disposed = true; stop(); for (const row of deviceRows.values()) row.dispose(); deviceRows.clear(); window.destroy(); });
   function open(monitor?: Gdk.Monitor) {
     if (disposed) return;
-    stop(); sampler.reset(); setPending(null); setError(""); setFeedback("");
-    if (monitor) { window.gdkmonitor = monitor; window.set_default_size(Math.min(440, Math.max(400, Math.round(monitor.get_geometry().width * 0.24))), -1); }
+    stop(); setPending(null); setError(""); setFeedback("");
+    if (monitor) {
+      if (window.gdkmonitor !== monitor) window.gdkmonitor = monitor;
+      const width = Math.min(440, Math.max(400, Math.round(monitor.get_geometry().width * 0.24)));
+      if (width !== lastWidth) { window.set_default_size(width, -1); lastWidth = width; }
+    }
     window.keymode = Astal.Keymode.EXCLUSIVE; window.visible = true; focus(0);
     void poll();
   }

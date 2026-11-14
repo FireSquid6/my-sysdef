@@ -82,11 +82,47 @@ Hyprland/Wayland session, but never kills another session's wallpaper. Hyprpaper
 in the sidebar; failed startup or an unexpected exit restores animation.
 
 Every output gets an independent background-layer window; hotplug cleanup removes
-its window and timer. Backgrounds do not reserve screen space or accept input.
-Animation redraws at about 24 FPS and stops drawing in Hyprpaper mode.
-River highlights and waterfall shimmer blend continuously between phases, and
-splash positions move at device-pixel precision instead of jumping whole scene pixels. Disposable
-`SYSDEF_AGS_SERVICES=0` instances cannot change wallpapers or preferences.
+its window and frame callback. Backgrounds do not reserve screen space or accept
+input. A separate **`sysdef-wallpaper` GTK process** renders the scene at native
+pixel-art resolution, then uses a nearest-neighbor GPU texture node (not a
+full-output Cairo bitmap) for scaling. GTK's presentation
+clock targets **30 FPS**, rather than an idle-priority timer that shell work can
+starve. River highlights and waterfall shimmer blend continuously between phases.
+
+The main shell publishes small read-only scene snapshots over a private pipe.
+Scene generation and its GC no longer run in the sidebar/bar/shell IPC GTK loop. The child
+never fetches weather or writes farm/preferences; EOF shuts it down with its
+parent. Unexpected exits are supervised with bounded restart backoff. Hyprpaper
+mode stops desktop drawing; `SYSDEF_AGS_SERVICES=0` instances never spawn a renderer
+or change wallpapers/preferences. `ags request -i sysdef status` exposes renderer
+health; `ags request -i sysdef-wallpaper status` reports received snapshots/frames
+and mean/worst scene-to-texture paint times in milliseconds. Frame counts can pause
+when desktop surfaces are occluded; the lock-image timer continues separately.
+
+#### Lockscreen landscape
+
+When animated wallpaper is enabled, Hyprlock uses an opaque image of the same
+scene, with the same weather, manual settings, crops and CPU-driven water motion.
+**Hyprlock 0.9.7 supports one-second image reloads, not desktop-rate video.** The
+lock background therefore updates at **1 FPS**, independently of the 30 FPS desktop.
+No high-rate signals, screenshot capture, desktop transparency or authentication
+replacement are used. Hyprlock/PAM, zero grace, serialized lock requests and the
+opaque first frame are unchanged.
+
+The wallpaper process generates RGB PNGs offscreen once a second and atomically
+publishes them under `$XDG_RUNTIME_DIR/sysdef-wallpaper-sysdef/frame.png` (the
+suffix follows `SYSDEF_AGS_INSTANCE`). This timer continues when the compositor
+stops frame callbacks on ordinary desktop surfaces during locking. Hyprlock's
+`hyprlock-background.sh` only selects a ready path; it never waits for rendering.
+A solid opaque base stays below the image layer. Disabled/missing/stale feeds
+fall back to the original Tokyo Night solid background; the last valid opaque
+image remains safe if image reloading itself fails. Runtime images are private,
+contain only the generated scene, and are not persisted in the repository.
+
+Run `bash ags/check.sh renderer` to check process isolation, pipe/EOF lifetime,
+valid opaque PNG refresh while desktop windows are hidden, disabled mode, and
+preference isolation. It does **not** lock your session or show any windows. Real
+lock/unlock and multi-output behavior still need a manual desktop check.
 
 #### Manual landscape controls
 
@@ -165,6 +201,8 @@ Checks and previews (no live shell restart):
 bun test test/wallpaper.test.ts test/wallpaper-resources.test.ts test/wallpaper-weather.test.ts test/wallpaper-crops.test.ts
 bash ags/check.sh crops   # isolated real save files: restart, catch-up, corruption and write failures
 bash ags/check.sh controls # manual preferences, restart, sync restoration and farm isolation
+bash ags/check.sh renderer # isolated process, hidden-window lock feed, EOF shutdown
+bun test test/hypr-lock.test.ts test/wallpaper-protocol.test.ts # no real locking
 bun test test/landscape-controls.test.ts # preview rules and continuous water phases
 bash ags/check.sh weather # isolated fake curl: endpoint/location/fallback, lifecycle, bounded args, parsing, throttling, cancellation
 bun test test/weather-request.test.ts # explicit locations, URL escaping and Austin fallback
@@ -272,7 +310,11 @@ Sections appear in this order:
    require a second explicit selection. Holding Enter or Space cannot confirm.
    The former Super+Ctrl+L lock shortcut is removed; use Super+P → Lock instead.
 2. **System resources:** CPU utilization (delta sampled), RAM used/total, load
-   averages and root filesystem usage. CPU shows “sampling” until its second sample.
+   averages and root filesystem usage. The initial CPU baseline gets a second sample
+   after about 250 ms instead of waiting five seconds, and reopening retains the
+   previous baseline. The panel is no longer competing with wallpaper drawing in
+   the same GTK process; unchanged monitor/width assignments avoid extra layout
+   invalidation. Manual sliders stay hidden until live sync is disabled.
 3. **Tailscale:** connection/login/daemon status, health warnings, this device and
    **all** peers returned by the daemon, including offline devices. Rows show
    hostname, OS, online state, IPs and direct/relay/idle status. Expand a row for
