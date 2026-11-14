@@ -306,6 +306,8 @@ Sections appear in this order:
    existing Hyprlock wrapper and acts immediately; Log out, Reboot and Shut down
    require a second explicit selection. Holding Enter or Space cannot confirm.
    The former Super+Ctrl+L lock shortcut is removed; use Super+P → Lock instead.
+   An optional **Lighting** row toggles Tokyo Night / Ghost where a machine-local
+   lighting controller is installed (see below); it never changes monitor power.
 2. **System resources:** CPU utilization (delta sampled), RAM used/total, load
    averages and root filesystem usage. The initial CPU baseline gets a second sample
    after about 250 ms instead of waiting five seconds, and reopening retains the
@@ -316,6 +318,26 @@ Sections appear in this order:
    **all** peers returned by the daemon, including offline devices. Rows show
    hostname, OS, online state, IPs and direct/relay/idle status. Expand a row for
    last-seen and transfer information. No login URLs, keys or raw status are saved.
+
+### Optional machine-local lighting
+
+An executable at `$XDG_CONFIG_HOME/sysdef/lighting/lighting.sh` (normally
+`~/.config/sysdef/lighting/lighting.sh`) opts that machine into the lighting row.
+No controller means no row, initialization, or hardware access. Device mappings,
+colors, packages/patches, permissions, and supporting services stay local—not in
+AGS. Disposable instances with `SYSDEF_AGS_SERVICES=0` disable this integration.
+
+The argv-only controller interface is `status` and `toggle`. `status` returns
+JSON with `mode` (`tokyonight`, `ghost`, or `unknown`), boolean `complete`, and
+`error` (string or null). Toggle must exit nonzero on failure; its stdout is
+ignored, and status is read back after success or failure. Status reads are
+bounded to seven seconds; applications to 180 seconds. The row refreshes on
+panel open without applying lighting, stays open after activation, and blocks
+repeat activation while busy. Unknown/partial states and failures remain visible.
+Shell restart or opening the sidebar does not reset a lighting preset.
+
+Tests: `bun test test/lighting.test.ts` and
+`ags run ags/tools/lighting-smoke.tsx --gtk 4` (native GTK, all actions mocked).
 
 `j`/`k` or Up/Down navigate rows; `gg`/`G` or Home/End reach the first/last row;
 `h`/`l` collapse/expand device details; Tab/Shift+Tab traverse controls.

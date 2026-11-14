@@ -11,8 +11,10 @@ import type { CaffeineService } from "./services/caffeine";
 import type { WallpaperService } from "./services/wallpaper";
 import { LandscapeControls } from "./landscape-controls";
 import type { LandscapeControlsService } from "./services/landscape-controls";
+import type { LightingService } from "./services/lighting";
+import { lightingLabel } from "./lighting-model";
 
-type Dependencies = { landscape?: LandscapeControlsService; wallpaper?: Pick<WallpaperService, "state" | "toggle">; caffeine: Pick<CaffeineService, "state" | "toggle">; run: (argv: string[]) => Promise<string>; close: () => void; showError: (error: unknown) => void; copy?: (text: string) => void };
+type Dependencies = { lighting?: Pick<LightingService, "state" | "toggle" | "refresh">; landscape?: LandscapeControlsService; wallpaper?: Pick<WallpaperService, "state" | "toggle">; caffeine: Pick<CaffeineService, "state" | "toggle">; run: (argv: string[]) => Promise<string>; close: () => void; showError: (error: unknown) => void; copy?: (text: string) => void };
 type DeviceRow = { button: Gtk.Button; title: Gtk.Label; summary: Gtk.Label; detail: Gtk.Label; device: TailDevice; expanded: boolean; dispose: () => void };
 
 export function createSidebar(deps: Dependencies): { window: Astal.Window; open: (monitor?: Gdk.Monitor) => void; close: () => void; describe: () => unknown } {
@@ -222,6 +224,15 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
       <label label={deps.wallpaper.state(s => `Wallpaper: ${s.busy ? "Switching…" : s.mode === "animated" ? "Animated landscape" : "Hyprpaper"}`)} xalign={0} hexpand />
     </box>
   </button> : null;
+  const lightingRow = deps.lighting ? <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track}
+    class="sidebar-row sidebar-lighting" sensitive={deps.lighting.state(s => !s.busy)}
+    tooltipText="Toggle Tokyo Night lighting and Ghost (lights off). Monitors stay unchanged."
+    onClicked={() => { setPending(null); void deps.lighting!.toggle(); }}>
+    <box spacing={10}>
+      <label label="◐" class="sidebar-power-icon" widthRequest={22} />
+      <label label={deps.lighting.state(lightingLabel)} xalign={0} hexpand />
+    </box>
+  </button> : null;
   const resourceRows = (["cpu", "memory", "load", "disk"] as const).map(field =>
     <button $={(self: Gtk.Button) => { baseRows.push(self); }} onNotifyHasFocus={track} class="sidebar-row resource">
       <label label={resources(r => r[field])} xalign={0} wrap />
@@ -247,6 +258,8 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
             {powerRows}
             {caffeineRow}
             {wallpaperRow}
+            {lightingRow}
+            {deps.lighting && <label class="danger" visible={deps.lighting.state(s => !!s.error)} label={deps.lighting.state(s => s.error)} wrap xalign={0} />}
             {deps.wallpaper && <label class="danger" visible={deps.wallpaper.state(s => !!s.error)} label={deps.wallpaper.state(s => s.error)} wrap xalign={0} />}
             <label class="danger" visible={deps.caffeine.state(s => !!s.error)} label={deps.caffeine.state(s => s.error)} wrap xalign={0} />
             <label class="menu-confirm" visible={pending(p => p !== null)} label={pending(p => p ? `Choose ${p} again to confirm. Escape closes.` : "")} wrap xalign={0} />
@@ -280,6 +293,7 @@ export function createSidebar(deps: Dependencies): { window: Astal.Window; open:
     }
     window.keymode = Astal.Keymode.EXCLUSIVE; window.visible = true; focus(0);
     void poll();
+    void deps.lighting?.refresh();
   }
   return { window, open, close, describe: () => ({ visible: window.visible, sectioncount: deps.landscape ? 4 : 3, devicecount: deviceRows.size, focusindex: focusIndex, error: error() || resources().error || (status().startsWith("Tailscale unavailable") || status().startsWith("Invalid") ? "Tailscale status unavailable" : "") }) };
 }

@@ -20,6 +20,7 @@ import { resolveEnvironment } from "./wallpaper-weather"
 import { createCropService } from "./services/crops"
 import { createLandscapeControls } from "./services/landscape-controls"
 import { createWallpaperRenderer } from "./services/wallpaper-renderer"
+import { createLightingService } from "./services/lighting"
 
 const root = GLib.getenv("SYSDEF_ROOT_DIR") || `${GLib.get_home_dir()}/sysdef`
 const instance = GLib.getenv("SYSDEF_AGS_INSTANCE") || "sysdef"
@@ -38,6 +39,7 @@ app.start({
     const controller = createController(root, report)
     const system = createSystemService()
     const caffeine = createCaffeineService()
+    const lighting = createLightingService(GLib.getenv("SYSDEF_AGS_SERVICES") !== "0")
     const wallpaper = createWallpaperService(GLib.getenv("SYSDEF_AGS_SERVICES") !== "0")
     const wallpaperResources = createWallpaperResources()
     const weather = createWeatherService(GLib.getenv("SYSDEF_AGS_SERVICES") !== "0")
@@ -59,7 +61,7 @@ app.start({
     const menus = createMenus({ run, controller: controller.controller, desktop: controller.desktop, root,
       close() { active = "" }, showError: report })
     app.add_window(menus.window)
-    const sidebar = createSidebar({ run, caffeine, landscape, wallpaper: GLib.getenv("SYSDEF_AGS_SERVICES") !== "0" ? wallpaper : undefined, close() { active = "" }, showError: report })
+    const sidebar = createSidebar({ run, caffeine, lighting, landscape, wallpaper: GLib.getenv("SYSDEF_AGS_SERVICES") !== "0" ? wallpaper : undefined, close() { active = "" }, showError: report })
     app.add_window(sidebar.window)
     const history = <window name="sysdef-history" application={app} namespace="sysdef-menu" visible={false}
       layer={Astal.Layer.OVERLAY} keymode={Astal.Keymode.NONE} class="sysdef-menu" resizable={false}
@@ -104,6 +106,7 @@ app.start({
     void controller.start()
     system.start()
     caffeine.start()
+    void lighting?.refresh()
     // Disposable test instances must not compete for desktop-wide D-Bus names.
     if (GLib.getenv("SYSDEF_AGS_SERVICES") !== "0") { notifications.start(); tray.start() }
     const cssWatcher = Gio.File.new_for_path(`${root}/ags`).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null)
@@ -112,12 +115,12 @@ app.start({
         try { app.apply_css(`${root}/ags/style.css`, true) } catch (e) { report(e) }
       }
     })
-    onCleanup(() => { controller.stop(); system.stop(); caffeine.stop(); wallpaper.stop(); wallpaperResources.stop(); weather.stop(); crops.stop(); landscape.stop(); renderer.stop(); notifications.stop(); tray.stop(); cssWatcher.cancel(); menus.window.destroy(); history.destroy() })
+    onCleanup(() => { controller.stop(); system.stop(); caffeine.stop(); lighting?.stop(); wallpaper.stop(); wallpaperResources.stop(); weather.stop(); crops.stop(); landscape.stop(); renderer.stop(); notifications.stop(); tray.stop(); cssWatcher.cancel(); menus.window.destroy(); history.destroy() })
     dispatch = ([command, name]) => {
       if (command === "ping") return "pong"
       if (command === "status") return { instance, menu: active, menus: menus.describe(), sidebar: sidebar.describe(), windows: app.windows.map(w => ({ name: w.name, visible: w.visible })),
         primary: controller.desktop().primary, workspaces: controller.desktop().workspaces.length,
-        wallpaper: wallpaper.state(), wallpaperRenderer: renderer.state(), crops: crops.state(), landscape: landscape.state(), weather: { ...weather.state(), environment: resolveEnvironment(new Date(), weather.state().observation) }, caffeine: caffeine.state(), notifications: notifications.items().length, notificationError: notifications.error(), tray: tray.items().length, trayError: tray.error(), error: error() }
+        wallpaper: wallpaper.state(), wallpaperRenderer: renderer.state(), crops: crops.state(), landscape: landscape.state(), weather: { ...weather.state(), environment: resolveEnvironment(new Date(), weather.state().observation) }, caffeine: caffeine.state(), lighting: lighting?.state() ?? null, notifications: notifications.items().length, notificationError: notifications.error(), tray: tray.items().length, trayError: tray.error(), error: error() }
       if (command === "toggle" || command === "show") {
         if (command === "show" && active === (name === "power" ? "sidebar" : name)) close()
         open(name)
