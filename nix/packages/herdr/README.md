@@ -11,6 +11,18 @@ The workstation profile installs these packages instead of the unmodified
 nixpkgs packages. They are also exposed as `.#herdr-core` and `.#herdr-desktop`.
 Configuration files under `herdr/` still have the same Home Manager ownership.
 
+## Non-NixOS kotoko deployment
+
+`.#kotoko-apps` combines these forks and Hermes with the pinned NVIDIA userspace
+bridge required by this host. Use that entry, not the bare GUI output, on kotoko;
+see [the application-only migration](../../../docs/nix-migration.md#kotoko-endeavouros-rtx-5070).
+
+The fork's additional foreground-test scripts have their generated Bash shebangs
+patched to the sandbox Bash. Its interactive SSH/bootstrap test joins nixpkgs'
+two existing remote-bootstrap exclusions: those tests expect to copy the current
+ELF remotely, a path nixpkgs deliberately disables for store-dependent binaries.
+All remaining core/app checks stay enabled. A full build passed on kotoko.
+
 ## Updating
 
 ```sh

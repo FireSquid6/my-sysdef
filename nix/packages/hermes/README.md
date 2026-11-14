@@ -23,10 +23,26 @@ desktop instead of the source-install `hermes desktop` builder. Optional
 integrations retain the fork's behavior; this does not guarantee arbitrary
 user-added plugins or on-demand integrations work offline.
 
-The application identity remains `com.nousresearch.hermes` (including
-`com.nousresearch.hermes.desktop` and `StartupWMClass`). No credentials or user
+The desktop entry remains `com.nousresearch.hermes.desktop`, with
+`StartupWMClass=com.nousresearch.hermes`. The current fork's inner Electron
+window advertises Wayland class `hermes` in the live kotoko check; the host
+bundle adjusts its desktop entry's `StartupWMClass` accordingly. Do not assume
+the desktop-file identity guarantees that compositor class. No credentials or user
 configuration are copied into the store. Existing configuration remains runtime
 state. Do not use the mutable application updater to update the Nix package.
+
+## Non-NixOS deployment and systemd hooks
+
+Kotoko installs `.#kotoko-apps`, which adds the host's matching NVIDIA graphics
+bridge and fixes both CLI and desktop-entry launch paths. See
+[the application-only migration](../../../docs/nix-migration.md#kotoko-endeavouros-rtx-5070).
+The base package also exports `hermes-gateway-stop-mark` and
+`hermes-gateway-cgroup-cleanup`. These execute the fork's existing modules with
+its packaged Python closure. The CLI wrapper also supplies the native Opus
+library needed by Discord's ctypes codec loader (`checks.hermes-opus` exercises
+that loader without connecting to a service). Local systemd drop-ins retain graceful stopping
+without depending on a mutable checkout/venv. Never invoke the cleanup helper as
+a general shell smoke test: it is intended for the gateway service cgroup.
 
 ## Updates and validation
 

@@ -16,6 +16,82 @@ Read [assumptions](nix-migration-assumptions.md) before deploying and
 [the complete legacy package mapping](nix-package-mapping.md) for exclusions.
 This is **standalone Home Manager on existing Linux**, not an OS conversion.
 
+## Application-only migration on an existing Linux desktop
+
+To move only Hermes and Herdr to Nix, use the root flake's package outputs;
+there is no need to activate Home Manager or switch to NixOS. The inputs pin
+`firesquid6/hermes-agent`, `firesquid6/herdr-core` and `firesquid6/herdr-app`.
+Run from the persistent checkout after installing Nix and enabling flakes:
+
+```sh
+# Build first. This does not replace running applications or their binaries.
+nix build --max-jobs 2 --cores 2 --no-link .#hermes .#herdr-core .#herdr-desktop
+# Explicitly install the validated outputs in the user's profile (never sudo).
+nix profile add .#hermes .#herdr-core .#herdr-desktop
+```
+
+Verify `~/.nix-profile/bin/{hermes,hermes-desktop,herdr-core,hc,herdr-app}`
+before redirecting launchers. Existing `~/.local/bin` launchers and desktop
+entries can shadow the profile. Back them up before replacing them; stable
+links to `~/.nix-profile/bin/<command>` follow subsequent profile generations.
+Keep the original source/venv installs for rollback, and do not stop an active
+Herdr core or terminate agent sessions to change future launch resolution.
+Running processes keep their old code until deliberately restarted. Hermes
+systemd units with absolute venv paths also need a separately reviewed migration;
+installing the CLI package does not rewrite or restart them.
+
+Native GPU/Wayland compatibility still needs validation on non-NixOS hosts;
+a successful build or `--version` check is not a graphical startup test. No
+credentials, application homes, sessions, or runtime databases need moving for
+this package-only migration. In particular, do not detach the legacy Herdr or
+OpenCode directory links unless separately adopting the Home Manager files.
+
+### kotoko (EndeavourOS, RTX 5070)
+
+This host uses **one** installed profile entry, `.#kotoko-apps`, rather than the
+three bare packages above. `nix/packages/kotoko-apps.nix` joins the same fork
+packages with a pinned nixGL bridge for the verified native NVIDIA **615.78.08**
+module. It installs userspace libraries only, not a kernel driver. Both command
+and desktop-entry launch paths use the graphics wrappers; non-desktop Hermes
+commands, including gateway/dashboard services, do not enable graphics wrappers.
+
+```sh
+nix build --max-jobs 2 --cores 2 --no-link .#kotoko-apps
+nix profile add .#kotoko-apps  # initial install only
+# After reviewing fork/dependency pin updates and rebuilding:
+nix profile upgrade kotoko-apps
+```
+
+Do not use this host output on another GPU/driver configuration. After a native
+NVIDIA update, review `/proc/driver/nvidia/version` and update the version and
+verified archive hash in the host recipe **before** launching these applications.
+The pinned nixGL source has two explicit compatibility patches for this nixpkgs
+pin: the removed `kernel` argument and renamed Vulkan ICD JSON. Hermes selects
+OpenGL for its outer Electron process on Wayland. In the isolated graphical test,
+both Electron processes reported RTX 5070 hardware compositing; its inner process
+still emitted GBM-sandbox/Vulkan-on-Wayland warnings. No GPU sandbox was disabled.
+
+The local `.local/bin` commands and canonical desktop entries point to the Nix
+profile. Hermes gateway/dashboard units use local `service.d/nix.conf` overrides
+for profile executables and the Nix-packaged stop/cleanup hooks. Credentials,
+ports, restart policy and application homes remain unchanged. These host-local
+overrides are not a Home Manager activation. Original launchers/units and desktop
+userdata/SQLite backups are recorded in the private deployment receipt directory:
+`~/.local/state/sysdef-nix-migration.SUkXDMI7/`.
+
+The live core was handed over with the **explicit Nix** `hc server restart`, not
+`stop`, `--fresh` or a release downloader. All 20 existing terminals and their
+holder survived; holders drain naturally and must not be killed to replace their
+old executable. Herdr's GUI and Hermes' GUI/services were then started from Nix.
+
+For updates, review `nix flake update hermes herdr-core herdr-app`, rebuild, then
+use `nix profile upgrade` with the entry names shown by `nix profile list`.
+Use `nix profile history` and `nix profile rollback` for installed package
+rollback; these do not roll back application data, local launcher/unit overrides,
+or writable config files. Restore original launchers/units only after reviewing
+`backup-manifest.json`; stop the affected GUI/service normally before restoring
+its data, and never kill a live Herdr holder.
+
 ## 1. Review identity and boundaries
 
 Edit `nix/hosts.nix` if necessary:

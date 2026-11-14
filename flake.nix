@@ -13,6 +13,10 @@
       url = "git+https://github.com/firesquid6/herdr-core?submodules=1";
       flake = false;
     };
+    nixgl = {
+      url = "github:nix-community/nixGL/4306ae1d15adf3d386f1462b330d4f2648404711";
+      flake = false;
+    };
     # NixOS desktop needs Hyprland's Lua API and AGS 3; keep standalone HM stable.
     nixpkgs-desktop.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager-desktop = {
@@ -41,6 +45,7 @@
       hermes,
       herdr-app,
       herdr-core,
+      nixgl,
     }:
     let
       inherit (nixpkgs) lib;
@@ -127,6 +132,13 @@
           pkgs = pkgsFor system;
         in
         desktopPackages system
+        // lib.optionalAttrs (system == "x86_64-linux") {
+          kotoko-apps = import ./nix/packages/kotoko-apps.nix {
+            pkgs = desktopPkgsFor system;
+            inherit nixgl;
+            applications = desktopPackages system;
+          };
+        }
         // {
           ags-desktop = ags.packages.${system}.ags;
           inherit (home-manager.packages.${system}) home-manager;
@@ -219,6 +231,7 @@
           md-to-pdf = self.packages.${system}.md-to-pdf.tests.render;
           excalidraw = self.packages.${system}.tommy-excalidraw-cli.tests.render;
           hermes-launcher = self.packages.${system}.hermes.tests.launcher;
+          hermes-opus = self.packages.${system}.hermes.tests.opus;
         }
       );
     };

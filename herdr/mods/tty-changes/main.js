@@ -261,7 +261,7 @@ export default class Changes extends View {
     if (!this.files.some(f => f.path === this.selected)) this.selected = this.files[0]?.path ?? null;
     const t = theme(), add = this.files.reduce((n, f) => n + f.add, 0), del = this.files.reduce((n, f) => n + f.del, 0);
     const enabled = Boolean(this.message.trim() && this.root && !this.busy && !this.loading);
-    return v_flex().id("changes").size_full().min_h(0).rounded(0).overflow_hidden().bg(t.background).border_1().border_color(this.handle.is_focused() || this.typing ? t.accent : t.border).text_color(t.foreground).text_size(13).track_focus(this.handle)
+    return v_flex().id("changes").size_full().min_h(0).rounded(0).overflow_hidden().bg(t.chrome).border_1().border_color(this.handle.is_focused() || this.typing ? t.accent : t.border).text_color(t.foreground).text_size(13).track_focus(this.handle)
       .on_key_down((e, cx) => {
         if (e.key === "tab" && e.modifiers.control && !e.modifiers.shift && !e.modifiers.alt && !e.modifiers.platform) { this.cycleFocus(false, cx); cx.stop_propagation(); }
         else if (e.key === "escape" && this.typing) { this.typing = false; this.focusArea = "files"; this.handle.focus(); cx.stop_propagation(); cx.notify(); }

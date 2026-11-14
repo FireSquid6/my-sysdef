@@ -2,9 +2,21 @@
 let
   # Reuse nixpkgs' native dependencies, desktop integration and sandbox patches.
   # Source and dependency hashes are pinned independently of nixpkgs releases.
-  core = pkgs.herdr-core.overrideAttrs (_: {
+  core = pkgs.herdr-core.overrideAttrs (old: {
     version = "0.1.20";
     src = packageSources.herdr-core;
+    # The fork added foreground tests that generate executable Bash scripts.
+    # patchShebangs cannot see those scripts until the test creates them.
+    postPatch = old.postPatch + ''
+      substituteInPlace crates/herdr-core/tests/foreground.rs \
+        --replace-fail '#!/bin/bash' '#!${pkgs.bash}/bin/bash'
+    '';
+    # Like nixpkgs' two existing exclusions, this new remote-bootstrap test
+    # expects to copy this ELF to another machine. Nix deliberately disables
+    # that path because the remote may not have its /nix/store dependencies.
+    checkFlags = (old.checkFlags or [ ]) ++ [
+      "--skip=interactive_add_uses_the_same_ssh_target_for_login_and_install"
+    ];
     cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
       pname = "herdr-core";
       version = "0.1.20";
