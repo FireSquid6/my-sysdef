@@ -1,6 +1,9 @@
-{ pkgs }:
+{ pkgs, packageSources }:
 let
-  hermes = import ./hermes { inherit pkgs; };
+  hermes = import ./hermes {
+    inherit pkgs;
+    upstream = packageSources.hermes;
+  };
 in
 (import ./global-tools {
   inherit pkgs;
@@ -10,6 +13,7 @@ in
 // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 (
   import ./desktop-apps { inherit pkgs; }
 )
+// (import ./herdr { inherit pkgs packageSources; })
 // {
   inherit hermes;
   glances-cli = pkgs.callPackage ./glances-cli.nix { };

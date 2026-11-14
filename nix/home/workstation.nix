@@ -1,6 +1,11 @@
-{ lib, pkgs, ... }:
+{
+  lib,
+  pkgs,
+  packageSources,
+  ...
+}:
 let
-  personalPackages = import ../packages { inherit pkgs; };
+  personalPackages = import ../packages { inherit pkgs packageSources; };
 in
 {
   imports = [
@@ -22,6 +27,8 @@ in
     kvantum-tokyo-night
     glances-cli
     hermes
+    herdr-core
+    herdr-desktop
     md-to-pdf
     browser-use
     tommy-excalidraw-cli

@@ -3,6 +3,16 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    # Personal application forks; retain Hermes' coordinated dependency lock.
+    hermes.url = "github:firesquid6/hermes-agent";
+    herdr-app = {
+      url = "git+https://github.com/firesquid6/herdr-app?submodules=1";
+      flake = false;
+    };
+    herdr-core = {
+      url = "git+https://github.com/firesquid6/herdr-core?submodules=1";
+      flake = false;
+    };
     # NixOS desktop needs Hyprland's Lua API and AGS 3; keep standalone HM stable.
     nixpkgs-desktop.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager-desktop = {
@@ -28,6 +38,9 @@
       home-manager-desktop,
       ags,
       home-manager,
+      hermes,
+      herdr-app,
+      herdr-core,
     }:
     let
       inherit (nixpkgs) lib;
@@ -37,6 +50,7 @@
       ];
       forAllSystems = lib.genAttrs systems;
       hosts = import ./nix/hosts.nix;
+      packageSources = { inherit hermes herdr-app herdr-core; };
       pkgsFor =
         system:
         import nixpkgs {
@@ -55,7 +69,10 @@
       desktopPackages =
         system:
         lib.optionalAttrs (system == "x86_64-linux") (
-          import ./nix/packages { pkgs = desktopPkgsFor system; }
+          import ./nix/packages {
+            pkgs = desktopPkgsFor system;
+            inherit packageSources;
+          }
         );
       mkHome =
         spec:
@@ -86,6 +103,7 @@
           useGlobalPkgs = true;
           useUserPackages = true;
           users.${config.personal.system.username} = {
+            _module.args = { inherit packageSources; };
             imports = [ ./nix/home/workstation.nix ];
             home = {
               inherit (config.personal.system) username;
@@ -181,6 +199,7 @@
         // lib.optionalAttrs (system == "x86_64-linux") {
           nixos-desktop = self.nixosConfigurations.deisslaptop.config.system.build.toplevel;
           desktop-contract = import ./nix/tests/desktop-contract.nix {
+            inherit packageSources;
             pkgs = desktopPkgsFor system;
             inherit (self.nixosConfigurations.deisslaptop) config;
           };

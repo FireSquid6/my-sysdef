@@ -1,5 +1,4 @@
-{ pkgs, ... }:
-{
+{ pkgs, ... }: {
   # Complements personal.modules.development; no project dependency installers.
   home.packages = with pkgs; [
     bubblewrap
@@ -33,7 +32,5 @@
     claude-code
     pi-coding-agent
     opencode
-    herdr-core
-    herdr-desktop
   ];
 }

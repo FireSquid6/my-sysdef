@@ -1,4 +1,8 @@
-{ pkgs, config }:
+{
+  pkgs,
+  config,
+  packageSources,
+}:
 let
   inherit (pkgs) lib;
   home = config.home-manager.users.${config.personal.system.username};
@@ -23,7 +27,7 @@ let
     "wl-clipboard"
     "herdr-core"
     "herdr-desktop"
-    "hermes-0.23.1"
+    "hermes"
     "protonmail-desktop"
     "obsidian"
     "chromium"
@@ -90,6 +94,7 @@ let
     "zip"
     "tealdeer"
   ];
+  package = name: lib.findFirst (p: (p.pname or p.name) == name) (throw "Missing ${name}") packages;
   missing = lib.subtractLists names required;
   forbidden = lib.filter (
     name:
@@ -111,6 +116,10 @@ assert lib.assertMsg (
 assert lib.assertMsg (
   forbidden == [ ]
 ) "Excluded desktop packages present: ${lib.concatStringsSep ", " forbidden}";
+# Check the installed packages, not just the separately exposed flake outputs.
+assert (package "hermes").upstream.outPath == packageSources.hermes.outPath;
+assert (package "herdr-core").src.outPath == packageSources.herdr-core.outPath;
+assert (package "herdr-desktop").src.outPath == packageSources.herdr-app.outPath;
 assert config.programs.hyprland.enable;
 assert config.programs.hyprlock.enable;
 assert config.services.displayManager.sddm.enable;

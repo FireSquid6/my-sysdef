@@ -1,12 +1,7 @@
-{ pkgs }:
+{ pkgs, upstream }:
 let
-  # Upstream v0.23.1, matching the existing installation. Keep upstream's
-  # flake.lock: its Python 3.14/uv2nix, pnpm, Electron and native node-pty
-  # builds are maintained together, not re-resolved against our nixpkgs.
-  upstream = builtins.getFlake "github:NousResearch/hermes-agent/3b421578588243f920886e6fe79a6faa87ea026e?narHash=sha256-wGv%2BkNpiOGa1k%2FQxN7njXSF3wmlwPGtQ02Frnp6hP18%3D";
-  agent = upstream.packages.${pkgs.stdenv.hostPlatform.system}.default.override {
-    version = "0.23.1";
-  };
+  # Use the fork's own coordinated Python, pnpm, Electron and node-pty builds.
+  agent = upstream.packages.${pkgs.stdenv.hostPlatform.system}.default;
   desktop = agent.hermesDesktop;
   launcher = pkgs.replaceVars ./launcher.sh {
     shell = pkgs.runtimeShell;
@@ -15,7 +10,8 @@ let
   };
 in
 pkgs.symlinkJoin {
-  name = "hermes-0.23.1";
+  pname = "hermes";
+  version = agent.version;
   paths = [
     agent
     desktop

@@ -47,17 +47,16 @@ No additional package-specific wheel overrides were needed on x86_64-linux.
 The package takes an **explicit `inputs` argument** with `uv2nix`, `pyproject-nix`,
 and `pyproject-build-systems`. The parent flake must pin/provide these inputs;
 this package does not fetch another flake during normal evaluation. For standalone
-reproduction, the verified versions can be obtained from the pinned Hermes flake:
+reproduction, use the root flake, which supplies these inputs from the pinned
+`firesquid6/hermes-agent` fork:
 
 ```sh
-nix-build --no-out-link --expr '
-  let
-    pkgs = import /nix/store/yxkqzvl5bf7knrh55lbl5xjxksq6ydmp-source {};
-    inputs = (builtins.getFlake "github:NousResearch/hermes-agent/3b421578588243f920886e6fe79a6faa87ea026e?narHash=sha256-wGv%2BkNpiOGa1k%2FQxN7njXSF3wmlwPGtQ02Frnp6hP18%3D").inputs;
-  in (import ./nix/packages/global-tools { inherit pkgs inputs; }).browser-use
-'
-# Append .tests.smoke to the final browser-use expression to run the CDP test.
+nix build --no-link .#browser-use
+nix build --no-link .#checks.x86_64-linux.browser-use
 ```
+
+Updating the `hermes` input also updates this shared Python build tooling; run
+the browser-use smoke check when updating it.
 
 The wrapper sets defaults for upstream's `CHROME_PATH` and `BH_CHROME_PATH` to
 Nix Chromium. These settings are honored by browser-harness's browser probe; they
