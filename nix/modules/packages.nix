@@ -56,7 +56,7 @@ in
         procps
         nerd-fonts.jetbrains-mono
       ];
-      warnings = lib.optionals (!config.personal.nativeDesktopRuntime) [
+      warnings = lib.optionals (!config.personal.desktopRuntimeProvided) [
         "personal.modules.desktop installs helper tools/fonts only: the active Lua config requires host-managed Hyprland 0.57+, matching Hyprland ecosystem/portal and native PAM locking; nixos-25.11 Hyprland 0.52.2 is incompatible (see docs/nix-package-mapping.md)."
       ];
     })
@@ -131,7 +131,7 @@ in
         nerd-fonts.jetbrains-mono
         liberation_ttf
         open-sans
-        (if config.personal.nativeDesktopRuntime then ttf-bitstream-vera else ttf_bitstream_vera)
+        (pkgs.ttf-bitstream-vera or pkgs.ttf_bitstream_vera)
         noto-fonts
         noto-fonts-cjk-sans
         noto-fonts-cjk-serif
@@ -172,7 +172,7 @@ in
         util-linux
         coreutils
       ];
-      warnings = lib.optionals (!config.personal.nativeDesktopRuntime) [
+      warnings = lib.optionals (!config.personal.desktopRuntimeProvided) [
         "personal.modules.ags installs helper tools only: supply a compatible external AGS 3 + GTK4/Astal/Gnim runtime; nixos-25.11 pkgs.ags is incompatible AGS 2.3.0. No shell/service is started (see docs/nix-package-mapping.md)."
       ];
     })

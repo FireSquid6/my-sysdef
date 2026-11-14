@@ -31,11 +31,14 @@ the desktop-file identity guarantees that compositor class. No credentials or us
 configuration are copied into the store. Existing configuration remains runtime
 state. Do not use the mutable application updater to update the Nix package.
 
-## Non-NixOS deployment and systemd hooks
+## Shared workstation deployment and systemd hooks
 
-Kotoko installs `.#kotoko-apps`, which adds the host's matching NVIDIA graphics
-bridge and fixes both CLI and desktop-entry launch paths. See
-[the application-only migration](../../../docs/nix-migration.md#kotoko-endeavouros-rtx-5070).
+`kotoko-apps` and `deisslaptop-apps` instantiate the same inventory with explicit
+host graphics selection. kotoko uses its matching NVIDIA bridge for CLI/desktop
+launch paths; deisslaptop's GPU is unset pending confirmation. See
+[the shared desktop guide](../../../docs/nix-desktop.md). The expanded profile
+is still building, not activated; kotoko retains the older Hermes/Herdr bundle.
+No new desktop runtime/GPU test or deisslaptop deployment is claimed.
 The base package also exports `hermes-gateway-stop-mark` and
 `hermes-gateway-cgroup-cleanup`. These execute the fork's existing modules with
 its packaged Python closure. The CLI wrapper also supplies the native Opus

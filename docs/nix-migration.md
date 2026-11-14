@@ -2,15 +2,18 @@
 
 ## Scope and current status
 
-**This guide covers the standalone Home Manager outputs.** For a fresh NixOS
-installation with the native Hyprland/AGS runtime, services and expanded package
-inventory, use [the NixOS desktop guide](nixos-desktop.md). Its
-`nixosConfigurations.deisslaptop` output is separate from the outputs below.
+**This guide covers standalone Home Manager adoption and the historical
+application-only migration.** For the shared kotoko/deisslaptop workstation
+bundle and rollout status, use [the shared desktop guide](nix-desktop.md).
+Both hosts use the same inventory; there are no OS deployment outputs.
 
-The flake is the new configuration entry point. The old TypeScript engine is
-retained for comparison/tests, not used by the new system. No native packages
-are removed. No Nix installation, real home adoption, or Home Manager switch has
-been performed as part of this migration.
+The flake is the configuration entry point; the old TypeScript engine has been
+removed. No native packages are removed by these outputs. The shared workstation
+bundle has host-named `kotoko-apps` and `deisslaptop-apps` outputs for profile
+compatibility. The shared profile is installed on kotoko, including user launcher,
+font and native-portal boundary adoption. The live compositor/AGS and services
+were not restarted; no whole-home activation was performed. Existing editable
+links remain.
 
 Read [assumptions](nix-migration-assumptions.md) before deploying and
 [the complete legacy package mapping](nix-package-mapping.md) for exclusions.
@@ -19,7 +22,7 @@ This is **standalone Home Manager on existing Linux**, not an OS conversion.
 ## Application-only migration on an existing Linux desktop
 
 To move only Hermes and Herdr to Nix, use the root flake's package outputs;
-there is no need to activate Home Manager or switch to NixOS. The inputs pin
+there is no need to activate Home Manager or replace the operating system. The inputs pin
 `firesquid6/hermes-agent`, `firesquid6/herdr-core` and `firesquid6/herdr-app`.
 Run from the persistent checkout after installing Nix and enabling flakes:
 
@@ -40,7 +43,7 @@ Running processes keep their old code until deliberately restarted. Hermes
 systemd units with absolute venv paths also need a separately reviewed migration;
 installing the CLI package does not rewrite or restart them.
 
-Native GPU/Wayland compatibility still needs validation on non-NixOS hosts;
+Native GPU/Wayland compatibility still needs validation on existing Linux hosts;
 a successful build or `--version` check is not a graphical startup test. No
 credentials, application homes, sessions, or runtime databases need moving for
 this package-only migration. In particular, do not detach the legacy Herdr or
@@ -49,11 +52,17 @@ OpenCode directory links unless separately adopting the Home Manager files.
 ### kotoko (EndeavourOS, RTX 5070)
 
 This host uses **one** installed profile entry, `.#kotoko-apps`, rather than the
-three bare packages above. `nix/packages/kotoko-apps.nix` joins the same fork
-packages with a pinned nixGL bridge for the verified native NVIDIA **615.78.08**
-module. It installs userspace libraries only, not a kernel driver. Both command
-and desktop-entry launch paths use the graphics wrappers; non-desktop Hermes
-commands, including gateway/dashboard services, do not enable graphics wrappers.
+three bare packages above. Its installed generation now contains the shared
+desktop/application/tool inventory; the live compositor cutover is still pending. The shared
+inventory is `nix/packages/workstation-packages.nix`, built by
+`nix/packages/workstation.nix` for both workstation hosts; see
+[the shared guide](nix-desktop.md) for the opt-in session and native exceptions.
+`nix/graphics/default.nix` uses explicit GPU selection from `nix/hosts.nix`.
+For kotoko the recorded native NVIDIA version is **615.78.08**; userspace and
+its reviewed archive hash must match the native module. These are not kernel
+drivers. Graphical command/desktop-entry wrappers do not apply to non-desktop
+Hermes commands such as gateway/dashboard services. deisslaptop's GPU is unset
+pending hardware confirmation; no deployment or graphics success is claimed.
 
 ```sh
 nix build --max-jobs 2 --cores 2 --no-link .#kotoko-apps
@@ -64,11 +73,13 @@ nix profile upgrade kotoko-apps
 
 Do not use this host output on another GPU/driver configuration. After a native
 NVIDIA update, review `/proc/driver/nvidia/version` and update the version and
-verified archive hash in the host recipe **before** launching these applications.
+verified archive hash in the host graphics selection/recipe **before** launching these applications.
 The pinned nixGL source has two explicit compatibility patches for this nixpkgs
 pin: the removed `kernel` argument and renamed Vulkan ICD JSON. Hermes selects
 OpenGL for its outer Electron process on Wayland. In the isolated graphical test,
-both Electron processes reported RTX 5070 hardware compositing; its inner process
+both Electron processes reportedly used RTX 5070 hardware compositing in the
+historical application-only deployment; separate shared-desktop GTK/Vulkan/config
+checks are recorded in the shared guide, not a full compositor/login acceptance test. Its inner process
 still emitted GBM-sandbox/Vulkan-on-Wayland warnings. No GPU sandbox was disabled.
 
 The local `.local/bin` commands and canonical desktop entries point to the Nix
@@ -104,7 +115,8 @@ Edit `nix/hosts.nix` if necessary:
 | `firesquid@aarch64-linux` | ARM Linux | Explicit portable core example, not discovered hardware |
 
 Each specifies the Unix user, home directory, and **persistent writable checkout**.
-The checkout is currently `/home/firesquid/my-sysdef`, not `~/sysdef`. Flake purity
+Confirm each checkout path in `nix/hosts.nix`; this working checkout is
+`/home/firesquid/sysdef` (older migration examples used `my-sysdef`). Flake purity
 means another machine's `$HOME`/`hostname`/environment never silently selects a
 profile. Do not switch a profile for a different account.
 
@@ -153,7 +165,12 @@ closures can be large (JDK, Python/Qt, browsers, fonts, etc.).
 
 ### Graphical compatibility is not automatic
 
-- The active Lua config needs **Hyprland 0.57+**; the pin has 0.52.2.
+The following version exclusions describe the **original stable translation**,
+not the current shared workstation home. `nix/home/workstation.nix` now uses the
+shared workstation bundle with current desktop Home Manager/Nixpkgs; headless
+homes remain stable. Runtime/GPU validation and native PAM/portals remain required.
+
+- The active Lua config needs **Hyprland 0.57+**; the original stable pin has 0.52.2.
 - The AGS code needs **AGS 3 + GJS + GTK4 + Astal + Gnim**; the pin has AGS 2.3.0.
 - Workstation modules deploy config/helper tools, emit warnings, and retain those
   compatible native runtimes. They do not install the wrong versions or start a
@@ -166,8 +183,10 @@ closures can be large (JDK, Python/Qt, browsers, fonts, etc.).
   setup/driver compatibility must still be reviewed and performed explicitly.
   Other hosts may need a pinned nixGL solution. No NVIDIA version is guessed.
 
-Pi, Claude, Hermes, OpenCode and Herdr executables remain externally installed;
-this migration shares their selected configuration, not installers or private data.
+The original stable configuration-only translation left agent executables
+external. The current shared workstation inventory packages reviewed tools and
+forks; configuration adoption still does not own their private data or authorize
+mutable installers.
 
 ## 4. Preview adoption (read-only)
 
@@ -285,7 +304,11 @@ A generation rollback cannot reverse edits to writable checkout files, an
 application's runtime data, a Git checkout, or native service/package changes.
 Use Git/backups appropriate to those separate responsibilities.
 
-## Validation performed on this branch
+## Historical migration validation (separate from current desktop checks)
+
+The results below were recorded for the earlier migration. They were not rerun
+for this documentation update and do not establish that the expanded workstation
+profile has built, been activated, or passed runtime/GPU tests.
 
 - Generated `flake.lock` using actual Nix fetching, not guessed hashes.
 - `nix flake check --no-build --all-systems`: all profiles and optional groups

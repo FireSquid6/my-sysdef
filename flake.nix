@@ -1,9 +1,8 @@
 {
-  description = "Personal NixOS Hyprland desktop and standalone Home Manager configurations";
+  description = "Shared Linux desktop/user configuration with standalone Nix and Home Manager";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    # Personal application forks; retain Hermes' coordinated dependency lock.
     hermes.url = "github:firesquid6/hermes-agent";
     herdr-app = {
       url = "git+https://github.com/firesquid6/herdr-app?submodules=1";
@@ -17,7 +16,8 @@
       url = "github:nix-community/nixGL/4306ae1d15adf3d386f1462b330d4f2648404711";
       flake = false;
     };
-    # NixOS desktop needs Hyprland's Lua API and AGS 3; keep standalone HM stable.
+    # Shared desktop runtime needs Hyprland's Lua API and AGS 3. Headless
+    # profiles retain their stable package/module pins.
     nixpkgs-desktop.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager-desktop = {
       url = "github:nix-community/home-manager";
@@ -55,13 +55,12 @@
       ];
       forAllSystems = lib.genAttrs systems;
       hosts = import ./nix/hosts.nix;
+      workstations = lib.filterAttrs (_: spec: spec.workstation or false) hosts;
       packageSources = { inherit hermes herdr-app herdr-core; };
       pkgsFor =
         system:
         import nixpkgs {
           inherit system;
-          # Existing applications include Discord, Steam, Spotify, Obsidian and unrar.
-          # Explicit policy decision: see the assumptions record; no credentials here.
           config.allowUnfree = true;
         };
       desktopPkgsFor =
@@ -70,7 +69,6 @@
           inherit system;
           config.allowUnfree = true;
         };
-      # This inventory includes x86-only applications and upstream binaries.
       desktopPackages =
         system:
         lib.optionalAttrs (system == "x86_64-linux") (
@@ -79,10 +77,32 @@
             inherit packageSources;
           }
         );
+      workstationBundles = lib.mapAttrs (
+        _: host:
+        let
+          pkgs = desktopPkgsFor host.system;
+        in
+        import ./nix/packages/workstation.nix {
+          inherit pkgs host;
+          inherit (ags.packages.${host.system}) ags;
+          applications = desktopPackages host.system;
+          graphics = import ./nix/graphics {
+            inherit pkgs nixgl;
+            settings = host.graphics;
+          };
+        }
+      ) workstations;
       mkHome =
         spec:
-        home-manager.lib.homeManagerConfiguration {
-          pkgs = pkgsFor spec.system;
+        let
+          workstation = spec.workstation or false;
+          manager = if workstation then home-manager-desktop else home-manager;
+        in
+        manager.lib.homeManagerConfiguration {
+          pkgs = if workstation then desktopPkgsFor spec.system else pkgsFor spec.system;
+          extraSpecialArgs = lib.optionalAttrs workstation {
+            workstationBundle = workstationBundles."${spec.username}@${spec.hostname}";
+          };
           modules = [
             ./nix/modules
             spec.profile
@@ -98,50 +118,18 @@
       homeManagerModules.default = import ./nix/modules;
       homeConfigurations = homes;
 
-      nixosModules.desktop = { config, pkgs, ... }: {
-        imports = [
-          ./nix/nixos
-          home-manager-desktop.nixosModules.home-manager
-        ];
-        environment.systemPackages = [ ags.packages.${pkgs.stdenv.hostPlatform.system}.ags ];
-        home-manager = {
-          useGlobalPkgs = true;
-          useUserPackages = true;
-          users.${config.personal.system.username} = {
-            _module.args = { inherit packageSources; };
-            imports = [ ./nix/home/workstation.nix ];
-            home = {
-              inherit (config.personal.system) username;
-              homeDirectory = "/home/${config.personal.system.username}";
-            };
-            personal.checkout = config.personal.system.checkout;
-          };
-        };
-      };
-      nixosConfigurations.deisslaptop = nixpkgs-desktop.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          self.nixosModules.desktop
-          ./nix/nixos/hosts/deisslaptop.nix
-        ];
-      };
-
       packages = forAllSystems (
         system:
         let
           pkgs = pkgsFor system;
         in
         desktopPackages system
-        // lib.optionalAttrs (system == "x86_64-linux") {
-          kotoko-apps = import ./nix/packages/kotoko-apps.nix {
-            pkgs = desktopPkgsFor system;
-            inherit nixgl;
-            applications = desktopPackages system;
-          };
-        }
+        // lib.mapAttrs' (
+          name: host: lib.nameValuePair "${host.hostname}-apps" workstationBundles.${name}
+        ) (lib.filterAttrs (_: host: host.system == system) workstations)
         // {
           ags-desktop = ags.packages.${system}.ags;
-          inherit (home-manager.packages.${system}) home-manager;
+          inherit (home-manager-desktop.packages.${system}) home-manager;
           default = self.packages.${system}.home-manager;
           prepare-home = pkgs.writeShellApplication {
             name = "prepare-home";
@@ -182,14 +170,22 @@
           name: home:
           lib.nameValuePair ("home-" + lib.replaceStrings [ "@" ] [ "-" ] name) home.activationPackage
         ) (lib.filterAttrs (name: _: hosts.${name}.system == system) homes)
+        // lib.mapAttrs' (
+          name: host:
+          lib.nameValuePair "${host.hostname}-contract" (
+            import ./nix/tests/workstation-contract.nix {
+              pkgs = desktopPkgsFor system;
+              bundle = workstationBundles.${name};
+            }
+          )
+        ) (lib.filterAttrs (_: host: host.system == system) workstations)
         // {
-          # Exercise optional modules too; --no-build validates without installing.
           all-modules =
             (mkHome {
               inherit system;
               username = "firesquid";
               homeDirectory = "/home/firesquid";
-              checkout = "/home/firesquid/my-sysdef";
+              checkout = "/home/firesquid/sysdef";
               profile = { ... }: {
                 imports = [ ./nix/profiles/workstation.nix ];
                 personal.modules.gamedev.enable = true;
@@ -209,11 +205,13 @@
               '';
         }
         // lib.optionalAttrs (system == "x86_64-linux") {
-          nixos-desktop = self.nixosConfigurations.deisslaptop.config.system.build.toplevel;
           desktop-contract = import ./nix/tests/desktop-contract.nix {
-            inherit packageSources;
             pkgs = desktopPkgsFor system;
-            inherit (self.nixosConfigurations.deisslaptop) config;
+            inherit packageSources;
+            hosts = workstations;
+            outputs = self;
+            homes = lib.mapAttrs (name: _: homes.${name}.config) workstations;
+            bundles = workstationBundles;
           };
           ags-bundle =
             (desktopPkgsFor system).runCommand "sysdef-ags-bundle"
@@ -224,6 +222,10 @@
                 ags bundle ${./ags}/app.tsx "$out" --gtk 4
                 test -s "$out"
               '';
+          graphics-wrapper = import ./nix/tests/graphics-wrapper.nix {
+            pkgs = desktopPkgsFor system;
+            inherit nixgl;
+          };
           desktop-apps = import ./nix/packages/desktop-apps/checks.nix {
             pkgs = desktopPkgsFor system;
           };

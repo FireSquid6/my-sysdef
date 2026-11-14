@@ -2,6 +2,11 @@ set fish_greeting
 
 set -e fish_key_bindings default
 
+# Nix is the default package source; legacy user installs remain fallback only.
+if test -d "$HOME/.nix-profile/bin"
+  fish_add_path --prepend --global --move "$HOME/.nix-profile/bin"
+end
+
 if status is-interactive
   # Keep the connected host in the terminal title, including over SSH. Hyprland
   # uses this prefix for machine-colored borders; tmux forwards the pane title.
@@ -25,7 +30,7 @@ if status is-interactive
 
   direnv hook fish | source
 
-  fish_add_path --prepend --global "$HOME/.opencode/bin"
+  fish_add_path --append --global "$HOME/.opencode/bin"
   export PATH="$PATH:$SCRIPTS_DIR"
   export PATH="$PATH:$HOME/.bun/bin"
 
@@ -35,5 +40,4 @@ if status is-interactive
 
   export PATH="$PATH:$HOME/.autosmith/bin"
   export PATH="$PATH:$HOME/.fly/bin"
-  fish_add_path --prepend "$HOME/.opencode/bin"
 end

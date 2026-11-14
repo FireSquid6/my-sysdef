@@ -6,17 +6,17 @@ purple `#bb9af7`, green `#9ece6a`, red `#f7768e`, and cyan `#7dcfff`.
 
 ## Managed installation
 
-The [fresh-install NixOS desktop](../docs/nixos-desktop.md) supplies the pinned
-upstream AGS 3 flake and matching runtime. The stable-package/runtime caveat below
-applies only to the **standalone Home Manager** outputs.
+The [shared workstation bundle](../docs/nix-desktop.md) supplies AGS 3 and its
+matching runtime to both kotoko and deisslaptop. The shared workstation Home
+Manager module uses the same bundle with current desktop inputs; headless homes
+remain stable. The expanded profile is still building, not activated, and has no
+new runtime/GPU test. Existing editable links remain without whole-home activation.
 
-The repository now uses Nix + standalone Home Manager; see
-[the migration guide](../docs/nix-migration.md). Workstation profiles enable
-`personal.modules.ags.enable` alongside `personal.modules.desktop.enable`.
-The pinned Nixpkgs AGS is **2.3.0**, incompatible with this AGS 3/Gnim code, so the
-module installs helper tools only and requires a compatible **native AGS 3 +
-GJS/GTK4/Astal/Gnim** runtime. Do not replace it with the pinned `pkgs.ags`.
-Native services, portal/PAM and the compositor remain host-owned.
+The original stable Home Manager translation installed helpers only because its
+AGS **2.3.0** could not run this AGS 3/Gnim code; that historical caveat is not the
+current workstation package inventory. Keep a compatible runtime when using the
+configuration independently. Native services, portals, PAM/Hyprlock and kernel
+drivers remain host-owned. See [the migration guide](../docs/nix-migration.md).
 
 Home Manager links this **individual directory** to `~/.config/ags`. Check the
 adoption preview and back up personal files before the first switch. No credentials or monitor preferences are copied. Enabling a

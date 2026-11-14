@@ -15,9 +15,9 @@ This is a **configuration of the maintained [sddm-astronaut-theme](https://githu
 
 ## Packages
 
-On NixOS, the native desktop module installs SDDM and its packaged Tokyo Night
-theme; see [the NixOS guide](../../docs/nixos-desktop.md). On EndeavourOS,
-system packages and privileged theme deployment remain host-managed. The Arch
+System packages and privileged theme deployment remain host-managed; the
+[shared Nix workstation bundle](../../docs/nix-desktop.md) does not install or
+activate a system greeter. On EndeavourOS, the Arch
 dependencies are `sddm`, `qt6-declarative`, `qt6-svg`, `qt6-virtualkeyboard`,
 `qt6-multimedia-ffmpeg`, `qt6-5compat`, `ttf-jetbrains-mono-nerd`, and the reviewed
 AUR `sddm-astronaut-theme` package. The application-only Nix updater does not
@@ -38,7 +38,7 @@ The implementation was checked against upstream revision **`abb3163c724935af888b
 
 ## Safe deployment
 
-On non-NixOS hosts, deployment is explicit and privileged, separate from user package updates. User-owned symlinks into a home checkout are a poor dependency for a system greeter:
+Deployment is explicit and privileged, separate from user package updates. User-owned symlinks into a home checkout are a poor dependency for a system greeter:
 
 ```sh
 # From this checkout, after separately installing the host dependencies:

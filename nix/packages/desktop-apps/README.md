@@ -62,9 +62,9 @@ Validated against the nixpkgs source above on x86_64-linux:
 
 No graphical Hyprland session was exercised: window creation, Wayland/XWayland,
 GPU acceleration, audio, login, desktop portals, keyring, tray integration, and
-agent/OpenCode workflows still need interactive testing on the target NixOS
-system. No web server or OpenCode server was started. AppImage desktop entries
+agent/OpenCode workflows still need interactive testing on the target Linux
+workstation. No web server or OpenCode server was started. AppImage desktop entries
 retain upstream `--no-sandbox`; do not interpret the FHS bubblewrap environment
 as an Electron security sandbox. Binary AppImages and mdserve are not rebuilt
-from source. No NixOS system build or flake integration is implied by these
-package checks.
+from source. No OS deployment or flake integration is implied by these package
+checks.

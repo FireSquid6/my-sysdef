@@ -1,163 +1,76 @@
+# Evaluation-time contract for the SHARED standalone desktop, not an OS image.
 {
   pkgs,
-  config,
+  homes,
+  bundles,
+  hosts,
   packageSources,
+  outputs,
 }:
 let
   inherit (pkgs) lib;
-  home = config.home-manager.users.${config.personal.system.username};
-  packages = config.environment.systemPackages ++ home.home.packages;
-  names = map (p: p.pname or p.name) packages;
+  kotoko = bundles."firesquid@kotoko";
+  laptop = bundles."firesquid@deisslaptop";
   required = [
     "hyprland"
-    "hypridle"
-    "hyprlock"
-    "hyprpaper"
-    "hyprpicker"
-    "hyprshot"
-    "xdg-desktop-portal-hyprland"
     "ags"
     "gjs"
-    "sddm"
-    "sysdef-sddm-tokyo-night"
-    "dolphin"
-    "thunderbird"
-    "playerctl"
-    "brightnessctl"
-    "wl-clipboard"
-    "herdr-core"
-    "herdr-desktop"
-    "hermes"
-    "protonmail-desktop"
-    "obsidian"
-    "chromium"
-    "firefox"
-    "discord"
-    "steam"
-    "spotify"
-    "spotify-player"
-    "alacritty"
-    "inkscape"
-    "slack"
-    "zoom"
-    "libreoffice"
-    "intellij-idea"
-    "vscode"
-    "postman"
-    "github-copilot-cli"
-    "opencode"
+    "bun"
     "pi-coding-agent"
     "claude-code"
-    "gradle"
-    "jdt-language-server"
-    "lldb"
-    "pnpm"
-    "uv"
-    "bear"
-    "boost"
-    "sassc"
-    "jq"
-    "bubblewrap"
-    "postgresql"
-    "mariadb-server"
-    "docker"
-    "docker-compose"
+    "opencode"
+    "chromium"
+    "firefox"
+    "thunderbird"
     "godot"
-    "libresprite"
-    "prismlauncher"
-    "pixelorama"
-    "modrinth-app"
-    "tetrio-desktop"
-    "wayfarer"
-    "obs-studio"
-    "kooha"
-    "kazam"
-    "simplescreenrecorder"
-    "wf-recorder"
-    "file-roller"
-    "galculator"
-    "emdash-app"
-    "youtube-music-for-desktop"
-    "mdserve"
-    "openchamber"
-    "openchamber-desktop"
-    "md-to-pdf"
-    "browser-use-0.13.8"
-    "tommy-excalidraw-cli"
-    "glances-cli"
-    "s-nail"
-    "kvantum-tokyo-night"
-    "tokyonight-gtk-theme"
-    "google-cursor"
-    "qogir-icon-theme"
-    "rsync"
-    "zip"
-    "tealdeer"
+    "playerctl"
+    "wl-clipboard"
   ];
-  package = name: lib.findFirst (p: (p.pname or p.name) == name) (throw "Missing ${name}") packages;
-  missing = lib.subtractLists names required;
-  forbidden = lib.filter (
-    name:
-    lib.hasPrefix "xfce" name
-    || lib.hasPrefix "xfwm" name
-    || lib.hasPrefix "xfdesktop" name
-    || lib.hasPrefix "lightdm" name
-    || lib.hasPrefix "endeavouros" name
-    || lib.hasPrefix "eos-" name
-    || name == "trayscale"
-  ) names;
-  sessions = lib.concatMap (
-    p: p.providedSessions or [ ]
-  ) config.services.displayManager.sessionPackages;
+  homeContract =
+    name: home:
+    let
+      bundle = bundles.${name};
+    in
+    builtins.elem bundle home.home.packages
+    && home.personal.desktopRuntimeProvided
+    && !home.personal.legacySessionFiles
+    && home.targets.genericLinux.enable
+    && !home.targets.genericLinux.gpu.enable
+    && !(home.services.hypridle.enable or false)
+    && home.personal.managedLinks.".config/hypr" == "dotfiles/hypr"
+    && home.personal.managedLinks.".config/ags" == "ags"
+    && home.personal.managedLinks."${home.personal.paths.pi}/AGENTS.md" == "pi/AGENTS.md"
+    && home.personal.managedLinks."${home.personal.paths.pi}/skills/ags" == "pi/skills/ags"
+    && !(builtins.hasAttr "${home.personal.paths.pi}/skills" home.personal.managedLinks)
+    && home.personal.managedLinks."${home.personal.paths.hermes}/SOUL.md" == "hermes/SOUL.md"
+    &&
+      lib.all
+        (path: !(builtins.hasAttr "${home.personal.paths.hermes}/${path}" home.personal.managedLinks))
+        [
+          ".env"
+          "auth.json"
+          "state.db"
+          "skills"
+        ];
 in
+assert !(outputs ? nixosConfigurations);
+assert !(outputs ? nixosModules);
 assert lib.assertMsg (
-  missing == [ ]
-) "Missing desktop packages: ${lib.concatStringsSep ", " missing}";
-assert lib.assertMsg (
-  forbidden == [ ]
-) "Excluded desktop packages present: ${lib.concatStringsSep ", " forbidden}";
-# Check the installed packages, not just the separately exposed flake outputs.
-assert (package "hermes").upstream.outPath == packageSources.hermes.outPath;
-assert (package "herdr-core").src.outPath == packageSources.herdr-core.outPath;
-assert (package "herdr-desktop").src.outPath == packageSources.herdr-app.outPath;
-assert config.programs.hyprland.enable;
-assert config.programs.hyprlock.enable;
-assert config.services.displayManager.sddm.enable;
-assert config.services.displayManager.defaultSession == "sysdef-hyprland";
-assert builtins.elem "sysdef-hyprland" sessions;
-assert !(builtins.elem "xfce" sessions);
-assert config.services.pipewire.enable && config.services.pipewire.wireplumber.enable;
-assert config.networking.networkmanager.enable && config.networking.firewall.enable;
-assert config.services.tailscale.enable && config.virtualisation.docker.enable;
-assert config.hardware.graphics.enable && config.hardware.bluetooth.enable;
-assert home.personal.nativeDesktopRuntime && home.personal.modules.gamedev.enable;
-assert !home.personal.legacySessionFiles;
-assert !home.targets.genericLinux.enable;
-assert !(home.services.hypridle.enable or false);
-assert !(builtins.hasAttr ".config/i3/config" home.personal.managedLinks);
-assert home.personal.managedLinks.".config/hypr" == "dotfiles/hypr";
-assert home.personal.managedLinks.".config/ags" == "ags";
-# Manage individual agent files/skills, never private state or entire homes.
-assert home.personal.managedLinks."${home.personal.paths.pi}/AGENTS.md" == "pi/AGENTS.md";
-assert home.personal.managedLinks."${home.personal.paths.pi}/skills/ags" == "pi/skills/ags";
-assert !(builtins.hasAttr "${home.personal.paths.pi}/skills" home.personal.managedLinks);
-assert home.personal.managedLinks."${home.personal.paths.hermes}/SOUL.md" == "hermes/SOUL.md";
-assert !(builtins.hasAttr "${home.personal.paths.hermes}/.env" home.personal.managedLinks);
-assert !(builtins.hasAttr "${home.personal.paths.hermes}/auth.json" home.personal.managedLinks);
-assert !(builtins.hasAttr "${home.personal.paths.hermes}/state.db" home.personal.managedLinks);
-assert !(builtins.hasAttr "${home.personal.paths.hermes}/skills" home.personal.managedLinks);
-pkgs.runCommand "desktop-contract" { } ''
-  # Prove the actual packaged session selects Lua, rather than the legacy conf.
-  session=${
-    lib.head (
-      lib.filter (
-        p: builtins.elem "sysdef-hyprland" (p.providedSessions or [ ])
-      ) config.services.displayManager.sessionPackages
-    )
-  }
-  grep -F 'DesktopNames=Hyprland' "$session/share/wayland-sessions/sysdef-hyprland.desktop"
-  launcher=$(sed -n 's/^Exec=//p' "$session/share/wayland-sessions/sysdef-hyprland.desktop")
-  grep -F 'hyprland.lua' "$launcher"
-  grep -F 'SYSTEM_CONFIG_DIR=' "$launcher"
+  kotoko.managedPackages == laptop.managedPackages
+) "Workstations must share one inventory; place hardware differences in host settings.";
+assert lib.all (name: builtins.elem name kotoko.managedPackages) required;
+# Graphics must come from each host's explicit settings, not build-time probing.
+assert lib.all (
+  name:
+  bundles.${name}.graphicsConfigured == (hosts.${name}.graphics != null)
+  &&
+    bundles.${name}.graphicsBackend
+    == (if hosts.${name}.graphics == null then "unconfigured" else hosts.${name}.graphics.backend)
+) (builtins.attrNames homes);
+assert lib.all (name: homeContract name homes.${name}) (builtins.attrNames homes);
+assert kotoko.applications.hermes.upstream.outPath == packageSources.hermes.outPath;
+assert kotoko.applications.herdr-core.src.outPath == packageSources.herdr-core.outPath;
+assert kotoko.applications.herdr-desktop.src.outPath == packageSources.herdr-app.outPath;
+pkgs.runCommand "shared-desktop-contract" { } ''
   touch "$out"
 ''

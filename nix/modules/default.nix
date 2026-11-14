@@ -33,10 +33,10 @@ in
   ];
 
   options.personal = {
-    nativeDesktopRuntime = lib.mkOption {
+    desktopRuntimeProvided = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "A compatible compositor/AGS runtime is provided by the NixOS desktop module.";
+      description = "The shared workstation package profile provides compatible Nix compositor/AGS runtimes.";
     };
     legacySessionFiles = lib.mkOption {
       type = lib.types.bool;
@@ -83,7 +83,7 @@ in
       }
     ];
     xdg.enable = true;
-    targets.genericLinux.enable = lib.mkDefault (!cfg.nativeDesktopRuntime);
+    targets.genericLinux.enable = lib.mkDefault true;
     # No GPU hardware is inferred. HM 25.11's default bridge also pulls x86-only
     # Intel drivers on ARM; opt into a reviewed host GPU/nixGL setup separately.
     targets.genericLinux.gpu.enable = lib.mkDefault false;

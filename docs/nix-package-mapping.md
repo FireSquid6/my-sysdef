@@ -1,13 +1,20 @@
 # Bounded legacy package translation
 
 This document describes the **original standalone Home Manager translation**.
-The expanded fresh-install NixOS workstation provisions native services and
-compatible graphical runtimes separately; see [the NixOS desktop guide](nixos-desktop.md).
-Its package selection supersedes the host/external exclusions below only for
-`nixosConfigurations.deisslaptop`, not the standalone outputs.
+The [shared workstation bundle](nix-desktop.md) supersedes the historical
+runtime/application exclusions below for both kotoko and deisslaptop, including
+the shared workstation Home Manager module. Its single inventory is
+`nix/packages/workstation-packages.nix`, instantiated by
+`nix/packages/workstation.nix`; host GPU selection lives in `nix/hosts.nix` and
+wrapping in `nix/graphics/default.nix`. Headless Home Manager remains stable.
+Native services, PAM/Hyprlock, portals, drivers and Steam/FHS remain host-owned.
+The expanded profile is installed on kotoko; shared/profile/graphics/bundle
+contracts and isolated GTK/Vulkan/config checks passed. Live compositor cutover
+and real login/lock/suspend checks remain pending. deisslaptop's unverified GPU
+selection is explicitly unset, and it has not been deployed.
 
 `nix/modules/packages.nix` is a standalone Home Manager **user package** module,
-not a NixOS configuration. It targets `x86_64-linux` and `aarch64-linux`. Every
+not an OS deployment configuration. It targets `x86_64-linux` and `aarch64-linux`. Every
 `personal.modules.<group>.enable` declared here defaults to **false**:
 `applications`, `desktop`, `development`, `systemUtilities`, `fonts`, `gamedev`,
 `network`, `ags`, and `herdr`. Legacy `system-utilities` becomes `systemUtilities`.
@@ -22,14 +29,16 @@ installation or silently run npm/pip updaters.
 
 ## Release inputs and evidence
 
-Both recommended input branches were verified with `git ls-remote --heads`:
+The original stable input branches were verified with `git ls-remote --heads`
+at migration time. This is historical source-audit evidence, not the current
+desktop input/version inventory:
 
 | Input | Actual remote ref | Observed commit |
 | --- | --- | --- |
 | nixpkgs | `https://github.com/NixOS/nixpkgs.git`, `refs/heads/nixos-25.11` | `b6018f87da91d19d0ab4cf979885689b469cdd41` |
 | Home Manager | `https://github.com/nix-community/home-manager.git`, `refs/heads/release-25.11` | `3ee51fbdac8c8bdfe1e7e1fcaba6520a563f394f` |
 
-Use `github:NixOS/nixpkgs/nixos-25.11` and
+The original stable translation used `github:NixOS/nixpkgs/nixos-25.11` and
 `github:nix-community/home-manager/release-25.11`, with HM's nixpkgs input
 following the parent nixpkgs input. These are verified refs, **not** guessed
 versions or additional derivation pins. The parent's `flake.lock` is the actual

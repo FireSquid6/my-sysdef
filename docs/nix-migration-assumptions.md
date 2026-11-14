@@ -5,11 +5,22 @@ on `nix-migration`, with questions recorded for later review. These are **chosen
 assumptions, not user confirmations**. No Nix installation, home adoption, or
 Home Manager activation is authorized by this record.
 
-## Decisions implemented
+## Original migration decisions
+
+This table records the original stable/configuration-only migration. The current
+[shared desktop guide](nix-desktop.md) supersedes its workstation runtime and
+agent-package exclusions: kotoko/deisslaptop share one inventory and profile
+builder with current desktop Home Manager/Nixpkgs. Headless Home Manager remains
+stable. Native services, drivers, PAM/Hyprlock, portals and Steam/FHS remain native.
+The expanded shared package profile is now installed on kotoko with backed-up
+user launcher/font/portal-boundary adoption. GTK widgets, isolated Vulkan rendering
+and Lua config parsing were checked without restarting the live desktop/services.
+deisslaptop's GPU remains explicitly unset pending hardware confirmation; there
+has been no remote deployment or full compositor/login acceptance test.
 
 | Question / challenge | Chosen answer and rationale | Where to revise |
 | --- | --- | --- |
-| NixOS, nix-darwin, or standalone HM? | Standalone Home Manager on existing Linux. Existing Arch/Ubuntu machines and root-owned setup should not be reinstalled as an implicit side effect. | `flake.nix`, future separate NixOS layer |
+| What deployment boundary? | Userspace packages and standalone Home Manager on existing Linux. Existing machines and root-owned setup must not be reinstalled as an implicit side effect. No OS deployment layer is provided. | `flake.nix`, shared desktop guide |
 | Which platforms? | `x86_64-linux` and `aarch64-linux`; no macOS claim. Evaluate both; do not silently pretend proprietary x86 applications run on ARM. | `flake.nix`, package module |
 | Which machines and identities? | `firesquid@minibox-one` is inferred headless/core; `firesquid@desktop` and `firesquid@deisslaptop` use workstation. All assume `/home/firesquid/my-sysdef`. ARM output is an example, not discovered hardware. This checkout's ignored config enabled desktop/apps too, so making minibox headless is deliberate and needs review. | `nix/hosts.nix` |
 | What release channel? | Verified `nixos-25.11` and HM `release-25.11`, sharing one Nixpkgs input and committing a generated lock. Prefer bounded, reviewable changes over unpinned unstable. | `flake.nix`, `flake.lock` |
@@ -27,7 +38,7 @@ Home Manager activation is authorized by this record.
 | Preserve `~/sysdef` assumptions? | No: `SYSTEM_CONFIG_DIR`/`SCRIPTS_DIR` are generated from the explicit checkout, Lua uses that environment with `~/my-sysdef` fallback, Fish no longer adds legacy sysdef/bin, and Bash uses `$HOME` for Fly/OpenCode. Existing variable names remain compatibility APIs for scripts. | Shell module and shared shell/Lua files |
 | How are shell files handled? | HM generates Bash/Fish login/session-variable plumbing and includes existing interactive snippets. Fish's direnv hook is supplied exactly once by HM; Bash retains its existing hook. Vendor completions stay enabled; generating completions from every package's manpages is disabled to keep configuration-only builds small. No forced `SHELL` export or change to the account's login shell. | `nix/modules/shell.nix` |
 | Overwrite old links automatically? | Never. `force` stays false. Adoption is dry-run-first; `--apply` renames conflicts into a private local backup. Known legacy Herdr/OpenCode root symlinks require a second explicit flag after apps are stopped; materialization preserves local runtime files without moving tracked checkout files. Unknown symlink ancestors block. | `scripts/prepare-home.py` |
-| Keep the old engine? | Removed after the application migration: engine/providers/root modules, local engine metadata, development-copy scripts and engine-only tests. Editable application configs, runtime names/state and Git history remain. This does not imply whole-host Home Manager/NixOS activation. | Git history, `README.md` |
+| Keep the old engine? | Removed after the application migration: engine/providers/root modules, local engine metadata, development-copy scripts and engine-only tests. Editable application configs, runtime names/state and Git history remain. This does not imply whole-home activation or OS deployment. | Git history, `README.md` |
 | Automatically install, adopt, switch, uninstall old packages, or push? | No. Validate/build only in temporary tool/cache directories; no user profile mutation or credential/runtime synchronization. Native packages may coexist during staged migration and are not automatically removed. | Migration guide |
 
 ## Review before the first real switch
@@ -43,9 +54,12 @@ Home Manager activation is authorized by this record.
 5. Review the adoption inventory, stop Herdr/OpenCode before detaching their root
    links, retain backups, and do a build before moving any conflicts.
 
-## Verification boundary
+## Historical verification boundary
 
-Actual Nix evaluation is performed using a disposable rootless nix-portable tool
+The following records earlier migration validation, not the current shared desktop
+checks. Current build/runtime observations are recorded in the shared desktop guide.
+
+At that stage, actual Nix evaluation was performed using a disposable rootless nix-portable tool
 and store under temporary directories, not a system Nix install. The initial
 `/tmp` store hit a tmpfs user quota; validation was moved to `/var/tmp` without
 installing `/nix` or activating anything. See the migration guide for the final

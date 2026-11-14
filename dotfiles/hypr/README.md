@@ -2,16 +2,17 @@
 
 The active config is `hyprland.lua` (Hyprland 0.57+). `hyprland.conf` is the legacy config, not the active source.
 
-The [NixOS desktop output](../../docs/nixos-desktop.md) supplies compatible
-Hyprland/AGS runtimes and explicitly selects `hyprland.lua` in its login session.
-The following native-runtime caveat applies only to **standalone Home Manager**.
+The [shared workstation bundle](../../docs/nix-desktop.md) supplies compatible
+Hyprland/AGS runtimes for kotoko and deisslaptop, using the same inventory and
+shared Home Manager module. The expanded profile is still building, not activated;
+no new login/GPU test is claimed. deisslaptop's GPU is unset pending confirmation.
+Native PAM/Hyprlock, portals, drivers and privileged services remain host-owned.
 
-Home Manager's workstation profile links this directory. The pinned Nixpkgs
-Hyprland is too old, so the compositor, matching portal/ecosystem, and PAM locker
-remain native; see the [migration guide](../../docs/nix-migration.md). The Lua
-config uses HM's `SYSTEM_CONFIG_DIR`/`SCRIPTS_DIR` environment and includes the
-Nix profile on PATH. Legacy `hyprland.conf` retains historical paths and is not
-activated by this migration.
+Existing editable links stay in place without wholesale Home Manager activation.
+The Lua config uses `SYSTEM_CONFIG_DIR`/`SCRIPTS_DIR` and includes the Nix profile
+on PATH. The future `start-nix-hyprland` launcher belongs to the opt-in
+**Hyprland (Nix)** session; SDDM registration still needs sudo and is not complete.
+Legacy `hyprland.conf` retains historical paths and is not activated by migration.
 
 ## Workspaces
 
@@ -57,12 +58,14 @@ The dedicated `ags` module links the shared Tokyo Night AGS shell. Each output s
 
 ## Login screen
 
-SDDM uses a Qt6 Astronaut theme configured with the same Tokyo Night palette, flat background and centered login form. Sources and deployment instructions live in [`dotfiles/sddm/`](../sddm/README.md); NixOS owns its system dependencies. System-wide deployment is an explicit sudo step, not a home-directory symlink or display-manager restart.
+SDDM uses a Qt6 Astronaut theme configured with the same Tokyo Night palette, flat background and centered login form. Sources and deployment instructions live in [`dotfiles/sddm/`](../sddm/README.md); the native distribution owns its system dependencies. System-wide deployment is an explicit sudo step, not a home-directory symlink or display-manager restart.
 
 ## Locking and idle
 
 On EndeavourOS, the host supplies stable Arch `hyprlock` and `hypridle` packages, not
-Git snapshots. On NixOS these are owned by the native desktop module. Verified against upstream releases: hyprlock **0.9.7** and hypridle
+Git snapshots. The shared Nix bundle keeps native PAM/Hyprlock and supplies its
+reviewed Hypridle runtime; native fallback packages remain installed. Historically
+verified against upstream releases: hyprlock **0.9.7** and hypridle
 **0.1.8**. Keep them updated through normal full-system Arch upgrades (`pacman -Syu`),
 not partial repository refreshes.
 
