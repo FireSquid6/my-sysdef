@@ -183,7 +183,7 @@ export default class Repo extends View {
     const t = theme(), entry = this.cache.get(this.key), rows = this.rows();
     this.at = Math.min(this.at, Math.max(0, rows.length - 1));
     const repo = entry.repo;
-    return v_flex().id("repo").size_full().min_h(0).overflow_hidden().bg(t.background).text_color(t.foreground).text_size(13)
+    return v_flex().id("repo").size_full().min_h(0).overflow_hidden().bg(t.chrome).text_color(t.foreground).text_size(13)
       .border_1().border_color(this.handle.is_focused() || this.typing ? t.accent : t.border).track_focus(this.handle)
       .on_key_down((e, cx) => this.navigate(e, cx))
       .child(div().px(12).py(10).font_semibold().child(`Repo · ${repo?.nameWithOwner || "GitHub"}${entry.loading ? " · Loading…" : ""}`))

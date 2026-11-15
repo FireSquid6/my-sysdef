@@ -35,7 +35,10 @@ describe("background-only desktop translucency", () => {
     expect(layout.terminal_opacity).toBeLessThan(1)
     expect(layout.children.find((node: { id: string }) => node.id === "work").children
       .find((node: { id: string }) => node.id === "work-body").children[0].content.pane.background).toBe("#00000000")
-    expect(text("herdr/mods/tty-changes/main.js")).toContain(".bg(t.chrome)")
+    for (const mod of ["tty-changes", "tty-repo"]) {
+      expect(text(`herdr/mods/${mod}/main.js`)).toContain(".bg(t.chrome)")
+      expect(text(`herdr/mods/${mod}/main.js`)).not.toContain(".bg(t.background)")
+    }
     const theme = json("herdr/themes/tokyonight-night.json")
     expect(theme.colors.chrome).toBe("#16161e")
     expect(theme.colors.canvas).toBe("#16161e")
