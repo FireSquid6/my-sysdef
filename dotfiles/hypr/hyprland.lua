@@ -206,6 +206,14 @@ hl.bind("SUPER + SPACE", hl.dsp.group.next())
 hl.bind("SUPER + SHIFT + SPACE", hl.dsp.group.toggle())
 hl.bind("SUPER + C", hl.dsp.window.center())
 
+-- Optional machine-local rules/startup hooks; no host-specific definitions here.
+local localConfig = (os.getenv("XDG_CONFIG_HOME") or (home .. "/.config")) .. "/sysdef/hyprland-local.lua"
+local localConfigFile = io.open(localConfig, "r")
+if localConfigFile then
+    localConfigFile:close()
+    dofile(localConfig)
+end
+
 -- Idempotent on reload: one controller per Hyprland session. Its private log stays local.
 -- Config verification evaluates Lua too; never launch desktop services from it.
 -- Initial config evaluation precedes Wayland setup; hyprland.start handles login.
