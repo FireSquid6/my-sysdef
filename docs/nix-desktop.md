@@ -89,8 +89,13 @@ Fresh fish/bash shells resolve the reviewed tools through `~/.nix-profile/bin`;
 the installed session launcher's `--version` and installed AGS widget smoke pass.
 All nine local terminal addresses present immediately before adoption survived,
 with original core/holder and portal/audio PIDs unchanged. Native locker/PAM,
-portals and audio remain distribution-owned. Privileged session registration and
-real login/lock/suspend acceptance are still pending.
+portals and audio remain distribution-owned. The user registered the custom
+SDDM entry; its installed file matches the profile source byte-for-byte and has
+the correct Name/Exec. The user completed a successful Nix login, and the live
+compositor executable was verified under `/nix/store`. Detailed app/monitor,
+lock/unlock and suspend/wake acceptance remain separate. Native Hyprland removal
+was authorized; its package has no reverse dependencies and a non-recursive
+removal preview contains only `hyprland`, but removal still requires user sudo.
 
 ## Deployment status and build/update procedure
 
@@ -126,7 +131,7 @@ Successful evaluation is not evidence that downloads/builds or GPU checks finish
 Running programs keep loaded code. Reopen applications normally when appropriate;
 never kill Herdr holders, restart the compositor or log out agents for migration.
 
-## Opt-in login session (pending privileged registration)
+## Opt-in login session (registered; laptop login passed)
 
 **A native launcher path alone is not a safe fallback.** The native SDDM entry
 calls `/usr/bin/start-hyprland`, but that launcher can resolve `Hyprland` through
@@ -163,9 +168,12 @@ sudo install -Dm644 \
 ```
 
 Kotoko subsequently registered the correct custom entry and reached a working
-Nix desktop; that is not laptop acceptance. On deisslaptop registration remains
-pending: sudo requires a password. Profile installation alone cannot register
-SDDM sessions. Copy **hyprland-nix.desktop**, never the upstream
+Nix desktop; that is not laptop acceptance. On deisslaptop the user registered the
+custom entry with sudo; the installed file was verified byte-identical to the
+profile source, with the expected Name/Exec. The user then completed a successful
+Nix login; the live compositor path was verified in `/nix/store`.
+Profile installation alone cannot register SDDM sessions. Copy
+**hyprland-nix.desktop**, never the upstream
 `hyprland.desktop` under a renamed destination. Inspect the installed destination:
 
 ```sh
