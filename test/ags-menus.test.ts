@@ -33,12 +33,18 @@ describe("AGS menu model", () => {
     expect(powerArgs("logout")).toEqual(["hyprctl", "eval", "hl.dispatch(hl.dsp.exit())"]);
   });
   test("power menus share Lock and Log out, and locking needs no confirmation", () => {
-    expect(POWER_ACTIONS).toEqual(["lock", "suspend", "logout", "reboot", "shutdown"]);
+    expect(POWER_ACTIONS).toEqual(["lock", "suspend", "reload", "logout", "reboot", "shutdown"]);
     expect(POWER_LABELS.lock).toBe("Lock");
     expect(POWER_LABELS.logout).toBe("Log out");
     expect(confirmPower(null, "lock")).toEqual({ pending: null, execute: true });
     expect(confirmPower("shutdown", "lock")).toEqual({ pending: null, execute: true });
     expect(powerArgs("lock")).toEqual(["bash", "-c", 'exec bash "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprlock.sh"']);
+  });
+  test("Hyprland reload is non-destructive and needs no repeated confirmation", () => {
+    expect(POWER_LABELS.reload).toBe("Reload Hyprland");
+    expect(powerArgs("reload")).toEqual(["hyprctl", "-i", "0", "reload"]);
+    expect(confirmPower(null, "reload")).toEqual({ pending: null, execute: true });
+    expect(confirmPower("shutdown", "reload")).toEqual({ pending: null, execute: true });
   });
   test("Lock resolves the config path safely, including spaces and shell characters (mock locker only)", async () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "sysdef-menu-lock-"));

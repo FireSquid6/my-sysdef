@@ -179,9 +179,12 @@ hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"))
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl s +10%"))
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl s 10%-"))
 hl.bind("SUPER + ALT + S", hl.dsp.exec_cmd("hyprshot -c -m region"))
-hl.bind("SUPER + ALT + SHIFT + S", function()
+-- Delay DPMS changes until the shortcut's key events have settled.
+local function toggle_monitor_power()
     hl.timer(function() hl.dispatch(hl.dsp.dpms({ action = "toggle" })) end, { timeout = 500, type = "oneshot" })
-end)
+end
+hl.bind("SUPER + ALT + SHIFT + S", toggle_monitor_power)
+hl.bind("SUPER + ALT + G", toggle_monitor_power, { locked = true })
 
 hl.bind("SUPER + Y", hl.dsp.workspace.toggle_special("music"))
 hl.bind("SUPER + A", hl.dsp.workspace.toggle_special("a"))

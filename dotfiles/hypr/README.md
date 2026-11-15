@@ -70,8 +70,11 @@ verified against upstream releases: hyprlock **0.9.7** and hypridle
 not partial repository refreshes.
 
 - **Super + P → Lock** (or bar power button → Lock): lock immediately. Type your normal account password to unlock. There is no dedicated lock keybind. **Log out** is in the same menu and requires a second selection to confirm.
-- **5 minutes idle:** lock; **8 minutes 20 seconds:** turn displays off.
+- **On battery only:** **5 minutes idle:** lock; **8 minutes 20 seconds:** turn displays off. `hypridle-battery.sh` checks sysfs at each timeout: a system battery must be discharging, with no external supply online. Desktops with no battery and unknown power states skip automatic actions.
+- Power is checked when a timeout fires, not continuously. Unplugging after a skipped timeout does not retroactively fire it; activity starts the next idle cycle.
+- **Super + Alt + G:** toggle display power, including while locked (does not unlock). The existing Super + Alt + Shift + S shortcut is also retained outside the lock screen.
 - Activity wakes displays; it does not bypass password authentication.
+- On AC, hypridle still handles manual lock requests and lock-before-suspend, but its automatic inactivity actions are skipped.
 - Before suspend, hypridle requests locking and holds a sleep-delay inhibitor until
   the Wayland session is locked. Waking turns displays back on.
 - No automatic suspend timer is configured. Browser/media, Wayland and systemd

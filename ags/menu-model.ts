@@ -19,13 +19,13 @@ export function focusWindowArgs(address: string): string[] {
   return ["hyprctl", "eval", `local r = hl.dispatch(hl.dsp.focus({ window = "address:${address}" })); if r and not r.ok then error(r.message or "Focus failed") end`];
 }
 
-export const POWER_ACTIONS = ["lock", "suspend", "logout", "reboot", "shutdown"] as const;
+export const POWER_ACTIONS = ["lock", "suspend", "reload", "logout", "reboot", "shutdown"] as const;
 export type PowerAction = typeof POWER_ACTIONS[number];
-export const POWER_LABELS: Record<PowerAction, string> = { lock: "Lock", suspend: "Suspend", logout: "Log out", reboot: "Reboot", shutdown: "Shut down" };
+export const POWER_LABELS: Record<PowerAction, string> = { lock: "Lock", suspend: "Suspend", reload: "Reload Hyprland", logout: "Log out", reboot: "Reboot", shutdown: "Shut down" };
 // Nerd Font / Font Awesome glyphs, independent of the installed GTK icon theme.
-export const POWER_ICONS: Record<PowerAction, string> = { lock: "", suspend: "", logout: "", reboot: "", shutdown: "" };
+export const POWER_ICONS: Record<PowerAction, string> = { lock: "", suspend: "", reload: "", logout: "", reboot: "", shutdown: "" };
 export function confirmPower(pending: PowerAction | null, action: PowerAction): { pending: PowerAction | null; execute: boolean } {
-  const execute = action === "lock" || action === "suspend" || pending === action;
+  const execute = action === "lock" || action === "suspend" || action === "reload" || pending === action;
   return { pending: execute ? null : action, execute };
 }
 export function powerArgs(action: PowerAction): string[] {
@@ -33,6 +33,7 @@ export function powerArgs(action: PowerAction): string[] {
     // Fixed shell expression only: expand the config path without interpolating input.
     case "lock": return ["bash", "-c", 'exec bash "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprlock.sh"'];
     case "suspend": return ["systemctl", "suspend"];
+    case "reload": return ["hyprctl", "-i", "0", "reload"];
     case "logout": return ["hyprctl", "eval", "hl.dispatch(hl.dsp.exit())"];
     case "reboot": return ["systemctl", "reboot"];
     case "shutdown": return ["systemctl", "poweroff"];

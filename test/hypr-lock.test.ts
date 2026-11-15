@@ -14,9 +14,56 @@ describe("Hyprlock and hypridle", () => {
     expect(idle).toContain("timeout = 300");
     expect(idle).toContain("timeout = 500");
     expect(idle).toContain('hl.dsp.dpms({ action = "enable" })');
-    expect(idle).toContain('hl.dsp.dpms({ action = "disable" })');
+    expect(idle).toContain('on-timeout = bash ~/.config/hypr/hypridle-battery.sh lock');
+    expect(idle).toContain('on-timeout = bash ~/.config/hypr/hypridle-battery.sh screens-off');
+    expect(read("dotfiles/hypr/hypridle-battery.sh")).toContain('hl.dsp.dpms({ action = "disable" })');
     expect(idle).not.toContain("swaylock");
     expect(idle).not.toMatch(/(?:on-timeout|unlock_cmd)\s*=.*(?:suspend|unlock-session)/);
+  });
+  test("monitor power shortcut remains available while locked", () => {
+    expect(read("dotfiles/hypr/hyprland.lua")).toContain('hl.bind("SUPER + ALT + G", toggle_monitor_power, { locked = true })');
+  });
+  test("automatic idle actions only execute on a discharging system battery (mock commands)", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sysdef-idle-battery-"));
+    const power = path.join(dir, "power"), calls = path.join(dir, "calls");
+    fs.mkdirSync(power);
+    for (const name of ["loginctl", "hyprctl"]) {
+      fs.writeFileSync(path.join(dir, name), `#!/bin/sh\nprintf '%s\\n' '${name}' \"$@\" >> \"$TEST_CALLS\"\n`, { mode: 0o755 });
+    }
+    function supply(name: string, values: Record<string, string>) {
+      const folder = path.join(power, name);
+      fs.mkdirSync(folder, { recursive: true });
+      for (const [key, value] of Object.entries(values)) fs.writeFileSync(path.join(folder, key), value + "\n");
+    }
+    async function run(action = "lock") {
+      fs.rmSync(calls, { force: true });
+      const child = Bun.spawn(["bash", path.join(root, "dotfiles/hypr/hypridle-battery.sh"), action], {
+        env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, SYSDEF_POWER_SUPPLY_DIR: power, TEST_CALLS: calls },
+        stdout: "pipe", stderr: "pipe",
+      });
+      expect(await child.exited).toBe(0);
+      return fs.existsSync(calls) ? fs.readFileSync(calls, "utf8") : "";
+    }
+    try {
+      expect(await run()).toBe(""); // desktop with no battery
+      supply("mouse", { type: "Battery", scope: "Device", status: "Discharging" });
+      expect(await run()).toBe("");
+      supply("BAT0", { type: "Battery", scope: "System", status: "Charging", present: "1" });
+      expect(await run()).toBe("");
+      supply("BAT0", { status: "Full" });
+      expect(await run()).toBe("");
+      supply("BAT0", { status: "Unknown" });
+      expect(await run()).toBe("");
+      supply("BAT0", { status: "Discharging" });
+      expect(await run()).toBe("loginctl\nlock-session\n");
+      expect(await run("screens-off")).toBe('hyprctl\ndispatch\nhl.dsp.dpms({ action = "disable" })\n');
+      supply("AC", { type: "Mains", online: "1" });
+      expect(await run()).toBe(""); // external power overrides stale battery status
+      supply("AC", { online: "0" });
+      expect(await run()).toBe("loginctl\nlock-session\n");
+      supply("BAT0", { present: "0" });
+      expect(await run()).toBe("");
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   });
   test("uses opaque Tokyo Night styling and PAM, with no manual lock shortcut", () => {
     const lock = read("dotfiles/hypr/hyprlock.conf");
