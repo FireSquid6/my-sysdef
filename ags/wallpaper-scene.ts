@@ -41,6 +41,8 @@ export function river(y: number, width: number) {
   const bend = Math.max(0, (reach - 157) / 113)
   return { center: width * (0.53 + Math.sin(bend * 6.4 - 0.4) * (0.015 + bend * 0.13)), half: 1 + depth * depth * width * 0.13 }
 }
+/** Thin cloud softens celestial bodies; heavy overcast hides them completely. */
+export const celestialVisibility = (cloud: number) => 1 - smooth((cloud - 0.2) / 0.7)
 /** Fade the falling sheet into the lower current instead of ending at one scanline. */
 export const waterfallStrength = (y: number) => y < 192 ? 0 : 1 - smooth((y - 207) / 29)
 /** Keep the entire fire's ground glow clear of the bend, including on ultrawides. */
@@ -63,7 +65,7 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
   const flow = Number.isFinite(activity.flow) ? activity.flow : 0
   const { daylight: day, dusk, night } = lighting(date, environment)
   const { season, weather, cloud, precip, wind, moonPhase, moonIllumination } = environment
-  const clearSky = 1 - cloud * 0.94
+  const clearSky = celestialVisibility(cloud)
   const shade = (c: RGB, strength = 1) => mix(TOKYO.night, c, (0.25 + day * (0.55 - cloud * 0.18)) * strength)
   const foliage = season === "autumn" ? TOKYO.gold : season === "winter" ? mix(TOKYO.teal, TOKYO.white, 0.4) : season === "spring" ? mix(TOKYO.green, TOKYO.teal, 0.3) : TOKYO.green
   const snowy = weather === "snow" || (season === "winter" && (environment.temperature ?? -1) < 3)
@@ -87,22 +89,46 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
   const disk = (cx: number, cy: number, radius: number, c: RGB, alpha = 1) => {
     for (let y = -radius; y <= radius; y++) { const r = Math.floor(Math.sqrt(radius * radius - y * y)); paint(Math.floor(cx) - r, Math.floor(cy) + y, r * 2 + 1, 1, c, alpha) }
   }
-  if (day > 0.08 && cloud < 0.9) disk(width * (0.16 + 0.68 * Math.max(0, Math.min(1, (lighting(date, environment).hour - environment.sunrise) / (environment.sunset - environment.sunrise)))), 110 - day * 65, 9, mix(TOKYO.gold, TOKYO.white, day * 0.4))
-  // Cloud cover changes the clouds, not the moon's existence or brightness.
-  // Draw the lunar phase first so passing translucent clouds occlude it naturally.
-  if (night > 0.2) {
+  if (day > 0.08 && clearSky > 0) {
+    const cx = width * (0.16 + 0.68 * Math.max(0, Math.min(1, (lighting(date, environment).hour - environment.sunrise) / (environment.sunset - environment.sunrise))))
+    const cy = 110 - day * 65
+    disk(cx, cy, 13, TOKYO.gold, clearSky * 0.06)
+    disk(cx, cy, 11, TOKYO.gold, clearSky * 0.1)
+    disk(cx, cy, 9, mix(TOKYO.gold, TOKYO.white, day * 0.4), clearSky)
+  }
+  // Global haze dims the phase; nearer clouds pass in front of it.
+  if (night > 0.2 && clearSky > 0) {
     const cx = Math.floor(width * 0.79), cy = 38, radius = 9
     for (let y = -radius; y <= radius; y++) for (let x = -radius; x <= radius; x++) {
-      if (moonPixelLit(x / radius, y / radius, moonPhase)) paint(cx + x, cy + y, 1, 1, mix(TOKYO.blue, TOKYO.white, 0.85), night)
+      if (moonPixelLit(x / radius, y / radius, moonPhase)) paint(cx + x, cy + y, 1, 1, mix(TOKYO.blue, TOKYO.white, 0.85), night * clearSky)
     }
   }
   const windX = -Math.sin(environment.windDirection * Math.PI / 180)
-  for (let i = 0; i < 5 + Math.floor(cloud * 20); i++) {
-    const drift = seconds * (0.3 + wind * 2 + i * 0.03) * (Math.abs(windX) < 0.1 ? 0.1 : windX)
-    const x = Math.floor((((hash(i + 70) * width + drift) % (width + 100) + width + 100) % (width + 100)) - 70)
-    const y = 28 + Math.floor(hash(i + 80) * 91)
-    paint(x + 8, y, 34, 4, shade(cloud > 0.65 ? TOKYO.storm : TOKYO.purple), 0.4 + cloud * 0.4)
-    paint(x, y + 4, 70, 5 + Math.floor(cloud * 5), shade(cloud > 0.65 ? TOKYO.blue : TOKYO.white), 0.18 + cloud * 0.5)
+  // Two depth layers of joined, rounded lobes with flat shaded undersides.
+  // Scanline unions avoid dark seams where translucent lobes overlap.
+  for (let layer = 0; layer < 2; layer++) for (let i = 0; i < Math.ceil(width / 160) + Math.floor(cloud * width / 55); i++) {
+    const seed = i + layer * 137, scale = layer === 0 ? 0.7 : 1
+    const span = Math.floor((45 + hash(seed + 90) * 42 + cloud * 25) * scale)
+    const height = Math.floor((10 + hash(seed + 91) * 9 + cloud * 8) * scale)
+    const drift = seconds * (0.3 + wind * 2) * (layer === 0 ? 0.55 : 1) * (Math.abs(windX) < 0.1 ? 0.1 : windX)
+    const wrap = width + 260
+    const x = Math.floor(((hash(seed + 70) * wrap + drift) % wrap + wrap) % wrap) - 130
+    const y = 25 + Math.floor(hash(seed + 80) * 75)
+    const body = mix(shade(TOKYO.white, 1.15), shade(TOKYO.blue, 0.75), cloud * 0.75)
+    const underside = mix(body, shade(TOKYO.storm, 0.9), 0.25 + cloud * 0.3)
+    for (let row = 0; row < height; row += 2) {
+      let left = Infinity, right = -Infinity
+      for (let lobe = 0; lobe < 5; lobe++) {
+        const radiusY = height * (0.4 + hash(seed * 7 + lobe + 200) * 0.4)
+        const dy = (row - height * 0.82) / radiusY
+        if (Math.abs(dy) >= 1) continue
+        const half = span * 0.24 * Math.sqrt(1 - dy * dy)
+        const center = span * (0.16 + lobe * 0.17)
+        left = Math.min(left, Math.floor(center - half))
+        right = Math.max(right, Math.ceil(center + half))
+      }
+      if (right > left) paint(x + left, y + row, right - left, 2, row > height * 0.7 ? underside : body, (layer === 0 ? 0.3 : 0.55) + cloud * 0.25)
+    }
   }
   // Wider, closer peaks on a lower horizon leave substantially more open sky.
   for (let layer = 0; layer < 3; layer++) for (let x = 0; x < width; x++) {
@@ -234,6 +260,22 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
     // Foam drifts out of the plunge pool and fades before wrapping upstream.
     paint(x, y, 2, 1, TOKYO.white, Math.sin(age * Math.PI) ** 2 * 0.45)
   }
+  // A raised timber footbridge, not a solid dam: water remains visible below
+  // the thin deck, with stone abutments only on the dry banks.
+  const bridgeLeft = Math.floor(lip.center - lip.half - 9)
+  const bridgeRight = Math.ceil(lip.center + lip.half + 9)
+  const bridgeSpan = bridgeRight - bridgeLeft
+  for (const x of [bridgeLeft, bridgeRight - 5]) {
+    paint(x, 190, 5, 10, shade(TOKYO.storm, 1.1))
+    paint(x, 190, 5, 2, shade(TOKYO.white, 0.75))
+  }
+  paint(bridgeLeft, 187, bridgeSpan, 4, shade(TOKYO.gold, 0.9))
+  for (let x = bridgeLeft + 3; x < bridgeRight; x += 4) paint(x, 187, 1, 4, shade(TOKYO.storm, 0.8))
+  paint(bridgeLeft, 191, bridgeSpan, 2, shade(TOKYO.gold, 0.45))
+  for (let x = bridgeLeft; x < bridgeRight; x += 8) paint(x, 180, 2, 8, shade(TOKYO.gold, 0.8))
+  paint(bridgeRight - 2, 180, 2, 8, shade(TOKYO.gold, 0.8))
+  paint(bridgeLeft, 181, bridgeSpan, 1, shade(TOKYO.gold, 1.15))
+  paint(bridgeLeft, 185, bridgeSpan, 1, shade(TOKYO.gold, 0.75))
   // Stone-and-timber mill on the pasture bank; axle enters its right-hand wall.
   const wheelX = Math.floor(river(207, width).center - river(207, width).half - 1), wheelY = 207
   const millX = wheelX - 35
@@ -294,15 +336,6 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
       const y = fireY - 11 - Math.floor(age * 32), puff = 1 + Math.floor(age * 4)
       paint(x - puff, y, puff * 2 + 1, 2 + Math.floor(age * 2), mix(TOKYO.storm, TOKYO.white, 0.65), fire * (1 - age) * 0.28)
       if (i % 3 === 0) paint(x, fireY - 6 - Math.floor(age * 19), 1, 1, TOKYO.gold, fire * (1 - age) * 0.8)
-    }
-  }
-  // Foreground pines frame the river without obscuring the vista.
-  for (const [u, base, size] of [[0.025, 264, 45], [0.07, 240, 32], [0.12, 227, 23], [0.91, 245, 38], [0.96, 232, 27], [0.985, 269, 44]]) {
-    const x = Math.floor(width * u!)
-    paint(x, base! - size!, 2, size! + 4, mix(TOKYO.night, TOKYO.storm, 0.3))
-    for (let k = 0; k < 4; k++) for (let y = 0; y < size! * 0.4; y++) {
-      const half = Math.floor(y * 0.48)
-      paint(x - half, Math.floor(base! - size! + k * size! * 0.19 + y), half * 2 + 2, 1, snowy && y < 3 ? shade(TOKYO.white, 0.65) : mix(TOKYO.night, TOKYO.teal, 0.04 + day * 0.07))
     }
   }
   // Weather is a final atmospheric layer; it never affects CPU-driven water or

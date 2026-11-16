@@ -51,6 +51,11 @@ describe("Tokyo Night pixel landscape", () => {
     const ridges = day.filter(r => r.w === 1 && r.h > 10 && r.y < 160)
     expect(Math.min(...ridges.map(r => r.y))).toBeGreaterThanOrEqual(114)
     expect(day.filter(r => r.w === 2 && r.h >= 9).length).toBeGreaterThan(100)
+    // Keep the layered woodland, but not the old near-black foreground pines.
+    const oldTrunk = mix(TOKYO.night, TOKYO.storm, 0.3)
+    for (const rectangles of [day, night]) {
+      expect(rectangles.filter(r => r.w === 2 && r.h >= 27 && r.color.every((v, i) => v === oldTrunk[i]))).toHaveLength(0)
+    }
     const smokeColor = mix(TOKYO.storm, TOKYO.white, 0.65)
     const smoke = (rectangles: Rectangle[]) => rectangles.filter(r => r.color.every((v, i) => v === smokeColor[i]) && r.alpha < 0.3)
     expect(smoke(day)).toHaveLength(0)

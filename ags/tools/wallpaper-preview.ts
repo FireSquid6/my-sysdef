@@ -24,6 +24,13 @@ for (const [season, weather, temperature, month] of [["spring", "clear", 14, 4],
 for (const [name, phase] of [["new", 0], ["waxing", 0.125], ["quarter", 0.25], ["full", 0.5], ["waning", 0.875]] as const) {
   render(0, `/tmp/sysdef-wallpaper-moon-${name}.png`, { season: "summer", moonPhase: phase, moonIllumination: (1 - Math.cos(phase * Math.PI * 2)) / 2, cloud: 0 })
 }
+// Match day/night across cloud cover to inspect dimming and cloud silhouettes.
+for (const cloud of [0, 0.55, 0.8, 0.9, 1]) for (const hour of [12, 0]) {
+  render(hour, `/tmp/sysdef-wallpaper-cloud-${cloud}-${hour}.png`, {
+    season: "summer", weather: "cloudy", cloud, precip: 0,
+    sunrise: 6, sunset: 18, moonPhase: 0.5, moonIllumination: 1,
+  })
+}
 // Hold lighting and water fixed: only crop variety/growth/harvest changes.
 for (const [crop, month, season] of [["peas", 4, "spring"], ["wheat", 7, "summer"], ["pumpkins", 10, "autumn"]] as const) {
   const base = advanceCrops(null, new Date(2026, month - 1, 15))

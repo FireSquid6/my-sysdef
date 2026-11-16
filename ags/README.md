@@ -66,7 +66,8 @@ Open **Super+P → Power & session → Wallpaper** to switch renderers. The defa
 is **Animated landscape**: a Tokyo Night pixel-art scene with broad, nearby mountain
 ridges on a lower horizon, more open sky, dense layered woodland, fields, a winding
 river, a mill and a small campsite. Woodland leaves clearings for the river, mill,
-tent and crop field. After sunset the campsite's stone-ringed fire lights up, casts
+tent and crop field. A railed timber footbridge crosses above the waterfall, with
+bank-side stone supports and an open channel beneath its plank deck. After sunset the campsite's stone-ringed fire lights up, casts
 warm light, and emits wind-drifting smoke and embers; it fades before sunrise.
 All colors are blended from the Tokyo Night palette, including daytime lighting.
 
@@ -176,13 +177,15 @@ verification remains enabled. Requests are HTTPS-only, bounded to 15 seconds and
 - **Seasons:** local calendar plus returned latitude selects the hemisphere;
   spring greens/flowers, summer greenery, autumn gold/pink foliage, and winter
   bare deciduous trees and snow cover when cold. Snowy weather also coats terrain.
-- **Weather:** cloud cover changes sky brightness and sun/star/aurora visibility;
+- **Weather:** layered clouds have rounded pixel lobes and shaded undersides.
+  Cloud cover changes sky brightness and sun/moon/star/aurora visibility;
   fog drifts through the valley; rain, snow and storms add moving precipitation.
   Wind controls cloud drift, falling particles and campsite smoke. CPU-controlled
   river/wheel speed and calendar-driven crops remain independent of weather.
 - **Astronomy:** reported sunrise/sunset drive lighting and the campfire. The moon
   renders its actual waxing/waning terminator using reported phase and illuminated
-  area, rather than always drawing a full disk.
+  area, rather than always drawing a full disk. Sun and moon fade smoothly between
+  20% and 90% cloud cover and disappear at 90%; passing clouds also occlude them.
 
 Failures retain the last good observation in memory, but weather older than six
 hours falls back to a fair-weather scene. Offline startup uses seasonal/local-clock
@@ -210,7 +213,8 @@ ags run ags/tools/wallpaper-smoke.tsx --gtk 4 # two-second live window test only
 
 The preview also writes `/tmp/sysdef-wallpaper-{spring,summer,autumn,winter}.png`
 and `/tmp/sysdef-wallpaper-moon-{new,waxing,quarter,full,waning}.png` for deterministic
-weather/season/moon comparisons without making network requests.
+weather/season/moon comparisons without making network requests. Cloud comparisons
+are written to `/tmp/sysdef-wallpaper-cloud-{0,0.55,0.8,0.9,1}-{12,0}.png`.
 
 After updating sources, restart AGS or log in again to load the changes.
 
