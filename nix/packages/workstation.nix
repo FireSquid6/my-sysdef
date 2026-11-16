@@ -79,7 +79,7 @@ pkgs.symlinkJoin {
     cat > "$out/share/nix-desktop/native-graphics.conf" <<'EOF'
     [Service]
     # Native portals must not inherit compositor-scoped Nix GPU overrides.
-    UnsetEnvironment=LD_LIBRARY_PATH LD_PRELOAD __EGL_VENDOR_LIBRARY_FILENAMES GBM_BACKENDS_PATH GBM_BACKEND LIBGL_DRIVERS_PATH VK_DRIVER_FILES VK_ICD_FILENAMES VK_LAYER_PATH
+    UnsetEnvironment=LD_LIBRARY_PATH LD_PRELOAD __EGL_VENDOR_LIBRARY_FILENAMES __EGL_EXTERNAL_PLATFORM_CONFIG_DIRS GBM_BACKENDS_PATH GBM_BACKEND LIBGL_DRIVERS_PATH VK_DRIVER_FILES VK_ICD_FILENAMES VK_LAYER_PATH
     EOF
     cat > "$out/share/wayland-sessions/hyprland-nix.desktop" <<'EOF'
     [Desktop Entry]

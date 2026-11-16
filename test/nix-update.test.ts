@@ -5,7 +5,7 @@ import path from "node:path";
 
 const script = path.resolve(import.meta.dir, "../nix-update.sh");
 
-function update(fail = "", host = "kotoko") {
+function update(fail = "", host = "kotoko", refresh = true) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "nix-update-test-"));
   try {
     const bin = path.join(home, ".nix-profile/bin");
@@ -16,7 +16,7 @@ printf '%s\\n' "$*" >> "$CALLS"
 if [[ "\${1:-}" == "$FAIL" ]]; then exit 7; fi
 `, { mode: 0o755 });
     fs.writeFileSync(path.join(bin, "hostname"), '#!/usr/bin/env bash\nprintf "%s\\n" "$TEST_HOST"\n', { mode: 0o755 });
-    const child = Bun.spawnSync(["bash", script, "--max-jobs", "2", "--cores", "20"], {
+    const child = Bun.spawnSync(["bash", script, ...(refresh ? [] : ["--no-refresh"]), "--max-jobs", "2", "--cores", "20"], {
       cwd: home,
       env: { ...process.env, HOME: home, CALLS: calls, FAIL: fail, TEST_HOST: host },
     });
@@ -35,6 +35,12 @@ describe("Nix update script (mock Nix only)", () => {
       "build --no-link --max-jobs 2 --cores 20 .#kotoko-apps",
       "profile upgrade --max-jobs 2 --cores 20 kotoko-apps",
     ]);
+  });
+  test("applies a local fix without refreshing locked inputs", () => {
+    expect(update("", "kotoko", false)).toEqual({ code: 0, calls: [
+      "build --no-link --max-jobs 2 --cores 20 .#kotoko-apps",
+      "profile upgrade --max-jobs 2 --cores 20 kotoko-apps",
+    ] });
   });
   test("selects the same shared configuration through the laptop profile", () => {
     expect(update("", "deisslaptop").calls).toEqual([

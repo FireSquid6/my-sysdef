@@ -16,9 +16,12 @@ This flake targets Linux, not Windows.
 ## Arcade
 
 Press **Ctrl+Alt+T** to choose Tetris, Minesweeper, Klondike Solitaire, 2048,
-or Breakout. **Ctrl+Shift+T** still opens a new tab. The menu supports mouse
-selection, j/k or arrow navigation, and 1–5 quick launch. Games save progress
-locally when closed; action games reopen paused. See [TTY.md](TTY.md#arcade) for game controls.
+Breakout, or **Solitaire Collection**. The collection adds all eight Zachtronics
+rules reconstructions with original pixel artwork. **Ctrl+Shift+T** still opens a
+new tab. The menu supports mouse selection, j/k or arrow navigation, and 1–6 quick
+launch; the collection has its own 1–8 chooser. Games save progress locally;
+action games reopen paused. See [TTY.md](TTY.md#arcade) for controls and fidelity
+limits, and [the imported design specs](../docs/zachtronics-solitaire/README.md).
 
 ## Desktop notifications (Linux)
 

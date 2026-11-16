@@ -27,7 +27,7 @@ let
       }
       ''
         mkdir -p "$out/bin" "$man/share/man"
-        printf '#!/bin/sh\nexit 0\n' > "$out/bin/graphics-fixture"
+        printf '#!/bin/sh\nprintf "%%s\\n" "$__EGL_EXTERNAL_PLATFORM_CONFIG_DIRS"\n' > "$out/bin/graphics-fixture"
         chmod +x "$out/bin/graphics-fixture"
         ln -s ${share}/share "$out/share"
       '';
@@ -36,6 +36,12 @@ let
     settings = null;
   };
   wrapped = graphics.wrap fixture;
+  nvidiaGraphics = import ../graphics {
+    inherit pkgs nixgl;
+    settings = (import ../hosts.nix)."firesquid@kotoko".graphics;
+  };
+  nvidiaWrapped = nvidiaGraphics.wrap fixture;
+  eglPlatforms = "${pkgs.egl-wayland}/share/egl/egl_external_platform.d";
 in
 assert wrapped.meta.outputsToInstall == [ "out" ];
 pkgs.runCommand "graphics-wrapper-contract" { } ''
@@ -46,5 +52,11 @@ pkgs.runCommand "graphics-wrapper-contract" { } ''
   # The unreviewed GPU path must fail explicitly, not try the build host driver.
   if ${wrapped}/bin/graphics-fixture > "$TMPDIR/output" 2>&1; then exit 1; fi
   grep -F 'Configure this host GPU' "$TMPDIR/output"
+  # A Wayland EGL client needs this bridge registry, not just libEGL_nvidia.
+  test "$(${nvidiaWrapped}/bin/graphics-fixture)" = '${eglPlatforms}'
+  test -f '${eglPlatforms}/10_nvidia_wayland.json'
+  grep -F '__EGL_EXTERNAL_PLATFORM_CONFIG_DIRS=${eglPlatforms}' <<'EOF'
+  ${nvidiaGraphics.environment}
+  EOF
   touch "$out"
 ''

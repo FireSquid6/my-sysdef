@@ -1,0 +1,12 @@
+{
+  "place": "none",
+  "title": "Solitaire Collection",
+  "focusable": true,
+  "overlay": {
+    "frame": "none",
+    "kind": "dialog",
+    "modal": true,
+    "width": 1040,
+    "height": 760
+  }
+}
