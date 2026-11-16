@@ -106,9 +106,17 @@ export function dirtGround(width: number) {
       mark(dryX, y, radius, radius * 0.65)
     }
   }
-  mark(camp.tentX + 16, camp.fireY - 2, 43, 16)
+  // One broad clearing spans the supply yard and campsite, rather than two
+  // overlapping ovals with a narrow waist between them.
   const yard = supplyYard(width)
-  mark(yard.x + 32 * yard.scale, yard.base - 1, 34 * yard.scale, 8)
+  const top = yard.base - 11, bottom = camp.fireY + 18
+  const centerY = (top + bottom) / 2, radiusY = (bottom - top) / 2
+  for (let y = top; y <= bottom; y++) {
+    const t = smooth((y - (yard.base - 1)) / (camp.fireY - yard.base + 1))
+    const centerX = (yard.x + 32 * yard.scale) * (1 - t) + (camp.tentX + 16) * t
+    const half = 44 * Math.sqrt(Math.max(0, 1 - ((y - centerY) / radiusY) ** 2))
+    mark(centerX, y, Math.max(0.5, half), 0.5)
+  }
   curve([camp.fireX, 220], [millX - 10, 231], [millX + 15, 214], 3.5)
   // Run through the house's projected footprint: its later opaque draw pass
   // hides the middle of the path, which reappears beside the bridge.

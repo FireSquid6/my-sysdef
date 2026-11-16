@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { campsite, dirtGround, drawLandscape, mix, river, TOKYO } from "../ags/wallpaper-scene"
+import { campsite, dirtGround, drawLandscape, mix, river, supplyYard, TOKYO } from "../ags/wallpaper-scene"
 import { resolveEnvironment } from "../ags/wallpaper-weather"
 
 test("textured dirt routes connect campsite, house, bridge banks and farm without covering water", () => {
@@ -30,6 +30,15 @@ test("textured dirt routes connect campsite, house, bridge banks and farm withou
       for (let x = Math.max(0, Math.floor(r.center - r.half - 2)); x <= Math.min(width - 1, Math.ceil(r.center + r.half + 2)); x++) expect(dirt.contains(x, y)).toBe(false)
     }
     expect(dirt.pixels).toEqual(dirtGround(width).pixels)
+  }
+})
+
+test("campsite and supply yard share a broad clearing without a pinched grassy gap", () => {
+  for (const width of [480, 960, 1920]) {
+    const dirt = dirtGround(width), camp = campsite(width), yard = supplyYard(width)
+    const left = Math.ceil(yard.x + 32 * yard.scale - 20)
+    const right = camp.tentX + 16 + 20
+    for (let y = 200; y <= 223; y++) for (let x = left; x <= right; x++) expect(dirt.contains(x, y)).toBe(true)
   }
 })
 
