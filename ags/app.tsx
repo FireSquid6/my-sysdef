@@ -1,6 +1,6 @@
 import app from "ags/gtk4/app"
 import { Astal, Gdk, Gtk } from "ags/gtk4"
-import { createBinding, createComputed, createState, For, This, onCleanup } from "ags"
+import { createBinding, createState, For, This, onCleanup } from "ags"
 import GLib from "gi://GLib?version=2.0"
 import Gio from "gi://Gio?version=2.0"
 import style from "./style.css"
@@ -12,7 +12,7 @@ import { createSystemService } from "./services/system"
 import { createCaffeineService } from "./services/caffeine"
 import { createNotificationService } from "./services/notifications"
 import { createTrayService } from "./services/tray"
-import { NotificationList, NotificationPopups } from "./indicators"
+import { watchPopupMonitor, NotificationList, NotificationPopups } from "./indicators"
 import { createWallpaperService } from "./services/wallpaper"
 import { createWallpaperResources } from "./services/wallpaper-resources"
 import { createWeatherService } from "./services/weather"
@@ -91,12 +91,10 @@ app.start({
     const bars = <For each={monitors}>{monitor => <This this={app}>
       <Bar monitor={monitor} controller={controller} system={system} caffeine={caffeine} tray={tray} notifications={notifications} open={open} report={report} />
     </This>}</For>
-    const popupMonitors = createComputed(() => {
-      const all = monitors()
-      return all.filter(m => m.connector === controller.desktop().primary).slice(0, 1)
+    watchPopupMonitor(monitors, controller.desktop(status => status.primary), monitor => {
+      NotificationPopups({ service: notifications, monitor })
     })
-    const popups = <For each={popupMonitors}>{monitor => <This this={app}><NotificationPopups service={notifications} monitor={monitor} /></This>}</For>
-    void bars; void popups
+    void bars
     wallpaperResources.start()
     weather.start()
     crops.start()

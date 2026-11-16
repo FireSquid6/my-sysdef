@@ -45,7 +45,8 @@ test("isolated core persists a four-tab workspace, survives presentation retries
       registerInbox({ on(name, handler) { handlers.set(name, handler); } });
       const ctx = { cwd: ${JSON.stringify(dir)}, isIdle: () => true, sessionManager: { getSessionId: () => 'namespace-test', getBranch: () => [] }, ui: { notify(message) { throw Error(message); } } };
       await handlers.get('session_start')({}, ctx);
-      process.stdout.write(fs.readFileSync(stateRoot() + '/live/namespace-test.json', 'utf8'));
+      const live = stateRoot() + '/live/';
+      process.stdout.write(fs.readFileSync(live + fs.readdirSync(live)[0], 'utf8'));
       await handlers.get('session_shutdown')({}, ctx);
     `;
     const registration = await isolated(process.execPath, ["-e", receiver]);

@@ -9,6 +9,7 @@ export interface Notification {
   body: string;
   actions: { id: string; label: string }[];
   transient: boolean;
+  resident: boolean;
   popup: boolean;
   icon?: string;
   urgency: number;
@@ -93,6 +94,7 @@ export function createNotificationService(): NotificationService {
                 id, app: notificationText(app), summary: notificationText(summary),
                 body: notificationText(body), actions: notificationActions(actions),
                 transient: Boolean(hints.transient?.deep_unpack()),
+                resident: Boolean(hints.resident?.deep_unpack()),
                 popup: !dnd(), icon: /^[\w.-]+$/.test(icon) ? icon : undefined,
                 urgency, active: true,
               };
@@ -131,7 +133,7 @@ export function createNotificationService(): NotificationService {
       const item = items().find(n => n.id === id);
       if (!item?.active || !item.actions.some(a => a.id === action)) return;
       signal("ActionInvoked", "(us)", [id, action]);
-      close(id, 2);
+      if (!item.resident) close(id, 2);
     },
     clear() { for (const item of items()) close(item.id, 2); setItems([]); },
     toggleDnd() {

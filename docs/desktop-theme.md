@@ -19,8 +19,9 @@ GTK4 CSS. Existing changed files are copied under
 `~/.local/state/sysdef/theme-backups/<timestamp>/` (or `$XDG_STATE_HOME`). Backup
 paths mirror the absolute original paths beneath that directory. Restore the
 needed files manually, and reset GNOME interface settings with `gsettings` if
-rolling back. The script refuses to replace changed managed symlinks: activate
-their owning configuration instead.
+rolling back. Before writing, the script rejects symlinks in changed file paths
+or backup parents, including symlinked directories: activate their owning
+configuration instead.
 
 - GTK2/GTK3/GTK4 select **Tokyonight-Dark**, **Qogir-Dark** icons, Noto Sans 10.
 - GTK4 imports the packaged stylesheet through `~/.config/gtk-4.0/gtk.css` so

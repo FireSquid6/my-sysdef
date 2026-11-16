@@ -96,6 +96,20 @@ describe("notification daemon contract with inert D-Bus transport", () => {
     service.clear(); expect(service.items()).toEqual([]);
     service.stop();
   });
+  test("resident actions remain active and can be invoked again until explicitly closed", () => {
+    const { harness, createNotificationService } = runtime;
+    const service = createNotificationService(); service.start();
+    const id = harness.impl.Notify("app", 0, "", "title", "", ["open", "Open"], { resident: { deep_unpack: () => true } }, 0);
+    const count = harness.signals.length;
+    service.invoke(id, "open"); service.invoke(id, "open");
+    expect(harness.signals.slice(count)).toEqual([["ActionInvoked", [id, "open"]], ["ActionInvoked", [id, "open"]]]);
+    expect(service.items()[0]).toMatchObject({ active: true, popup: true, resident: true });
+    harness.impl.CloseNotification(id);
+    expect(service.items()[0].active).toBe(false);
+    service.invoke(id, "open");
+    expect(harness.signals.at(-1)).toEqual(["NotificationClosed", [id, 3]]);
+    service.stop();
+  });
   test("actions only invoke advertised active IDs and transient close leaves no history", () => {
     const { harness, createNotificationService } = runtime;
     const service = createNotificationService(); service.start();

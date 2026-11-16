@@ -1,4 +1,4 @@
-import { For, createComputed, onCleanup } from "ags";
+import { For, createBinding, createComputed, createEffect, onCleanup, type Accessor } from "ags";
 import { Astal, Gtk, Gdk } from "ags/gtk4";
 import app from "ags/gtk4/app";
 import type { Notification, NotificationService } from "./services/notifications";
@@ -50,6 +50,18 @@ export function NotificationList({ service }: { service: NotificationService }):
       </box>
     </scrolledwindow>
   </box> as Gtk.Widget;
+}
+
+export function watchPopupMonitor(monitors: Accessor<Gdk.Monitor[]>, primary: Accessor<string>, show: (monitor: Gdk.Monitor) => void) {
+  // Topology owns connector bindings; selection owns the popup's cleanup scope.
+  createEffect(() => {
+    const outputs = monitors().map(monitor => ({ monitor, connector: createBinding(monitor, "connector") }));
+    createEffect(() => {
+      const name = primary();
+      const output = outputs.find(({ connector }) => connector() && connector() === name);
+      if (output) show(output.monitor);
+    }, { immediate: true });
+  }, { immediate: true });
 }
 
 export function NotificationPopups({ service, monitor }: { service: NotificationService; monitor: Gdk.Monitor }): Astal.Window {

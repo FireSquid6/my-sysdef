@@ -72,7 +72,6 @@ BWRAP_ARGS=(
   --tmpfs /tmp
   --unshare-pid
   --clearenv
-  --setenv PATH "$PATH"
   --setenv HOME "$REAL_HOME"
   --setenv TMPDIR /tmp
   --setenv TERM "${TERM:-xterm}"
@@ -100,6 +99,14 @@ BWRAP_ARGS+=(--tmpfs "$REAL_HOME")
 [[ -f "$REAL_HOME/.claude.json" ]] && BWRAP_ARGS+=(--bind "$REAL_HOME/.claude.json" "$REAL_HOME/.claude.json")
 [[ -d "$REAL_HOME/.local/bin" ]] && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.local/bin" "$REAL_HOME/.local/bin")
 [[ -f "$REAL_HOME/.bashrc" ]]    && BWRAP_ARGS+=(--ro-bind "$REAL_HOME/.bashrc" "$REAL_HOME/.bashrc")
+# Resolve profile links outside the hidden home; their executables use /nix/store.
+SANDBOX_PATH="$PATH"
+for profile in /nix/var/nix/profiles/default "$REAL_HOME/.nix-profile"; do
+  [[ -d "$profile/bin" ]] || continue
+  BWRAP_ARGS+=(--ro-bind "$(readlink -f -- "$profile")" "$profile")
+  SANDBOX_PATH="$profile/bin:$SANDBOX_PATH"
+done
+BWRAP_ARGS+=(--setenv PATH "$SANDBOX_PATH")
 BWRAP_ARGS+=(--bind "$SANDBOX_DIR" "$SANDBOX_DIR")
 
 [[ $NET -eq 0 ]] && BWRAP_ARGS+=(--unshare-net)
