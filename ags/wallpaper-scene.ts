@@ -35,9 +35,25 @@ const hash = (n: number) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
 export function river(y: number, width: number) {
   const depth = Math.max(0, (y - 157) / 113)
   // A straight reach gives the waterfall a continuous channel into the lower river.
-  const reach = y < 192 ? y : y <= 218 ? 192 : 192 + (y - 218) * 78 / 52
+  const entrance = Math.max(0, Math.min(1, (y - 180) / 12))
+  const reach = y < 180 ? y : y < 192 ? 180 + 12 * (entrance + entrance ** 2 - entrance ** 3)
+    : y <= 218 ? 192 : 192 + (y - 218) * 78 / 52 * smooth((y - 218) / 12)
   const bend = Math.max(0, (reach - 157) / 113)
   return { center: width * (0.53 + Math.sin(bend * 6.4 - 0.4) * (0.015 + bend * 0.13)), half: 1 + depth * depth * width * 0.13 }
+}
+/** Fade the falling sheet into the lower current instead of ending at one scanline. */
+export const waterfallStrength = (y: number) => y < 192 ? 0 : 1 - smooth((y - 207) / 29)
+/** Keep the entire fire's ground glow clear of the bend, including on ultrawides. */
+export function campsite(width: number) {
+  const fireY = 220, glowRadius = 21
+  const millX = Math.floor(river(207, width).center - river(207, width).half - 1) - 35
+  let bank = Infinity
+  for (let y = fireY - glowRadius; y <= fireY + glowRadius; y++) {
+    const r = river(y, width)
+    bank = Math.min(bank, r.center - r.half)
+  }
+  const fireX = Math.floor(Math.min(millX - 14, bank - glowRadius - 4))
+  return { fireX, fireY, tentX: fireX - 25, tentY: fireY - 22, glowRadius }
 }
 /** Logical height is 270px; width follows the output so ultrawides aren't stretched. */
 export function drawLandscape(paint: Paint, width: number, date: Date, seconds: number,
@@ -72,17 +88,19 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
     for (let y = -radius; y <= radius; y++) { const r = Math.floor(Math.sqrt(radius * radius - y * y)); paint(Math.floor(cx) - r, Math.floor(cy) + y, r * 2 + 1, 1, c, alpha) }
   }
   if (day > 0.08 && cloud < 0.9) disk(width * (0.16 + 0.68 * Math.max(0, Math.min(1, (lighting(date, environment).hour - environment.sunrise) / (environment.sunset - environment.sunrise)))), 110 - day * 65, 9, mix(TOKYO.gold, TOKYO.white, day * 0.4))
-  if (night > 0.2 && clearSky > 0.12) {
+  // Cloud cover changes the clouds, not the moon's existence or brightness.
+  // Draw the lunar phase first so passing translucent clouds occlude it naturally.
+  if (night > 0.2) {
     const cx = Math.floor(width * 0.79), cy = 38, radius = 9
     for (let y = -radius; y <= radius; y++) for (let x = -radius; x <= radius; x++) {
-      if (moonPixelLit(x / radius, y / radius, moonPhase)) paint(cx + x, cy + y, 1, 1, mix(TOKYO.blue, TOKYO.white, 0.85), night * clearSky)
+      if (moonPixelLit(x / radius, y / radius, moonPhase)) paint(cx + x, cy + y, 1, 1, mix(TOKYO.blue, TOKYO.white, 0.85), night)
     }
   }
   const windX = -Math.sin(environment.windDirection * Math.PI / 180)
   for (let i = 0; i < 5 + Math.floor(cloud * 20); i++) {
     const drift = seconds * (0.3 + wind * 2 + i * 0.03) * (Math.abs(windX) < 0.1 ? 0.1 : windX)
     const x = Math.floor((((hash(i + 70) * width + drift) % (width + 100) + width + 100) % (width + 100)) - 70)
-    const y = 52 + Math.floor(hash(i + 80) * 67)
+    const y = 28 + Math.floor(hash(i + 80) * 91)
     paint(x + 8, y, 34, 4, shade(cloud > 0.65 ? TOKYO.storm : TOKYO.purple), 0.4 + cloud * 0.4)
     paint(x, y + 4, 70, 5 + Math.floor(cloud * 5), shade(cloud > 0.65 ? TOKYO.blue : TOKYO.white), 0.18 + cloud * 0.5)
   }
@@ -123,6 +141,7 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
   // Dense layered woodland, with deliberate clearings for the mill, campsite,
   // river and crop field. Back-to-front rows keep the pixel canopy depth readable.
   const millBank = Math.floor(river(207, width).center - river(207, width).half - 36)
+  const camp = campsite(width)
   const tree = (x: number, base: number, size: number, seed: number) => {
     const deciduous = seed % 4 === 0, trunk = shade(TOKYO.gold, 0.48)
     paint(x, base - size, 2, size + 1, trunk)
@@ -146,7 +165,7 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
     const base = 178 + row * 11 + Math.floor(hash(seed + 512) * 7)
     const size = 8 + row * 2 + Math.floor(hash(seed + 615) * 8), r = river(base, width)
     if (Math.abs(x - r.center) < r.half + size * 0.5 + 5) continue
-    if (base > 185 && x > millBank - 61 && x < millBank + 42) continue
+    if (base > 185 && x > Math.min(millBank - 61, camp.tentX - 20) && x < millBank + 42) continue
     if (base > 202 && x > width * 0.62 && x < width * 0.91) continue
     if (hash(seed + 810) < (row < 3 ? 0.1 : 0.27)) continue
     tree(x, base, size, seed)
@@ -199,18 +218,21 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
   // downstream using the SAME integrated phase as the mechanically linked wheel.
   const lip = river(192, width)
   paint(Math.floor(lip.center - lip.half - 4), 190, Math.ceil(lip.half * 2) + 8, 4, shade(TOKYO.storm, 1.2))
-  for (let y = 192; y <= 218; y++) {
+  for (let y = 192; y < 236; y++) {
+    const strength = waterfallStrength(y)
     const r = river(y, width), left = Math.floor(r.center - r.half), span = Math.ceil(r.half * 2)
-    paint(left, y, span, 1, shade(TOKYO.cyan, 0.9))
+    paint(left, y, span, 1, shade(TOKYO.cyan, 0.9), strength)
     for (let strand = 0; strand < 5; strand++) {
       const x = Math.floor(left + (strand + 0.5) * span / 5)
-      paint(x, y, 1, 1, TOKYO.white, 0.18 + 0.62 * Math.max(0, Math.cos((y + strand * 3 - flow * 6) * Math.PI / 3)) ** 4)
+      paint(x, y, 1, 1, TOKYO.white, strength * (0.18 + 0.62 * Math.max(0, Math.cos((y + strand * 3 - flow * 6) * Math.PI / 3)) ** 4))
     }
   }
-  const pool = river(219, width)
   for (let i = 0; i < 9; i++) {
-    const x = Math.floor(pool.center + (i / 8 - 0.5) * pool.half * 2)
-    paint(x, 219 + (i + flow * 3) % 3, 2, 1, TOKYO.white, 0.45)
+    const age = ((flow * 0.2 + i / 9) % 1 + 1) % 1
+    const y = 216 + age * 19, pool = river(y, width)
+    const x = pool.center + (hash(i + 2400) - 0.5) * pool.half * 1.7
+    // Foam drifts out of the plunge pool and fades before wrapping upstream.
+    paint(x, y, 2, 1, TOKYO.white, Math.sin(age * Math.PI) ** 2 * 0.45)
   }
   // Stone-and-timber mill on the pasture bank; axle enters its right-hand wall.
   const wheelX = Math.floor(river(207, width).center - river(207, width).half - 1), wheelY = 207
@@ -242,17 +264,17 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
   paint(wheelX - 1, wheelY - 1, 3, 3, shade(TOKYO.storm, 1.2))
   // A small tent and stone-ringed fire share the mill's woodland clearing.
   // Glow paints the ground first; the tent, logs and nearby wall pick up warmth.
-  const fireX = millX - 14, fireY = 234, fire = campfireLight(date, environment)
+  const { fireX, fireY, tentX, tentY } = camp
+  const fire = campfireLight(date, environment)
   if (fire > 0) for (const radius of [21, 16, 10]) disk(fireX, fireY, radius, TOKYO.gold, fire * 0.055)
-  const tentX = millX - 39
-  paint(tentX - 13, 229, 29, 2, shade(TOKYO.storm))
+  paint(tentX - 13, tentY + 17, 29, 2, shade(TOKYO.storm))
   for (let y = 0; y < 17; y++) {
     const half = Math.floor(y * 0.72)
-    paint(tentX - half, 212 + y, half * 2 + 1, 1, mix(shade(TOKYO.gold, 0.9), TOKYO.gold, fire * 0.18))
-    paint(tentX, 212 + y, half + 1, 1, mix(shade(TOKYO.pink, 0.6), TOKYO.gold, fire * 0.12))
-    if (y > 5) paint(tentX - Math.floor((y - 5) * 0.4), 212 + y, Math.floor((y - 5) * 0.6) + 1, 1, shade(TOKYO.storm))
+    paint(tentX - half, tentY + y, half * 2 + 1, 1, mix(shade(TOKYO.gold, 0.9), TOKYO.gold, fire * 0.18))
+    paint(tentX, tentY + y, half + 1, 1, mix(shade(TOKYO.pink, 0.6), TOKYO.gold, fire * 0.12))
+    if (y > 5) paint(tentX - Math.floor((y - 5) * 0.4), tentY + y, Math.floor((y - 5) * 0.6) + 1, 1, shade(TOKYO.storm))
   }
-  paint(tentX, 210, 1, 20, shade(TOKYO.gold, 1.1))
+  paint(tentX, tentY - 2, 1, 20, shade(TOKYO.gold, 1.1))
   for (let i = 0; i < 6; i++) {
     const a = i * Math.PI / 3
     paint(fireX + Math.round(Math.cos(a) * 5), fireY + Math.round(Math.sin(a) * 2), 2, 2, mix(shade(TOKYO.white), TOKYO.gold, fire * 0.45))

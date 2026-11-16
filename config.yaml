@@ -1,0 +1,15 @@
+providers: []
+
+modules:
+  - applications
+  - claude
+  - desktop
+  - development
+  - herdr
+  - hermes
+  - opencode
+  - pi
+  - system-utilities
+
+variables:
+  HOME: /home/firesquid
