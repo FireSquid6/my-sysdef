@@ -81,7 +81,9 @@ not partial repository refreshes.
   idle inhibitors remain respected.
 
 `hyprlock.conf` uses opaque Tokyo Night backgrounds, clock/date and password entry
-on every output, with PAM's packaged `/etc/pam.d/hyprlock` service. No screenshots,
+on every output, with PAM's packaged `/etc/pam.d/hyprlock` service. The generated
+landscape image loads once when locking and stays static (`reload_time = -1`);
+the desktop wallpaper remains animated. No screenshots,
 grace period, authentication changes or credentials are stored. `hyprlock.sh` uses
 a per-user runtime `flock` to serialize requests, held until the locker exits.
 Authentication uses the distribution's normal PAM policy (including failed-login

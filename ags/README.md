@@ -103,9 +103,10 @@ when desktop surfaces are occluded; the lock-image timer continues separately.
 #### Lockscreen landscape
 
 When animated wallpaper is enabled, Hyprlock uses an opaque image of the same
-scene, with the same weather, manual settings, crops and CPU-driven water motion.
-**Hyprlock 0.9.7 supports one-second image reloads, not desktop-rate video.** The
-lock background therefore updates at **1 FPS**, independently of the 30 FPS desktop.
+scene, including its weather, manual settings, crops and resource-driven details.
+The image is loaded **once when locking and stays static until unlock**.
+Hyprlock runs the image selector at startup; `reload_time = -1` disables subsequent
+reloads. The desktop wallpaper continues animating independently at 30 FPS.
 No high-rate signals, screenshot capture, desktop transparency or authentication
 replacement are used. Hyprlock/PAM, zero grace, serialized lock requests and the
 opaque first frame are unchanged.
@@ -116,8 +117,8 @@ suffix follows `SYSDEF_AGS_INSTANCE`). This timer continues when the compositor
 stops frame callbacks on ordinary desktop surfaces during locking. Hyprlock's
 `hyprlock-background.sh` only selects a ready path; it never waits for rendering.
 A solid opaque base stays below the image layer. Disabled/missing/stale feeds
-fall back to the original Tokyo Night solid background; the last valid opaque
-image remains safe if image reloading itself fails. Runtime images are private,
+fall back to the original Tokyo Night solid background. The selected image is
+retained in Hyprlock even as AGS publishes newer frames for future locks. Runtime images are private,
 contain only the generated scene, and are not persisted in the repository.
 
 Run `bash ags/check.sh renderer` to check process isolation, pipe/EOF lifetime,

@@ -74,11 +74,15 @@ describe("Hyprlock and hypridle", () => {
     expect(read("dotfiles/hypr/hyprland.lua")).not.toContain('hl.bind("SUPER + CTRL + L"');
     expect(read("dotfiles/hypr/hyprland.conf")).not.toContain("bind = $mainMod CONTROL, L,");
   });
-  test("reloads only dedicated scene images over an opaque base, never the desktop", () => {
+  test("loads one static scene image over an opaque base without periodic reloads", () => {
     const config = read("dotfiles/hypr/hyprlock.conf");
     expect(config).toContain("zindex = -2");
     expect(config).toContain("zindex = -1");
-    expect(config).toContain("reload_time = 1");
+    expect(config).toMatch(/^\s*reload_time = -1\s*$/m);
+    expect(config).not.toMatch(/^\s*reload_time = (?:0|[1-9]\d*)\s*$/m);
+    // An empty image path lets Hyprlock run the selector once on startup.
+    const imageLayer = config.split("background {")[2]!;
+    expect(imageLayer).toMatch(/^\s*path =\s*$/m);
     expect(config).toContain("hyprlock-background.sh");
     expect(config).toContain("enabled = false");
     expect(config).not.toContain("SIGUSR");
