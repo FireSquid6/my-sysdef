@@ -181,7 +181,9 @@ hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl s 10%-"))
 hl.bind("SUPER + ALT + S", hl.dsp.exec_cmd("hyprshot -c -m region"))
 -- Delay DPMS changes until the shortcut's key events have settled.
 local function toggle_monitor_power()
-    hl.timer(function() hl.dispatch(hl.dsp.dpms({ action = "toggle" })) end, { timeout = 500, type = "oneshot" })
+    hl.timer(function()
+        hl.exec_cmd('bash "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/monitor-power.sh" toggle')
+    end, { timeout = 500, type = "oneshot" })
 end
 hl.bind("SUPER + ALT + SHIFT + S", toggle_monitor_power)
 hl.bind("SUPER + ALT + G", toggle_monitor_power, { locked = true })
