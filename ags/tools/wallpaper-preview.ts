@@ -1,10 +1,11 @@
 /** Headless native Cairo rendering check: ags run ags/tools/wallpaper-preview.ts --gtk 4 */
 import Cairo from "cairo"
-import { drawLandscape } from "../wallpaper-scene"
+import { drawLandscape, stormLightning } from "../wallpaper-scene"
 import { resolveEnvironment, type LandscapeEnvironment } from "../wallpaper-weather"
 import { advanceCrops, type CropState } from "../wallpaper-crops"
+import type { Resources } from "../wallpaper-resources"
 
-function render(hour: number, file: string, environment: Partial<LandscapeEnvironment> = {}, crops?: CropState) {
+function render(hour: number, file: string, environment: Partial<LandscapeEnvironment> = {}, crops?: CropState, seconds = 120, resources: Partial<Resources> = {}) {
   const surface = new Cairo.ImageSurface(Cairo.Format.ARGB32, 960, 540)
   const cr = new Cairo.Context(surface)
   cr.scale(2, 2)
@@ -12,7 +13,7 @@ function render(hour: number, file: string, environment: Partial<LandscapeEnviro
   drawLandscape((x, y, w, h, color, alpha = 1) => {
     cr.setSourceRGBA(color[0] / 255, color[1] / 255, color[2] / 255, alpha)
     cr.rectangle(x, y, w, h); cr.fill()
-  }, 480, date, 120, { flow: 42 }, { ...resolveEnvironment(date), ...environment }, crops)
+  }, 480, date, seconds, { flow: 42, ...resources }, { ...resolveEnvironment(date), ...environment }, crops)
   surface.writeToPNG(file)
   cr.$dispose()
   console.log(`Rendered ${file}`)
@@ -30,6 +31,24 @@ for (const cloud of [0, 0.55, 0.8, 0.9, 1]) for (const hour of [12, 0]) {
     season: "summer", weather: "cloudy", cloud, precip: 0,
     sunrise: 6, sunset: 18, moonPhase: 0.5, moonIllumination: 1,
   })
+}
+// Short precipitation sequences show contact splashes and settling flakes.
+for (const weather of ["rain", "snow"] as const) for (const seconds of [120, 120.15, 120.3]) {
+  render(12, `/tmp/sysdef-wallpaper-impact-${weather}-${seconds}.png`, {
+    season: "summer", weather, temperature: weather === "snow" ? -2 : 12,
+    cloud: 0.8, precip: 1, wind: 0.3,
+  }, undefined, seconds)
+}
+const flashTime = Array.from({ length: 720 }, (_, i) => i / 30).find(t => stormLightning(t).strength > 0.9)!
+for (const hour of [12, 0]) for (const [name, seconds] of [["quiet", 0], ["lightning", flashTime]] as const) {
+  render(hour, `/tmp/sysdef-wallpaper-storm-${name}-${hour}.png`, {
+    season: "summer", weather: "storm", cloud: 1, precip: 0.9, wind: 0.8,
+  }, undefined, seconds)
+}
+for (const usage of [0, 0.5, 1]) {
+  render(12, `/tmp/sysdef-wallpaper-supplies-${usage}.png`, {
+    season: "summer", weather: "clear", cloud: 0.15, precip: 0,
+  }, undefined, 120, { ram: usage, disk: usage })
 }
 // Hold lighting and water fixed: only crop variety/growth/harvest changes.
 for (const [crop, month, season] of [["peas", 4, "spring"], ["wheat", 7, "summer"], ["pumpkins", 10, "autumn"]] as const) {

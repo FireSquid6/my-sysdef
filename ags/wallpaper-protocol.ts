@@ -8,7 +8,13 @@ export function parseWallpaperFrame(line: string): WallpaperFrame {
   const value = JSON.parse(line)
   if (value?.version !== 1 || typeof value.animated !== "boolean" || typeof value.resources?.cpu !== "number" || !Number.isFinite(value.resources.cpu)) throw Error("Invalid wallpaper snapshot")
   if (value.weather !== null && (!value.weather || !["observedAt", "fetchedAt", "latitude", "cloud", "precip", "wind", "windDirection", "temperature", "moonPhase", "moonIllumination"].every(key => typeof value.weather[key] === "number" && Number.isFinite(value.weather[key])))) throw Error("Invalid wallpaper weather")
-  return { version: 1, animated: value.animated, resources: { cpu: Math.max(0, Math.min(1, value.resources.cpu)) }, weather: value.weather,
+  const resources: Resources = { cpu: Math.max(0, Math.min(1, value.resources.cpu)) }
+  for (const key of ["ram", "disk"] as const) {
+    if (value.resources[key] === undefined) continue
+    if (typeof value.resources[key] !== "number" || !Number.isFinite(value.resources[key])) throw Error(`Invalid wallpaper ${key}`)
+    resources[key] = Math.max(0, Math.min(1, value.resources[key]))
+  }
+  return { version: 1, animated: value.animated, resources, weather: value.weather,
     crops: parseCropState(JSON.stringify(value.crops)), controls: parseLandscapeSettings(JSON.stringify(value.controls)) }
 }
 export function wallpaperRuntime(instance: string, runtime: string) {

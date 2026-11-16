@@ -41,7 +41,7 @@ app.start({ instanceName: `${instance}-wallpaper`, requestHandler(argv, respond)
         painter?.$dispose(); surface?.finish(); imageWidth = width
         surface = new Cairo.ImageSurface(Cairo.Format.RGB24, width, 270); painter = new Cairo.Context(surface)
       }
-      motion = advanceMotion(motion, current.controls.sync ? current.resources : { cpu: current.controls.manual.cpu }, elapsed)
+      motion = advanceMotion(motion, current.controls.sync ? current.resources : { ...current.resources, cpu: current.controls.manual.cpu }, elapsed)
       const date = new Date(), live = resolveEnvironment(date, current.weather)
       const scene = manualScene(current.controls, date, live, current.crops), canvas = painter!
       drawLandscape((x, y, w, h, color, alpha = 1) => {

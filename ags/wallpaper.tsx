@@ -71,7 +71,7 @@ export function Wallpaper({ monitor, service, resources = () => ({ cpu: 0 }), we
     const deadline = nextFrameDeadline(now, nextFrame)
     if (deadline === null || !window.visible || !monitor.is_valid()) return GLib.SOURCE_CONTINUE
     const settings = controls?.()
-    motion = advanceMotion(motion, settings && !settings.sync ? { cpu: settings.manual.cpu } : resources(), Math.min(0.1, Math.max(0, now - lastFrame)))
+    motion = advanceMotion(motion, settings && !settings.sync ? { ...resources(), cpu: settings.manual.cpu } : resources(), Math.min(0.1, Math.max(0, now - lastFrame)))
     lastFrame = now; nextFrame = deadline
     area.queue_draw()
     return GLib.SOURCE_CONTINUE

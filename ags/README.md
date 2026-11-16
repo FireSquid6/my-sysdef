@@ -67,7 +67,10 @@ is **Animated landscape**: a Tokyo Night pixel-art scene with broad, nearby moun
 ridges on a lower horizon, more open sky, dense layered woodland, fields, a winding
 river, a mill and a small campsite. Woodland leaves clearings for the river, mill,
 tent and crop field. A railed timber footbridge crosses above the waterfall, with
-bank-side stone supports and an open channel beneath its plank deck. After sunset the campsite's stone-ringed fire lights up, casts
+bank-side stone supports and an open channel beneath its plank deck. The campsite
+has a textured dirt clearing; matching paths lead to the mill door, disappear
+behind the house on the way to the bridge, and continue from the far bank to the farm. Grass and
+trees leave these routes clear, and soil grain stays fixed during animation. After sunset the campsite's stone-ringed fire lights up, casts
 warm light, and emits wind-drifting smoke and embers; it fades before sunrise.
 All colors are blended from the Tokyo Night palette, including daytime lighting.
 
@@ -176,10 +179,18 @@ verification remains enabled. Requests are HTTPS-only, bounded to 15 seconds and
 
 - **Seasons:** local calendar plus returned latitude selects the hemisphere;
   spring greens/flowers, summer greenery, autumn gold/pink foliage, and winter
-  bare deciduous trees and snow cover when cold. Snowy weather also coats terrain.
+  bare deciduous trees and snow cover when cold. Snow also forms uneven caps along
+  the mill roof and tent slopes, with thicker ledges at higher precipitation;
+  walls and the tent entrance remain exposed.
 - **Weather:** layered clouds have rounded pixel lobes and shaded undersides.
   Cloud cover changes sky brightness and sun/moon/star/aurora visibility;
   fog drifts through the valley; rain, snow and storms add moving precipitation.
+  Drops and flakes stop at deterministic terrain/roof/tent landing sites: rain
+  splashes on solid surfaces, snow briefly settles into powder patches, and water
+  impacts expand into fading ripples. Thunderstorms additionally darken the sky
+  and terrain and produce occasional branched lightning behind the mountains,
+  with brief, restrained ambient illumination. Ordinary rain has no lightning.
+  Storm effects are visual only; no thunder audio is played.
   Wind controls cloud drift, falling particles and campsite smoke. CPU-controlled
   river/wheel speed and calendar-driven crops remain independent of weather.
 - **Astronomy:** reported sunrise/sunset drive lighting and the campfire. The moon
@@ -215,15 +226,40 @@ The preview also writes `/tmp/sysdef-wallpaper-{spring,summer,autumn,winter}.png
 and `/tmp/sysdef-wallpaper-moon-{new,waxing,quarter,full,waning}.png` for deterministic
 weather/season/moon comparisons without making network requests. Cloud comparisons
 are written to `/tmp/sysdef-wallpaper-cloud-{0,0.55,0.8,0.9,1}-{12,0}.png`.
+Short rain/snow impact sequences are written to
+`/tmp/sysdef-wallpaper-impact-{rain,snow}-{120,120.15,120.3}.png`.
+Quiet/active thunderstorm comparisons are written to
+`/tmp/sysdef-wallpaper-storm-{quiet,lightning}-{12,0}.png`.
 
 After updating sources, restart AGS or log in again to load the changes.
 
-### CPU-driven water and persistent seasonal crops
+### Resource-driven landscape and persistent seasonal crops
 
 River highlights, the waterfall, splash and clockwise mill wheel share one
 continuously integrated phase. Aggregate CPU load smoothly changes their speed;
 changing load never resets the wheel angle. One app-wide service reads `/proc/stat`
-once per second. The wallpaper no longer samples RAM or uses it to plant crops.
+once per second. The supply yard behind the campsite adds two independent meters:
+
+- **RAM → supply crates:** a freestanding pile grows from one to ten crates as
+  RAM usage rises, stacking in rows of four, three, two and one with no storage
+  rack around it. Usage is `(MemTotal - MemAvailable) / MemTotal` from `/proc/meminfo`,
+  sampled once per second, smoothed over three seconds and quantized with a 2%
+  deadband so crates do not flicker at level boundaries.
+- **Disk → woodshed:** a sheltered stack grows from one to twenty logs as the
+  filesystem mounted at `/` fills up. Its roof matches the mill's pink roof. Capacity is queried asynchronously through GIO every 30 seconds;
+  used space is total minus free space, including reserved but unused blocks as free.
+  This is filesystem usage, not disk I/O activity or an aggregate of every mount.
+
+Both show **used capacity** (fuller means more used), share one sampler across all
+outputs, and continue receiving real readings when CPU is manually overridden.
+A small amber marker indicates a reading is not available yet; failed reads keep
+the last good value. The lock-screen feed receives the same resource snapshots.
+Snow coats the woodshed roof. Two plank benches sit on opposite sides of the
+campfire, leaving the tent approach and eastbound path open; their seats pick up
+firelight and snow. RAM and disk never affect crop growth or water speed.
+`ags run ags/tools/wallpaper-resources-smoke.ts --gtk 4` checks native sampling and
+cancellation/restart without opening a shell window. Supply-yard previews are
+written to `/tmp/sysdef-wallpaper-supplies-{0,0.5,1}.png`.
 
 The opposite bank has 96 planting sites. Crops now grow with **real calendar time**,
 not uptime or frame count: seedlings emerge, increase in height, ripen, and are

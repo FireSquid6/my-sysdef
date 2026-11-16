@@ -23,6 +23,9 @@ export default class SourcePicker extends View {
     this.request = 0;
     this.scroll = ScrollHandle.new();
     this.handle = cx.focus_handle();
+    // Bind inside the picker so native Tab focus navigation cannot win over
+    // the app-level mod shortcut while the text input owns focus.
+    cx.bind_keys([{ keystroke: "tab", action: "source-picker-complete", context: "SourcePicker" }]);
     this.input = InputState.new({ placeholder: "~/path/to/project", value: "~/source/" });
     this.input.on("change", (_e, cx) => {
       this.updatePath(cx);
@@ -189,6 +192,11 @@ export default class SourcePicker extends View {
     const message = this.error ?? (this.opening ? "Creating project tabs…" : this.loading ? "Loading directories…"
       : !rows.length ? "No matching directories." : null);
     return v_flex().id("source-picker").track_focus(this.handle)
+      .key_context("SourcePicker")
+      .on_action("source-picker-complete", (_e, cx) => {
+        this.complete(this.rows()[0], cx);
+        cx.stop_propagation();
+      })
       .w_full().h_full().min_h(0).p(18).gap(12).bg(t.popover).border_1().border_color(this.machineColor(t.border)).text_color(t.foreground).text_size(13)
       .on_key_down((e, cx) => {
         if (e.key === "escape") {

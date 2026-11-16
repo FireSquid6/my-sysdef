@@ -7,9 +7,20 @@ import { parsePath, resolvePath, matchingDirectories } from "./paths.js";
 const helpers = { parsePath, resolvePath, matchingDirectories };
 
 function setup(overrides = {}) {
-  const tasks = [];
-  const cx = { notify() {}, focus_handle() { return {}; }, timer: { after() {} }, spawn(fn) { tasks.push(fn(cx)); } };
+  const tasks = [], bindings = [], actions = new Map(), contexts = [];
+  function element() {
+    let proxy;
+    proxy = new Proxy({}, { get: (_target, name) => (...args) => {
+      if (name === "on_action") actions.set(args[0], args[1]);
+      if (name === "key_context") contexts.push(args[0]);
+      if (name === "when" && args[0]) args[1](proxy);
+      return proxy;
+    } });
+    return proxy;
+  }
+  const cx = { bind_keys(keys) { bindings.push(...keys); }, stop_propagation() {}, notify() {}, focus_handle() { return {}; }, timer: { after() {} }, spawn(fn) { tasks.push(fn(cx)); } };
   const dependencies = {
+    div: element, v_flex: element, h_flex: element, Input: { new: element }, theme: () => ({}),
     launchProject, reportContext() {}, View: class {}, ...helpers, home: () => "/home/local", spaces: () => [], machines: () => [{ name: null }, { name: "remote" }],
     ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
     InputState: { new: options => ({ text: options.value, handlers: {}, on(event, fn) { this.handlers[event] = fn; }, focus() {}, value() { return this.text; }, set_value(value) { this.text = value; } }) },
@@ -22,7 +33,7 @@ function setup(overrides = {}) {
   const view = new Picker();
   // Command listeners intentionally never finish; mocked IO settles by next tick.
   const settle = async () => { await new Promise(setImmediate); };
-  return { view, cx, settle, tasks };
+  return { view, cx, settle, tasks, bindings, actions, contexts };
 }
 
 test("Enter submits the exact typed path even with a highlighted child", async () => {
@@ -39,7 +50,27 @@ test("Enter submits the exact typed path even with a highlighted child", async (
   assert.equal(opened[1], "~/source/nonmatching");
 });
 
-test("Tab keybinding sends a completion command even when the input owns focus", async () => {
+test("picker-scoped Tab action consumes completion instead of moving focus", async () => {
+  const { view, cx, settle, bindings, actions, contexts } = setup();
+  view.init({}, cx); await settle();
+  view.render();
+  assert.deepEqual(bindings, [{ keystroke: "tab", action: "source-picker-complete", context: "SourcePicker" }]);
+  assert.ok(contexts.includes("SourcePicker"));
+  let stopped = 0, focused = 0;
+  cx.stop_propagation = () => stopped++;
+  view.input.focus = () => focused++;
+  view.directories = ["first", "second"]; view.at = 1;
+  actions.get(bindings[0].action)({}, cx);
+  assert.equal(view.input.value(), "~/source/first/");
+  assert.equal(focused, 1);
+  await settle();
+  view.directories = [];
+  actions.get(bindings[0].action)({}, cx);
+  assert.equal(view.input.value(), "~/source/first/");
+  assert.equal(stopped, 2, "Tab must not fall through even without matches");
+});
+
+test("app-level Tab completion command completes the first result", async () => {
   const keys = JSON.parse(await readFile(new URL("../../keys.json", import.meta.url), "utf8"));
   assert.equal(keys["mod:source-picker"].tab, "source-picker.complete");
   let deliver;

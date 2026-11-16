@@ -1,5 +1,5 @@
 /** Pure, deterministic pixel scene. All colors derive from Tokyo Night's palette. */
-import type { LandscapeMotion } from "./wallpaper-resources"
+import { resourceLevel, type LandscapeMotion } from "./wallpaper-resources"
 import { advanceCrops, type CropState } from "./wallpaper-crops"
 import { resolveEnvironment, type LandscapeEnvironment } from "./wallpaper-weather"
 export type RGB = readonly [number, number, number]
@@ -41,6 +41,14 @@ export function river(y: number, width: number) {
   const bend = Math.max(0, (reach - 157) / 113)
   return { center: width * (0.53 + Math.sin(bend * 6.4 - 0.4) * (0.015 + bend * 0.13)), half: 1 + depth * depth * width * 0.13 }
 }
+/** Sparse deterministic lightning, shared by all outputs; never a rapid strobe. */
+export function stormLightning(seconds: number) {
+  const slot = Math.floor(seconds / 24)
+  const age = seconds - slot * 24 - (3 + hash(slot + 6100) * 13)
+  const pulse = (start: number, duration: number) => age >= start && age < start + duration ? Math.sin((age - start) / duration * Math.PI) : 0
+  const strength = Math.max(pulse(0, 0.24), pulse(0.4, 0.16) * 0.55)
+  return { strength, x: 0.15 + hash(slot + 6200) * 0.7, seed: slot }
+}
 /** Thin cloud softens celestial bodies; heavy overcast hides them completely. */
 export const celestialVisibility = (cloud: number) => 1 - smooth((cloud - 0.2) / 0.7)
 /** Fade the falling sheet into the lower current instead of ending at one scanline. */
@@ -57,21 +65,115 @@ export function campsite(width: number) {
   const fireX = Math.floor(Math.min(millX - 14, bank - glowRadius - 4))
   return { fireX, fireY, tentX: fireX - 25, tentY: fireY - 22, glowRadius }
 }
+/** Keep the supply yard behind the tent, shrinking it only on narrow outputs. */
+export function supplyYard(width: number) {
+  const camp = campsite(width)
+  const millX = Math.floor(river(207, width).center - river(207, width).half - 1) - 35
+  const x = Math.max(2, camp.tentX - 33)
+  return { x, base: 196, scale: Math.max(0.45, Math.min(1, (millX - 8 - x) / 64)) }
+}
+/** Visible supplies always retain one item, even at an empty/unknown reading. */
+export function supplyCounts(activity: Pick<LandscapeMotion, "ram" | "disk" | "ramCrates">) {
+  return {
+    crates: Math.max(1, Math.min(10, activity.ramCrates ?? resourceLevel(activity.ram ?? 0))),
+    logs: Math.max(1, Math.min(20, Math.floor((activity.disk ?? 0) * 20))),
+  }
+}
+/** Shared dirt mask keeps texture, grass and woodland clearings in agreement. */
+export function dirtGround(width: number) {
+  const pixels = new Uint8Array(width * 96)
+  const camp = campsite(width)
+  const millX = Math.floor(river(207, width).center - river(207, width).half - 1) - 35
+  const lip = river(192, width)
+  const left = Math.floor(lip.center - lip.half - 9), right = Math.ceil(lip.center + lip.half + 9)
+  const mark = (cx: number, cy: number, rx: number, ry: number) => {
+    for (let y = Math.max(174, Math.floor(cy - ry)); y <= Math.min(269, Math.ceil(cy + ry)); y++) {
+      const dy = (y - cy) / ry
+      if (Math.abs(dy) > 1) continue
+      const half = rx * Math.sqrt(1 - dy * dy)
+      for (let x = Math.max(0, Math.ceil(cx - half)); x <= Math.min(width - 1, Math.floor(cx + half)); x++) pixels[(y - 174) * width + x] = 1
+    }
+  }
+  type Point = readonly [number, number]
+  const curve = (a: Point, b: Point, c: Point, radius: number, bank: -1 | 1 = -1) => {
+    const steps = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) + Math.hypot(c[0] - b[0], c[1] - b[1]))
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps, u = 1 - t
+      const y = u * u * a[1] + 2 * u * t * b[1] + t * t * c[1]
+      const x = u * u * a[0] + 2 * u * t * b[0] + t * t * c[0]
+      const r = river(y, width)
+      const dryX = bank === -1 ? Math.min(x, r.center - r.half - radius - 4) : Math.max(x, r.center + r.half + radius + 4)
+      mark(dryX, y, radius, radius * 0.65)
+    }
+  }
+  mark(camp.tentX + 16, camp.fireY - 2, 43, 16)
+  const yard = supplyYard(width)
+  mark(yard.x + 32 * yard.scale, yard.base - 1, 34 * yard.scale, 8)
+  curve([camp.fireX, 220], [millX - 10, 231], [millX + 15, 214], 3.5)
+  // Run through the house's projected footprint: its later opaque draw pass
+  // hides the middle of the path, which reappears beside the bridge.
+  curve([camp.fireX + 5, 216], [millX - 22, 207], [millX - 8, 199], 3)
+  curve([millX - 8, 199], [millX + 16, 193], [left, 189], 2.5)
+  const farmX = Math.floor(width * (0.73 - (228 - 207) / 43 * 0.09))
+  curve([right - 1, 189], [right + 13, 194], [right + 18, 204], 3, 1)
+  curve([right + 18, 204], [farmX - 14, 211], [farmX, 228], 3.5, 1)
+  // Never paint over the channel or its existing bank rim.
+  for (let y = 174; y < 270; y++) {
+    const r = river(y, width)
+    for (let x = Math.max(0, Math.floor(r.center - r.half - 2)); x <= Math.min(width - 1, Math.ceil(r.center + r.half + 2)); x++) pixels[(y - 174) * width + x] = 0
+  }
+  const contains = (x: number, y: number) => x >= 0 && x < width && y >= 174 && y < 270 && pixels[(Math.floor(y) - 174) * width + Math.floor(x)] === 1
+  return { pixels, contains }
+}
+/** Stable landing sites let falling particles meet their own splash/settling mark. */
+export function precipitationLanding(index: number, width: number, camp = campsite(width)) {
+  const x = Math.floor(hash(index + 1910) * width)
+  const groundY = 179 + Math.floor(hash(index + 2110) * 90)
+  const millX = Math.floor(river(207, width).center - river(207, width).half - 1) - 35
+  let y = groundY
+  let surface: "ground" | "water" | "roof" | "tent" = Math.abs(x - river(y, width).center) < river(y, width).half ? "water" : "ground"
+  if (groundY >= 213 && Math.abs(x - (millX + 14)) <= 16) {
+    y = 176 + Math.ceil(Math.abs(x - (millX + 14)) / 1.5)
+    surface = "roof"
+  }
+  if (groundY >= camp.tentY + 17 && Math.abs(x - camp.tentX) <= 11) {
+    const tentY = camp.tentY + Math.ceil(Math.abs(x - camp.tentX) / 0.72)
+    if (tentY < y) { y = tentY; surface = "tent" }
+  }
+  return { x, y, surface }
+}
+/** A fall and its impact share one cycle, with no particle-state allocation. */
+export function precipitationPhase(index: number, seconds: number, snow: boolean, precip: number, landingY: number) {
+  const speed = snow ? 8 + hash(index) * 7 : 100 + precip * 60
+  const fallDuration = (landingY + 10) / speed
+  const impactDuration = snow ? 0.9 : 0.28
+  const duration = fallDuration + impactDuration
+  const age = ((seconds + hash(index + 1710) * duration) % duration + duration) % duration
+  return age < fallDuration
+    ? { falling: true, progress: age / fallDuration }
+    : { falling: false, progress: (age - fallDuration) / impactDuration }
+}
 /** Logical height is 270px; width follows the output so ultrawides aren't stretched. */
 export function drawLandscape(paint: Paint, width: number, date: Date, seconds: number,
-  activity: Pick<LandscapeMotion, "flow"> = { flow: seconds * 0.35 },
+  activity: Pick<LandscapeMotion, "flow" | "ram" | "disk" | "ramCrates"> = { flow: seconds * 0.35 },
   environment: LandscapeEnvironment = resolveEnvironment(date),
   crops: CropState = advanceCrops(null, date, environment.latitude)) {
   const flow = Number.isFinite(activity.flow) ? activity.flow : 0
   const { daylight: day, dusk, night } = lighting(date, environment)
   const { season, weather, cloud, precip, wind, moonPhase, moonIllumination } = environment
   const clearSky = celestialVisibility(cloud)
-  const shade = (c: RGB, strength = 1) => mix(TOKYO.night, c, (0.25 + day * (0.55 - cloud * 0.18)) * strength)
+  const storm = weather === "storm"
+  const lightning = stormLightning(seconds)
+  const flash = storm ? lightning.strength : 0
+  const shade = (c: RGB, strength = 1) => mix(mix(TOKYO.night, c, (0.25 + day * (0.55 - cloud * 0.18)) * strength * (storm ? 0.82 : 1)), TOKYO.white, flash * 0.12)
   const foliage = season === "autumn" ? TOKYO.gold : season === "winter" ? mix(TOKYO.teal, TOKYO.white, 0.4) : season === "spring" ? mix(TOKYO.green, TOKYO.teal, 0.3) : TOKYO.green
   const snowy = weather === "snow" || (season === "winter" && (environment.temperature ?? -1) < 3)
   const skyTop = mix(mix(TOKYO.night, mix(TOKYO.storm, TOKYO.blue, 0.42), day), TOKYO.storm, cloud * 0.55)
   const skyBottom = mix(mix(mix(TOKYO.storm, TOKYO.purple, 0.16), mix(TOKYO.blue, TOKYO.cyan, 0.32), day * 0.65), TOKYO.storm, cloud * 0.55)
-  for (let y = 0; y < 176; y += 2) paint(0, y, width, 2, mix(mix(skyTop, skyBottom, y / 176), TOKYO.pink, dusk * (y / 176) ** 3 * 0.35 * clearSky))
+  for (let y = 0; y < 176; y += 2) {
+    const sky = mix(mix(skyTop, skyBottom, y / 176), TOKYO.pink, dusk * (y / 176) ** 3 * 0.35 * clearSky)
+    paint(0, y, width, 2, mix(mix(sky, TOKYO.storm, storm ? 0.35 : 0), TOKYO.white, flash * 0.18))
+  }
   if (night * clearSky > 0.01) {
     for (let i = 0; i < width / 4; i++) {
       const x = Math.floor(hash(i + 1) * width), y = Math.floor(hash(i + 921) * 118)
@@ -130,6 +232,30 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
       if (right > left) paint(x + left, y + row, right - left, 2, row > height * 0.7 ? underside : body, (layer === 0 ? 0.3 : 0.55) + cloud * 0.25)
     }
   }
+  // Distant pixel lightning sits behind ridges and buildings. A narrow bright
+  // core and faint halo keep the flash local instead of washing out the screen.
+  if (flash > 0) {
+    const boltColor = mix(TOKYO.cyan, TOKYO.white, 0.7)
+    const line = (x1: number, y1: number, x2: number, y2: number, alpha: number) => {
+      const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1), 1)
+      for (let i = 0; i <= steps; i++) {
+        const x = Math.round(x1 + (x2 - x1) * i / steps), y = Math.round(y1 + (y2 - y1) * i / steps)
+        paint(x - 1, y, 3, 1, TOKYO.cyan, alpha * 0.16)
+        paint(x, y, 1, 1, boltColor, alpha)
+      }
+    }
+    let x = Math.floor(width * lightning.x), y = 47
+    for (let segment = 0; segment < 8; segment++) {
+      const nextX = x + Math.floor(hash(lightning.seed * 31 + segment + 6300) * 21) - 10
+      const nextY = y + 10 + Math.floor(hash(segment + 6400) * 5)
+      line(x, y, nextX, nextY, flash)
+      if (segment === 3) {
+        line(x, y, x + 13, y + 8, flash * 0.6)
+        line(x + 13, y + 8, x + 9, y + 23, flash * 0.45)
+      }
+      x = nextX; y = nextY
+    }
+  }
   // Wider, closer peaks on a lower horizon leave substantially more open sky.
   for (let layer = 0; layer < 3; layer++) for (let x = 0; x < width; x++) {
     const u = x / width
@@ -157,10 +283,27 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
       paint(r.center + offset - r.half * 0.2, y, Math.max(1, r.half * 0.4), 1, mix(TOKYO.blue, TOKYO.white, 0.35), (0.25 + day * 0.2) * ripple)
     }
   }
+  // One coordinate-seeded soil texture joins the clearing and every path.
+  const dirt = dirtGround(width)
+  const soil = shade(mix(TOKYO.gold, TOKYO.pink, 0.18), 0.68)
+  const soilDark = shade(mix(TOKYO.gold, TOKYO.storm, 0.48), 0.55)
+  const soilLight = shade(TOKYO.gold, 0.86)
+  for (let y = 174; y < 270; y++) {
+    let start = -1
+    for (let x = 0; x <= width; x++) {
+      if (dirt.contains(x, y)) { if (start < 0) start = x }
+      else if (start >= 0) { paint(start, y, x - start, 1, soil); start = -1 }
+    }
+    for (let x = 0; x < width; x++) if (dirt.contains(x, y)) {
+      const grain = hash(x * 19 + y * 307)
+      if (grain < 0.14) paint(x, y, 1, 1, soilDark)
+      else if (grain > 0.95) paint(x, y, 1, 1, snowy ? shade(TOKYO.white, 0.85) : soilLight)
+    }
+  }
   // Sparse grasses / wildflowers; wind shifts only their tips.
   for (let i = 0; i < width * 1.1; i++) {
     const x = Math.floor(hash(i + 300) * width), y = 179 + Math.floor(hash(i + 900) * 91), r = river(y, width)
-    if (Math.abs(x - r.center) < r.half + 5) continue
+    if (Math.abs(x - r.center) < r.half + 5 || dirt.contains(x, y) || dirt.contains(x, y - 1)) continue
     const h = 1 + Math.floor((y - 157) / 38), sway = Math.sin(seconds * 0.9 + i) > 0 ? 1 : -1
     paint(x, y, 1, h, shade(TOKYO.teal, 0.65)); paint(x + sway, y - 1, 1, 1, shade(snowy ? TOKYO.white : i % 9 === 0 && season === "spring" ? TOKYO.pink : foliage, 0.8))
   }
@@ -194,7 +337,11 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
     if (base > 185 && x > Math.min(millBank - 61, camp.tentX - 20) && x < millBank + 42) continue
     if (base > 202 && x > width * 0.62 && x < width * 0.91) continue
     if (hash(seed + 810) < (row < 3 ? 0.1 : 0.27)) continue
-    tree(x, base, size, seed)
+    let blocksPath = false
+    for (let y = base - size; y <= base && !blocksPath; y += 2) for (let dx = -Math.ceil(size * 0.4); dx <= size * 0.4; dx += 2) {
+      if (dirt.contains(x + dx, y)) { blocksPath = true; break }
+    }
+    if (!blocksPath) tree(x, base, size, seed)
   }
   // Calendar-grown crops: seedlings fill the field, mature, then are harvested
   // from front to back. State belongs to the app, never to an individual output.
@@ -276,6 +423,39 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
   paint(bridgeRight - 2, 180, 2, 8, shade(TOKYO.gold, 0.8))
   paint(bridgeLeft, 181, bridgeSpan, 1, shade(TOKYO.gold, 1.15))
   paint(bridgeLeft, 185, bridgeSpan, 1, shade(TOKYO.gold, 0.75))
+  // Supply yard: RAM builds a freestanding pyramid of crates; used root disk
+  // space fills the woodshed with up to twenty individually drawn log ends.
+  const yard = supplyYard(width)
+  const yardPaint: Paint = (x, y, w, h, color, alpha) => paint(Math.round(yard.x + x * yard.scale), Math.round(yard.base + y * yard.scale), Math.max(1, Math.round(w * yard.scale)), Math.max(1, Math.round(h * yard.scale)), color, alpha)
+  const timber = shade(TOKYO.gold, 0.7), recess = shade(TOKYO.storm, 0.65)
+  // Woodshed: open front, rear boards, low pitched roof and two upright posts.
+  yardPaint(-1, 0, 29, 2, recess)
+  yardPaint(1, -19, 24, 19, recess)
+  for (let x = 3; x < 25; x += 5) yardPaint(x, -18, 1, 18, shade(TOKYO.gold, 0.3))
+  const { crates, logs } = supplyCounts(activity)
+  for (let i = 0; i < logs; i++) {
+    const x = 2 + i % 5 * 4.5, y = -1 - Math.floor(i / 5) * 4
+    yardPaint(x + 1, y - 3, 2, 4, shade(TOKYO.gold, 0.9))
+    yardPaint(x, y - 2, 4, 2, shade(TOKYO.gold, 0.9))
+    yardPaint(x + 1, y - 2, 2, 2, shade(TOKYO.pink, 0.55))
+    yardPaint(x + 1, y - 2, 1, 1, shade(TOKYO.gold, 1.15))
+  }
+  for (const x of [0, 25]) yardPaint(x, -19, 2, 20, timber)
+  for (let row = 0; row < 5; row++) yardPaint(12 - row * 3, -24 + row, 3 + row * 6, 1, shade(TOKYO.pink, 0.65))
+  yardPaint(-1, -19, 29, 2, timber)
+  if (snowy) for (let row = 0; row < 4; row++) yardPaint(12 - row * 3, -25 + row, 3 + row * 6, 1, shade(TOKYO.white, 0.95))
+  if (activity.disk === undefined) yardPaint(22, -17, 2, 2, shade(TOKYO.gold, 1.1))
+  // Four crates on the ground, then three, two and one: no rack or backboard.
+  for (let i = 0; i < crates; i++) {
+    const row = i < 4 ? 0 : i < 7 ? 1 : i < 9 ? 2 : 3
+    const first = [0, 4, 7, 9][row]!
+    const x = 34 + row * 3 + (i - first) * 6, y = -5 - row * 5
+    yardPaint(x, y, 5, 5, shade(TOKYO.gold, 0.9))
+    yardPaint(x + 1, y + 1, 3, 3, shade(TOKYO.gold, 0.52))
+    for (let k = 0; k < 3; k++) yardPaint(x + 1 + k, y + 1 + k, 1, 1, shade(TOKYO.gold, 1.05))
+    yardPaint(x, y, 5, 1, shade(TOKYO.gold, 1.15))
+  }
+  if (activity.ram === undefined) yardPaint(61, -2, 2, 2, shade(TOKYO.gold, 1.1))
   // Stone-and-timber mill on the pasture bank; axle enters its right-hand wall.
   const wheelX = Math.floor(river(207, width).center - river(207, width).half - 1), wheelY = 207
   const millX = wheelX - 35
@@ -284,6 +464,13 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
   for (let y = 0; y < 12; y++) {
     const half = Math.floor(y * 1.5)
     paint(millX + 14 - half, 176 + y, half * 2 + 1, 1, shade(TOKYO.pink, 0.65))
+  }
+  // A snowy ridge and uneven ledges follow both roof slopes, not the walls.
+  if (snowy) for (let dx = -16; dx <= 16; dx++) {
+    const y = 176 + Math.ceil(Math.abs(dx) / 1.5)
+    const depth = 1 + Math.floor(precip * 2 + hash(dx + 4400) * 1.5)
+    paint(millX + 14 + dx, y - 1, 1, depth, shade(TOKYO.white, 1.1))
+    paint(millX + 14 + dx, y + depth - 1, 1, 1, shade(TOKYO.blue, 0.85))
   }
   for (const x of [millX + 2, millX + 25]) paint(x, 188, 2, 25, shade(TOKYO.storm))
   paint(millX + 12, 200, 7, 13, shade(TOKYO.storm))
@@ -309,12 +496,26 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
   const { fireX, fireY, tentX, tentY } = camp
   const fire = campfireLight(date, environment)
   if (fire > 0) for (const radius of [21, 16, 10]) disk(fireX, fireY, radius, TOKYO.gold, fire * 0.055)
+  // Two low plank benches leave the tent approach and eastbound path open.
+  const benchWood = mix(shade(TOKYO.gold, 0.7), TOKYO.gold, fire * 0.16)
+  for (const y of [fireY - 13, fireY + 11]) {
+    paint(fireX - 7, y + 2, 15, 1, shade(TOKYO.storm, 0.6))
+    for (const x of [fireX - 5, fireX + 4]) paint(x, y + 2, 2, 3, shade(TOKYO.gold, 0.4))
+    paint(fireX - 7, y, 15, 2, benchWood)
+    paint(fireX - 7, y, 15, 1, snowy ? shade(TOKYO.white, 0.95) : mix(benchWood, TOKYO.gold, 0.18))
+  }
   paint(tentX - 13, tentY + 17, 29, 2, shade(TOKYO.storm))
   for (let y = 0; y < 17; y++) {
     const half = Math.floor(y * 0.72)
     paint(tentX - half, tentY + y, half * 2 + 1, 1, mix(shade(TOKYO.gold, 0.9), TOKYO.gold, fire * 0.18))
     paint(tentX, tentY + y, half + 1, 1, mix(shade(TOKYO.pink, 0.6), TOKYO.gold, fire * 0.12))
     if (y > 5) paint(tentX - Math.floor((y - 5) * 0.4), tentY + y, Math.floor((y - 5) * 0.6) + 1, 1, shade(TOKYO.storm))
+  }
+  // Snow clings to the upper canvas and slopes, leaving the doorway open.
+  if (snowy) for (let dx = -11; dx <= 11; dx++) {
+    const y = tentY + Math.ceil(Math.abs(dx) / 0.72)
+    const depth = 1 + Math.floor(precip + hash(dx + 4500) * 1.5)
+    paint(tentX + dx, y - 1, 1, depth, shade(TOKYO.white, 1.05))
   }
   paint(tentX, tentY - 2, 1, 20, shade(TOKYO.gold, 1.1))
   for (let i = 0; i < 6; i++) {
@@ -349,9 +550,36 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
   if (weather === "rain" || weather === "storm" || weather === "snow") {
     const snow = weather === "snow", count = Math.floor(width * (snow ? 0.19 : 0.33) * Math.max(0.15, precip))
     for (let i = 0; i < count; i++) {
-      const y = ((hash(i + 1710) * 290 + seconds * (snow ? 8 + hash(i) * 7 : 100 + precip * 60)) % 290 + 290) % 290 - 10
-      const x = ((hash(i + 1910) * width + windX * (seconds * wind * (snow ? 9 : 28) + y * 0.12) + (snow ? Math.sin(seconds + i) * 3 : 0)) % width + width) % width
-      paint(Math.floor(x), Math.floor(y), 1 + (snow && i % 3 === 0 ? 1 : 0), snow ? 1 : 3 + Math.floor(precip * 3), snow ? TOKYO.white : TOKYO.cyan, snow ? 0.5 + day * 0.25 : 0.18 + precip * 0.3)
+      const landing = precipitationLanding(i, width, camp)
+      const phase = precipitationPhase(i, seconds, snow, precip, landing.y)
+      const opacity = snow ? 0.5 + day * 0.25 : 0.18 + precip * 0.3
+      if (phase.falling) {
+        const remaining = 1 - phase.progress
+        const y = -10 + (landing.y + 10) * phase.progress
+        const drift = windX * wind * (snow ? 32 : 18) * remaining
+        const sway = snow ? Math.sin(seconds + i) * 4 * remaining : 0
+        const x = ((landing.x - drift + sway) % width + width) % width
+        // Clip the streak at the collision surface; never draw through it.
+        const height = Math.max(1, Math.min(snow ? 1 : 3 + Math.floor(precip * 3), landing.y - Math.floor(y)))
+        paint(Math.floor(x), Math.floor(y), 1 + (snow && i % 3 === 0 ? 1 : 0), height, snow ? TOKYO.white : TOKYO.cyan, opacity)
+      } else {
+        const age = phase.progress, fade = (1 - age) * opacity
+        if (landing.surface === "water") {
+          const radius = 1 + Math.floor(age * 4)
+          paint(landing.x - radius, landing.y, radius * 2 + 1, 1, TOKYO.cyan, fade)
+          paint(landing.x - radius + 1, landing.y + 1, Math.max(1, radius * 2 - 1), 1, TOKYO.white, fade * 0.4)
+        } else if (snow) {
+          // A flake compresses into a small powder patch before fading away.
+          paint(landing.x - 1, landing.y, 3, 1, TOKYO.white, fade)
+          if (age < 0.3) paint(landing.x, landing.y - 1, 1, 1, TOKYO.white, fade)
+        } else {
+          const radius = 1 + Math.floor(age * 3)
+          const lift = Math.round(Math.sin(age * Math.PI) * 2)
+          paint(landing.x - radius, landing.y - lift, 1, 1, TOKYO.cyan, fade)
+          paint(landing.x + radius, landing.y - lift, 1, 1, TOKYO.cyan, fade)
+          paint(landing.x - 1, landing.y, 3, 1, TOKYO.cyan, fade * 0.5)
+        }
+      }
     }
   }
 }
