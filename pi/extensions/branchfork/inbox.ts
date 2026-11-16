@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import { createHash } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import os from "node:os";
 import path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -9,10 +11,10 @@ export const stateRoot = () => path.join(process.env.PI_CODING_AGENT_DIR || path
 export interface Handoff { id: string; text: string }
 
 // Receivers append context only while fully idle. No terminal input, steering, or turn trigger.
-export function receiveInbox(pi: Pick<ExtensionAPI, "sendMessage">, ctx: ExtensionContext, root = stateRoot()) {
+export function receiveInbox(pi: Pick<ExtensionAPI, "sendMessage">, ctx: ExtensionContext, receiverId: string, root = stateRoot()) {
   if (!ctx.isIdle()) return 0;
-  const sessionId = ctx.sessionManager.getSessionId();
-  const inbox = path.join(root, "inbox", sessionId);
+  if (!/^[a-f0-9]{64}$/.test(receiverId)) throw new Error("Invalid branchfork receiver ID");
+  const inbox = path.join(root, "inbox", receiverId);
   if (!fs.existsSync(inbox)) return 0;
   let count = 0;
   for (const name of fs.readdirSync(inbox).filter(name => /^[a-zA-Z0-9_-]+\.json$/.test(name)).sort()) {
@@ -20,7 +22,7 @@ export function receiveInbox(pi: Pick<ExtensionAPI, "sendMessage">, ctx: Extensi
     const file = path.join(inbox, name);
     const message = JSON.parse(fs.readFileSync(file, "utf8")) as Handoff;
     if (!message || typeof message.text !== "string" || message.id !== name.slice(0, -5)) throw new Error(`Invalid branchfork handoff: ${file}`);
-    const receiptDir = path.join(root, "receipts", sessionId);
+    const receiptDir = path.join(root, "receipts", receiverId);
     const receipt = path.join(receiptDir, name);
     const inHistory = ctx.sessionManager.getBranch().some(entry => entry.type === "custom_message" && entry.customType === "branchfork-handoff" && (entry.details as { id?: string } | undefined)?.id === message.id);
     if (!inHistory && !fs.existsSync(receipt)) {
@@ -44,6 +46,7 @@ export function registerInbox(pi: ExtensionAPI) {
   let context: ExtensionContext | undefined;
   let lastError = "";
   let coreId = "";
+  let receiverId = "";
   const cleanup = () => {
     if (timer) clearInterval(timer);
     timer = undefined;
@@ -56,7 +59,7 @@ export function registerInbox(pi: ExtensionAPI) {
     if (!context || !live) return;
     try {
       const registration = {
-        sessionId: context.sessionManager.getSessionId(), pid: process.pid, coreId,
+        receiverId, sessionId: context.sessionManager.getSessionId(), pid: process.pid, coreId,
         cwd: fs.realpathSync(context.cwd), terminal: process.env.HC_TERMINAL_ID || process.env.HERDR_TERMINAL_ID || "",
         tab: process.env.HERDR_TAB_ID || "",
         received: context.sessionManager.getBranch().flatMap(entry => entry.type === "custom_message" && entry.customType === "branchfork-handoff" && typeof (entry.details as { id?: string } | undefined)?.id === "string" ? [(entry.details as { id: string }).id] : []),
@@ -64,7 +67,7 @@ export function registerInbox(pi: ExtensionAPI) {
       const temp = `${live}.tmp`;
       fs.writeFileSync(temp, JSON.stringify(registration), { mode: 0o600 });
       fs.renameSync(temp, live);
-      receiveInbox(pi, context);
+      receiveInbox(pi, context, receiverId);
       lastError = "";
     } catch (error) {
       const message = String(error);
@@ -87,7 +90,9 @@ export function registerInbox(pi: ExtensionAPI) {
     context = ctx;
     const dir = path.join(stateRoot(), "live");
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-    live = path.join(dir, `${ctx.sessionManager.getSessionId()}.json`);
+    // Process start time distinguishes PID reuse; the same runtime keeps its inbox on /reload.
+    receiverId = createHash("sha256").update(JSON.stringify([process.pid, performance.timeOrigin, ctx.sessionManager.getSessionId()])).digest("hex");
+    live = path.join(dir, `${receiverId}.json`);
     tick();
     timer = setInterval(tick, 3000);
     timer.unref();

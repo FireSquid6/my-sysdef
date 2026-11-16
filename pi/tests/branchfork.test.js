@@ -28,7 +28,7 @@ function harness({ existing = false, count = 1, registered = true, received = fa
   const key = createHash("sha256").update(JSON.stringify(["git@example.com:repo", "repo", "feature/next"])).digest("hex");
   const id = handoffId("source-session", ctx.sessionManager.getBranch(), `destination:${folder}:main:sha:test/model:high`);
   const terminals = existing ? Array.from({ length: count }, (_, n) => ({ address: `t${n}`, cwd: folder, state: "live", argv: ["pi"], labels: {} })) : [];
-  const registrations = registered ? terminals.map((t, n) => ({ sessionId: `dest-${n}`, cwd: folder, terminal: t.address, coreId: "target-core", received: received ? [id] : [] })) : [];
+  const registrations = registered ? terminals.map((t, n) => ({ receiverId: String(n).repeat(64), sessionId: `dest-${n}`, cwd: folder, terminal: t.address, coreId: "target-core", received: received ? [id] : [] })) : [];
   const herdr = {
     exec: async () => "1.5.2",
     identity: async () => "target-core",
@@ -86,7 +86,8 @@ describe("branchfork orchestration", () => {
     expect(h.calls.find(call => call[0] === "target")[1]).toBeUndefined();
     expect(h.calls.some(call => call[0] === "launch")).toBe(false);
     const queue = h.calls.find(call => call[0] === "queue")[1];
-    expect(queue.sessionId).toBe("dest-0");
+    expect(queue.receiverId).toBe("0".repeat(64));
+    expect(h.calls.find(call => call[0] === "handoff-status")[1].receiverId).toBe(queue.receiverId);
     expect(queue.message.text).toContain("CONTEXT ONLY");
     expect(queue.message.text).toContain("Relevant decisions");
     expect(h.summaries()).toBe(1);
@@ -124,7 +125,7 @@ describe("branchfork orchestration", () => {
     expect(result).toContain("host/tnew");
     await expect(branchfork("feature/next", h.ctx, h.deps)).rejects.toThrow("no matching branchfork inbox registration");
     expect(h.calls.filter(call => call[0] === "launch")).toHaveLength(1);
-    h.registrations.push({ sessionId: "new-session", cwd: h.folder, terminal: "tnew", coreId: "target-core", received: [h.id] });
+    h.registrations.push({ receiverId: "a".repeat(64), sessionId: "new-session", cwd: h.folder, terminal: "tnew", coreId: "target-core", received: [h.id] });
     expect(await branchfork("feature/next", h.ctx, h.deps)).toContain("not resent");
     expect(h.calls.filter(call => call[0] === "launch")).toHaveLength(1);
     expect(h.summaries()).toBe(0);
@@ -153,6 +154,19 @@ describe("branchfork orchestration", () => {
     h.registrations[0].terminal = "other-core/t0";
     expect(await destinationAgent({}, "", h.folder, h.key, h.terminals, h.registrations, "target-core")).toBeUndefined();
   });
+  test("discovery routes to the worktree receiver even when another receiver resumes the same session", async () => {
+    const h = harness({ existing: true });
+    h.registrations.push({ ...h.registrations[0], receiverId: "b".repeat(64), terminal: "tother", cwd: "/other-worktree" });
+    h.terminals.push({ address: "tother", cwd: "/other-worktree", state: "live", argv: ["pi"] });
+    await branchfork("feature/next --headless", h.ctx, h.deps);
+    expect(h.calls.find(call => call[0] === "queue")[1].receiverId).toBe(h.registrations[0].receiverId);
+  });
+  test("legacy session-only registrations require reload rather than receiving an ambiguous handoff", async () => {
+    const h = harness({ existing: true });
+    delete h.registrations[0].receiverId;
+    await expect(branchfork("feature/next --headless", h.ctx, h.deps)).rejects.toThrow("/reload");
+    expect(h.calls.some(call => call[0] === "queue" || call[0] === "launch")).toBe(false);
+  });
   test("usage errors occur before Git or Herdr mutations", () => {
     for (const value of ["", "a b c", "-bad", "a --unknown", "a --headless --headless"]) expect(() => parseArgs(value)).toThrow("Usage:");
     expect(parseArgs("feature/nested")).toEqual({ branch: "feature/nested", host: undefined, headless: false });
@@ -165,7 +179,7 @@ describe("context-only inbox", () => {
     const root = temp(), ctx = context(), sent = [];
     let idle = false;
     ctx.isIdle = () => idle;
-    const folder = path.join(root, "inbox/source-session");
+    const folder = path.join(root, "inbox/" + "a".repeat(64));
     fs.mkdirSync(folder, { recursive: true });
     const file = path.join(folder, "handoff.json");
     const data = { id: "handoff", text: "Context only, wait for instructions" };
@@ -174,17 +188,62 @@ describe("context-only inbox", () => {
       sent.push({ message, options });
       ctx.sessionManager.getBranch().push({ type: "custom_message", customType: message.customType, details: message.details });
     } };
-    expect(receiveInbox(pi, ctx, root)).toBe(0);
+    expect(receiveInbox(pi, ctx, "a".repeat(64), root)).toBe(0);
     expect(sent).toHaveLength(0);
     expect(fs.existsSync(file)).toBe(true);
     idle = true;
-    expect(receiveInbox(pi, ctx, root)).toBe(1);
+    expect(receiveInbox(pi, ctx, "a".repeat(64), root)).toBe(1);
     expect(sent[0].options).toEqual({ triggerTurn: false });
     expect(fs.existsSync(file)).toBe(false);
     fs.writeFileSync(file, JSON.stringify(data));
-    expect(receiveInbox(pi, ctx, root)).toBe(0);
+    expect(receiveInbox(pi, ctx, "a".repeat(64), root)).toBe(0);
     expect(sent).toHaveLength(1);
-    expect(fs.statSync(path.join(root, "receipts/source-session/handoff.json")).mode & 0o777).toBe(0o600);
+    expect(fs.statSync(path.join(root, "receipts/" + "a".repeat(64) + "/handoff.json")).mode & 0o777).toBe(0o600);
+  });
+  test("two processes resuming the same session keep registrations, queues, receipts and cleanup separate", async () => {
+    const agentDir = temp();
+    const { spawn } = await import("node:child_process");
+    const { createInterface } = await import("node:readline");
+    const script = `
+      const { registerInbox } = await import(${JSON.stringify(path.resolve("pi/extensions/branchfork/inbox.ts"))});
+      const handlers = new Map(), entries = [];
+      registerInbox({ on(n,h) { handlers.set(n,h); }, sendMessage(m) { entries.push({type:'custom_message',customType:m.customType,details:m.details}); } });
+      const ctx = { cwd: process.cwd(), isIdle:()=>true, sessionManager:{getSessionId:()=> 'same-session',getBranch:()=>entries},ui:{notify(m){throw Error(m);}} };
+      const reply = () => console.log(JSON.stringify(entries));
+      await handlers.get('session_start')({},ctx); reply();
+      for await (const command of (await import('node:readline')).createInterface({input:process.stdin})) {
+        if(command==='stop') { await handlers.get('session_shutdown')({},ctx); reply(); break; }
+        await handlers.get('agent_settled')({},ctx); reply();
+      }
+    `;
+    const start = async () => {
+      const child = spawn(process.execPath, ["-e", script], { env: { ...process.env, PI_CODING_AGENT_DIR: agentDir, HC_TERMINAL_ID: "", HERDR_TERMINAL_ID: "" }, stdio: ["pipe", "pipe", "inherit"] });
+      const lines = createInterface({ input: child.stdout })[Symbol.asyncIterator]();
+      const next = async () => { const line = await lines.next(); if (line.done) throw Error("receiver exited"); return JSON.parse(line.value); };
+      await next();
+      return { child, command: async value => { child.stdin.write(value + "\n"); return next(); } };
+    };
+    const a = await start(); let b;
+    try {
+      const live = path.join(agentDir, "branchfork/live");
+      const first = JSON.parse(fs.readFileSync(path.join(live, fs.readdirSync(live)[0]), "utf8"));
+      b = await start();
+      expect(fs.readdirSync(live)).toHaveLength(2);
+      const registrations = fs.readdirSync(live).map(name => JSON.parse(fs.readFileSync(path.join(live, name), "utf8")));
+      const second = registrations.find(r => r.pid !== first.pid);
+      expect(second.receiverId).not.toBe(first.receiverId);
+      const worker = request => callWorker((program, argv, options) => run("env", [`PI_CODING_AGENT_DIR=${agentDir}`, program, ...argv], options), "", storageWorker, request);
+      expect(await worker({ action: "agents" })).toHaveLength(2);
+      await worker({ action: "queue", receiverId: first.receiverId, id: "update", message: { id: "update", text: "for a" } });
+      expect(await b.command("tick")).toEqual([]);
+      expect(await worker({ action: "handoff-status", receiverId: second.receiverId, id: "update" })).toEqual({ exists: false });
+      expect(await a.command("tick")).toHaveLength(1);
+      await worker({ action: "queue", receiverId: second.receiverId, id: "update", message: { id: "update", text: "for b" } });
+      expect(await b.command("tick")).toHaveLength(1);
+      expect(await worker({ action: "queue", receiverId: first.receiverId, id: "update", message: { id: "update", text: "retry" } })).toEqual({ queued: false, duplicate: true });
+      await a.command("stop");
+      expect(fs.readdirSync(live)).toEqual([second.receiverId + ".json"]);
+    } finally { a.child.kill(); b?.child.kill(); }
   });
   test("snapshots are independent files with active branch entries and original remains unchanged", () => {
     const ctx = context(), original = structuredClone(ctx.sessionManager.getBranch());
@@ -219,13 +278,13 @@ describe("host transport", () => {
     const agentDir = temp();
     const isolated = (program, argv, options) => run("env", [`PI_CODING_AGENT_DIR=${agentDir}`, program, ...argv], options);
     const worker = request => callWorker(isolated, "", storageWorker, request);
-    const content = "private context\n".repeat(20000);
+    const content = snapshot(context(), "snapshot", "private context".repeat(20000));
     const file = await worker({ action: "snapshot", id: "snapshot", content });
     expect(fs.readFileSync(file, "utf8")).toBe(content);
     expect(fs.statSync(file).mode & 0o777).toBe(0o600);
     expect(fs.statSync(path.dirname(file)).mode & 0o777).toBe(0o700);
-    await worker({ action: "queue", sessionId: "custom.session-1", id: "handoff", message: { id: "handoff", text: "original" } });
-    expect(await worker({ action: "queue", sessionId: "custom.session-1", id: "handoff", message: { id: "handoff", text: "do not overwrite" } })).toEqual({ queued: true, duplicate: true });
+    await worker({ action: "queue", receiverId: "custom.session-1", id: "handoff", message: { id: "handoff", text: "original" } });
+    expect(await worker({ action: "queue", receiverId: "custom.session-1", id: "handoff", message: { id: "handoff", text: "do not overwrite" } })).toEqual({ queued: true, duplicate: true });
     const inbox = path.join(agentDir, "branchfork/inbox/custom.session-1/handoff.json");
     expect(JSON.parse(fs.readFileSync(inbox, "utf8")).text).toBe("original");
     await worker({ action: "lock", key: "repo", token: "first" });
@@ -234,6 +293,37 @@ describe("host transport", () => {
     await expect(worker({ action: "lock", key: "repo", token: "second" })).rejects.toThrow("Another branchfork");
     await worker({ action: "unlock", key: "repo", token: "first" });
     expect(await worker({ action: "lock", key: "repo", token: "second" })).toEqual({ ok: true });
+  });
+  test("snapshot publication rejects corrupt/conflicting files, preserves retries, and cleans failed writes", async () => {
+    const agentDir = temp();
+    const worker = (request, fault = "") => callWorker((program, argv, options) =>
+      run("env", [`PI_CODING_AGENT_DIR=${agentDir}`, program, "-e", fault + argv[1]], options), "", storageWorker, request);
+    const request = { action: "snapshot", id: "immutable", content: snapshot(context(), "immutable", "note") };
+    const file = await worker(request);
+    expect(await worker({ ...request, content: snapshot(context(), "immutable", "note") })).toBe(file);
+    const retry = context();
+    retry.sessionManager.getBranch().push({ type: "custom_message", customType: "branchfork-status", id: "status", parentId: "m1", timestamp: "2026-01-01T00:00:00Z", content: "A previous launch failed" });
+    expect(await worker({ ...request, content: snapshot(retry, "immutable", "note") })).toBe(file);
+    await expect(worker({ ...request, content: snapshot(context(), "immutable", "different note") })).rejects.toThrow("snapshot");
+    expect(fs.readFileSync(file, "utf8")).toBe(request.content);
+    fs.writeFileSync(file, "{partial");
+    await expect(worker(request)).rejects.toThrow();
+    expect(fs.readFileSync(file, "utf8")).toBe("{partial");
+    fs.unlinkSync(file);
+    const fault = `const fs=require('node:fs'), write=fs.writeFileSync; fs.writeFileSync=(file,data,options)=>{ if(String(file).endsWith('.tmp')) { write(file,'partial',options); throw Error('injected write failure'); } return write(file,data,options); };`;
+    await expect(worker(request, fault)).rejects.toThrow("injected write failure");
+    expect(fs.existsSync(file)).toBe(false);
+    expect(fs.readdirSync(path.dirname(file))).toEqual([]);
+    expect(await worker(request)).toBe(file);
+    fs.unlinkSync(file);
+    const conflict = `const fs=require('node:fs'), link=fs.linkSync; fs.linkSync=(temp,file)=>{ if(fs.existsSync(file) || !fs.readFileSync(temp,'utf8').endsWith('\\n')) throw Error('incomplete publication'); fs.writeFileSync(file,'conflicting winner'); return link(temp,file); };`;
+    await expect(worker(request, conflict)).rejects.toThrow();
+    expect(fs.readFileSync(file, "utf8")).toBe("conflicting winner");
+    expect(fs.readdirSync(path.dirname(file))).toEqual(["immutable.jsonl"]);
+    fs.unlinkSync(file);
+    const failure = `require('node:fs').linkSync=()=>{throw Error('injected publication failure');};`;
+    await expect(worker(request, failure)).rejects.toThrow("injected publication failure");
+    expect(fs.readdirSync(path.dirname(file))).toEqual([]);
   });
   test("omitted host uses the Pi host without consulting a GUI or saved machines", async () => {
     const herdr = new Herdr(async () => { throw Error("No external process should run"); });

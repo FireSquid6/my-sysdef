@@ -40,10 +40,11 @@ describe.skipIf(!available)("branchfork compatibility with the installed Pi", ()
       const ctx = { cwd: dir, isIdle: () => true, sessionManager: sm, ui: { notify() {}, setStatus() {} } };
       const dispatch = async name => { for (const handler of extension.handlers.get(name) ?? []) await handler({}, ctx); };
       await dispatch("session_start");
-      const live = path.join(dir, "branchfork/live", `${sm.getSessionId()}.json`);
+      const live = path.join(dir, "branchfork/live", fs.readdirSync(path.join(dir, "branchfork/live"))[0]);
+      const { receiverId } = JSON.parse(fs.readFileSync(live, "utf8"));
       expect(fs.existsSync(live)).toBe(true);
       expect(fs.statSync(live).mode & 0o777).toBe(0o600);
-      const inbox = path.join(dir, "branchfork/inbox", sm.getSessionId());
+      const inbox = path.join(dir, "branchfork/inbox", receiverId);
       fs.mkdirSync(inbox, { recursive: true });
       fs.writeFileSync(path.join(inbox, "update.json"), JSON.stringify({ id: "update", text: "New context, wait for instruction" }));
       await dispatch("agent_settled");

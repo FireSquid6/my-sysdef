@@ -6,7 +6,8 @@
   "defaultModel": "gpt-6.1-sol",
   "packages": [
     "npm:@tintinweb/pi-subagents",
-    "npm:pi-context-view"
+    "npm:pi-context-view",
+    "npm:@dietrichgebert/ponytail"
   ],
   "extensionChangelogVersions": {
     "{\"source\":\"npm:@tintinweb/pi-subagents\",\"scope\":\"user\"}": "0.23.2",

@@ -54,22 +54,54 @@ export function storageWorker(request) {
     const dir = path.join(root, "snapshots");
     privateDir(dir);
     const file = path.join(dir, `${safeId(request.id)}.jsonl`);
-    try { fs.writeFileSync(file, request.content, { flag: "wx", mode: 0o600 }); }
-    catch (error) { if (error.code !== "EEXIST") throw error; }
+    const normalize = content => {
+      const entries = content.trimEnd().split("\n").map(line => JSON.parse(line));
+      const header = entries[0], handoff = entries.at(-1);
+      if (header?.type !== "session" || header.version !== 3 || typeof header.id !== "string" || typeof header.timestamp !== "string"
+        || handoff?.type !== "custom_message" || handoff.customType !== "branchfork-handoff" || handoff.details?.id !== request.id
+        || typeof handoff.id !== "string" || typeof handoff.timestamp !== "string") throw new Error(`Invalid branchfork snapshot: ${file}`);
+      // A retry regenerates only these metadata fields; all context must match.
+      delete header.id; delete header.timestamp;
+      delete handoff.id; delete handoff.timestamp;
+      // Command failures append status entries without changing handoffId.
+      const statuses = new Map(entries.filter(entry => entry.type === "custom_message" && entry.customType === "branchfork-status").map(entry => [entry.id, entry.parentId]));
+      return entries.filter(entry => !statuses.has(entry.id)).map(entry => {
+        const visited = new Set();
+        while (statuses.has(entry.parentId)) {
+          if (visited.has(entry.parentId)) throw new Error(`Invalid branchfork snapshot ancestry: ${file}`);
+          visited.add(entry.parentId);
+          entry.parentId = statuses.get(entry.parentId);
+        }
+        return entry;
+      });
+    };
+    const expected = normalize(request.content);
+    const temp = `${file}.${require("node:crypto").randomUUID()}.tmp`;
+    try {
+      fs.writeFileSync(temp, request.content, { flag: "wx", mode: 0o600 });
+      // Hard-link publication is atomic and, unlike rename, cannot replace a winner.
+      try { fs.linkSync(temp, file); }
+      catch (error) {
+        if (error.code !== "EEXIST") throw error;
+        if (!fs.lstatSync(file).isFile() || !require("node:util").isDeepStrictEqual(normalize(fs.readFileSync(file, "utf8")), expected)) {
+          throw new Error(`Conflicting branchfork snapshot: ${file}. Inspect it before retrying; it was not overwritten.`);
+        }
+      }
+    } finally { fs.rmSync(temp, { force: true }); }
     return file;
   }
   if (request.action === "handoff-status") {
-    const inbox = path.join(root, "inbox", safeId(request.sessionId), `${safeId(request.id)}.json`);
-    const receipt = path.join(root, "receipts", safeId(request.sessionId), `${safeId(request.id)}.json`);
+    const inbox = path.join(root, "inbox", safeId(request.receiverId), `${safeId(request.id)}.json`);
+    const receipt = path.join(root, "receipts", safeId(request.receiverId), `${safeId(request.id)}.json`);
     return { exists: fs.existsSync(inbox) || fs.existsSync(receipt) };
   }
   if (request.action === "queue") {
-    const dir = path.join(root, "inbox", safeId(request.sessionId));
+    const dir = path.join(root, "inbox", safeId(request.receiverId));
     privateDir(dir);
     const file = path.join(dir, `${safeId(request.id)}.json`);
     // Same handoff ID is immutable and idempotent, even after delivery/reloads.
     if (fs.existsSync(file)) return { queued: true, duplicate: true };
-    const receipt = path.join(root, "receipts", safeId(request.sessionId), `${safeId(request.id)}.json`);
+    const receipt = path.join(root, "receipts", safeId(request.receiverId), `${safeId(request.id)}.json`);
     if (fs.existsSync(receipt)) return { queued: false, duplicate: true };
     const temp = `${file}.${process.pid}.tmp`;
     fs.writeFileSync(temp, JSON.stringify(request.message), { mode: 0o600 });

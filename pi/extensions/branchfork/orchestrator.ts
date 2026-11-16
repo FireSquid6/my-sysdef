@@ -9,7 +9,7 @@ import { present } from "./presentation.ts";
 
 export interface Source { root: string; primary: string; repo: string; origin: string; currentBranch: string; head: string }
 interface GitResult { ok: boolean; error?: string; source?: Source; folder?: string; completed?: string[] }
-interface Agent { sessionId: string; cwd: string; terminal: string; coreId?: string; received?: string[] }
+interface Agent { receiverId: string; sessionId: string; cwd: string; terminal: string; coreId?: string; received?: string[] }
 interface Dependencies { run: Run; findHerdr: typeof findHerdr; summarize: typeof summarize; present: typeof present }
 
 export function parseArgs(args: string) {
@@ -43,6 +43,7 @@ export async function destinationAgent(core: Herdr, machine: string, folder: str
   const agents = inFolder.filter(agent => agent.terminal && candidates.some(t => t.address === agent.terminal));
   if (candidates.length > 1 || agents.length > 1) throw new Error("More than one Pi agent is running in the destination worktree. Choose the intended agent explicitly; no handoff was sent.");
   if (candidates.length && !agents.length) throw new Error(`The existing destination terminal ${candidates[0]!.address} has no matching branchfork inbox registration. Inspect its startup/recovery state and run /reload in Pi (install the extension if needed), then retry; no duplicate will be launched.`);
+  if (agents[0] && !/^[a-f0-9]{64}$/.test(agents[0].receiverId)) throw new Error("The destination has an old branchfork inbox registration. Run /reload in Pi, then retry; no handoff was sent.");
   return agents[0] ? { agent: agents[0], terminal: candidates[0]! } : undefined;
 }
 
@@ -80,12 +81,12 @@ export async function branchfork(args: string, ctx: ExtensionCommandContext, ove
     let terminal: CoreTerminal;
     if (existing) {
       terminal = existing.terminal;
-      const status = await core.worker<{ exists: boolean }>(target.machine, storageWorker, { action: "handoff-status", sessionId: existing.agent.sessionId, id });
+      const status = await core.worker<{ exists: boolean }>(target.machine, storageWorker, { action: "handoff-status", receiverId: existing.agent.receiverId, id });
       if (status.exists || existing.agent.received?.includes(id)) {
         completed.push("This handoff was already queued/delivered; not resent.");
       } else {
         const text = `${idleInstruction}\n\n${note}\n\n${await deps.summarize(ctx)}`;
-        await core.worker(target.machine, storageWorker, { action: "queue", sessionId: existing.agent.sessionId, id, message: { id, text } });
+        await core.worker(target.machine, storageWorker, { action: "queue", receiverId: existing.agent.receiverId, id, message: { id, text } });
         completed.push("Context-only handoff queued; the destination agent will ingest it when fully idle.");
       }
     } else {

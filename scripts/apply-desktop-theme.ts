@@ -21,6 +21,14 @@ export function updateIni(source: string, section: string, values: Record<string
   return lines.join("\n").trimStart() + "\n";
 }
 
+export function assertNoSymlinks(file: string) {
+  for (let current = path.resolve(file); ; current = path.dirname(current)) {
+    if (fs.lstatSync(current, { throwIfNoEntry: false })?.isSymbolicLink())
+      throw Error(`Managed symlink: ${current}. Apply its owning configuration instead.`);
+    if (path.dirname(current) === current) return;
+  }
+}
+
 export function themeFiles(configHome: string, home: string, profile: string): Map<string, string> {
   const read = (file: string) => fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
   const files = new Map<string, string>();
@@ -65,11 +73,10 @@ if (import.meta.main) {
   if (!Bun.which("gsettings")) throw Error("Missing required tool: gsettings");
   const configHome = process.env.XDG_CONFIG_HOME || path.join(home, ".config");
   const changes = [...themeFiles(configHome, home, profile)].filter(([file, content]) => !fs.existsSync(file) || fs.readFileSync(file, "utf8") !== content);
-  // Don't replace Home Manager links or write through any existing symlink.
-  for (const [file] of changes) {
-    if (fs.lstatSync(file, { throwIfNoEntry: false })?.isSymbolicLink()) throw Error(`Managed symlink: ${file}. Apply its owning Home Manager configuration instead.`);
-  }
+  // Preflight every destination before the first write, including backup parents.
+  for (const [file] of changes) assertNoSymlinks(file);
   const backup = path.join(process.env.XDG_STATE_HOME || path.join(home, ".local/state"), "sysdef/theme-backups", new Date().toISOString().replaceAll(":", "-"));
+  assertNoSymlinks(backup);
   for (const [file, content] of changes) {
     console.log(`${dryRun ? "Would update" : "Updating"} ${file}`);
     if (dryRun) continue;

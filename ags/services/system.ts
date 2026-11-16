@@ -2,7 +2,6 @@ import Gio from "gi://Gio?version=2.0"
 import GLib from "gi://GLib?version=2.0"
 import { createState } from "ags"
 import { readFile } from "ags/file"
-import { run } from "./controller"
 import { batteryClass, batteryLabel, networkLabel } from "../system-model"
 
 export function createSystemService() {
@@ -11,6 +10,36 @@ export function createSystemService() {
   let busy = false
   let stopped = false
   let battery = ""
+  const pending = new Set<() => void>()
+  async function run(argv: string[]): Promise<string> {
+    const child = Gio.Subprocess.new(argv, Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE)
+    const cancellable = new Gio.Cancellable()
+    let deadline = 0
+    let cancel = () => {}
+    try {
+      return await new Promise<string>((resolve, reject) => {
+        cancel = () => {
+          if (deadline) { GLib.source_remove(deadline); deadline = 0 }
+          child.force_exit(); cancellable.cancel()
+          reject(Error(`${argv[0]} cancelled or timed out`))
+        }
+        pending.add(cancel)
+        deadline = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 3, () => {
+          deadline = 0; cancel(); return GLib.SOURCE_REMOVE
+        })
+        child.communicate_utf8_async(null, cancellable, (_child, result) => {
+          try {
+            const [ok, output, stderr] = child.communicate_utf8_finish(result)
+            if (!ok || !child.get_successful()) throw Error(stderr?.trim().slice(0, 512) || `${argv[0]} failed`)
+            resolve(output ?? "")
+          } catch (error) { reject(error) }
+        })
+      })
+    } finally {
+      if (deadline) GLib.source_remove(deadline)
+      pending.delete(cancel)
+    }
+  }
   try {
     const folder = Gio.File.new_for_path("/sys/class/power_supply")
     const files = folder.enumerate_children("standard::name", Gio.FileQueryInfoFlags.NONE, null)
@@ -54,7 +83,15 @@ export function createSystemService() {
   }
   return {
     state, update,
-    start() { void update(); timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => { void update(); return GLib.SOURCE_CONTINUE }) },
-    stop() { stopped = true; if (timer) GLib.source_remove(timer) },
+    start() {
+      if (timer || stopped) return
+      void update()
+      timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => { void update(); return GLib.SOURCE_CONTINUE })
+    },
+    stop() {
+      stopped = true
+      if (timer) { GLib.source_remove(timer); timer = 0 }
+      for (const cancel of pending) cancel()
+    },
   }
 }

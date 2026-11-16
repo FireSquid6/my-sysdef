@@ -2,11 +2,12 @@
 // Windows are hidden again before GTK's rendering turn, so tests don't grab input.
 import app from "ags/gtk4/app"
 import { Astal, Gdk, Gtk } from "ags/gtk4"
-import { createComputed, createState } from "ags"
+import { createComputed, createRoot, createState } from "ags"
 import GObject from "gi://GObject?version=2.0"
 import { createMenus } from "../menus"
 import { createSidebar } from "../sidebar"
-import { powerArgs } from "../menu-model"
+import { powerArgs, POWER_ACTIONS, POWER_LABELS, type PowerAction } from "../menu-model"
+import { watchPopupMonitor, NotificationPopups } from "../indicators"
 import { Bar, createMonitorName } from "../bar"
 import style from "../style.css"
 import type { DesktopStatus } from "../services/controller"
@@ -66,6 +67,7 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
       assert(JSON.stringify(argv) === JSON.stringify(powerArgs("lock")), "Unexpected sidebar lock command")
       return ""
     }
+    if (JSON.stringify(argv) === JSON.stringify(powerArgs("reload"))) return ""
     assert(argv.includes("tailscale"), "Unexpected sidebar desktop action")
     return JSON.stringify({ BackendState: "Running", Self: { ID: "self", HostName: "local-test", Online: true },
       Peer: { peer: { ID: "peer", HostName: "offline-test", Online: false, TailscaleIPs: ["100.64.0.2"] } } })
@@ -91,8 +93,40 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
   const menuKeys = keyboard(menus.window, "sysdef-menu-keys")
   const key = (value: number) => menuKeys.emit("key-pressed", value, 0, 0)
   const open = (name: string) => { menus.open(name); menus.window.visible = false }
+  const selectPower = (action: PowerAction) => {
+    open("power")
+    for (let i = 0; i < POWER_ACTIONS.indexOf(action); i++) key(Gdk.KEY_Down)
+    assert(describe().selection === POWER_ACTIONS.indexOf(action), `Menu did not select ${action}`)
+  }
   void (async () => {
     try {
+      createRoot(dispose => {
+        const pending = new PendingMonitor()
+        const [outputs, setOutputs] = createState([pending as unknown as Gdk.Monitor])
+        const [primary, setPrimary] = createState(monitor.connector!)
+        const popupWindows = () => app.windows.filter(w => w.name.startsWith("sysdef-notifications-"))
+        // Bind the pending GObject identity, but place the real GTK window on a real output.
+        watchPopupMonitor(outputs, primary, () => {
+          NotificationPopups({ monitor, service: { items, error: empty } as any })
+        })
+        try {
+          assert(popupWindows().length === 0, "Pending output must not claim notification popups")
+          pending.connector = monitor.connector
+          assert(popupWindows().length === 1, "Delayed connector left primary notification popups absent")
+          pending.connector = "other-output"
+          assert(popupWindows().length === 0, "Identity change left an orphaned popup window")
+          setPrimary("other-output")
+          assert(popupWindows().length === 1, "Primary change did not create notification popups")
+          setOutputs([])
+          assert(popupWindows().length === 0, "Monitor removal did not destroy notification popups")
+          setOutputs([pending as unknown as Gdk.Monitor])
+          assert(popupWindows().length === 1, "Monitor registration did not restore notification popups")
+        } finally { dispose() }
+        assert(popupWindows().length === 0, "Popup scope disposal left an orphaned window")
+        pending.connector = monitor.connector
+        setPrimary(monitor.connector!)
+        assert(popupWindows().length === 0, "Disposed connector subscription recreated notification popups")
+      })
       const pending = new PendingMonitor()
       const outputName = createMonitorName(pending as unknown as Gdk.Monitor)
       const recoveredWorkspaces = createComputed(() => desktop().workspaces.filter(w => w.monitor === outputName()))
@@ -134,14 +168,18 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
       await Promise.resolve()
       assert(calls.some(c => c.join(" ") === "assign 9 " + monitor.connector), "Assignment did not use the shared controller")
       open("power")
-      assert(describe().results === 5, "Power menu must include Lock and Log out")
+      assert(describe().results === POWER_ACTIONS.length, "Power menu omitted a session action")
       key(Gdk.KEY_Return)
       await Promise.resolve(); await Promise.resolve()
       assert(calls.some(c => JSON.stringify(c) === JSON.stringify(powerArgs("lock"))), "Lock did not run the shared locker")
-      open("power"); key(Gdk.KEY_Down); key(Gdk.KEY_Down); key(Gdk.KEY_Return)
+      selectPower("reload"); key(Gdk.KEY_Return)
+      await Promise.resolve(); await Promise.resolve()
+      assert(calls.filter(c => JSON.stringify(c) === JSON.stringify(powerArgs("reload"))).length === 1, "Menu reload did not run exactly once through the mock")
+      menuKeys.emit("key-released", Gdk.KEY_Return, 0, 0)
+      selectPower("logout"); key(Gdk.KEY_Return)
       assert(describe().pending === "logout", "Logout did not request confirmation")
       key(Gdk.KEY_Return)
-      assert(!calls.some(c => c[0] === "hyprctl"), "Repeating/held Enter bypassed confirmation")
+      assert(!calls.some(c => JSON.stringify(c) === JSON.stringify(powerArgs("logout"))), "Repeating/held Enter bypassed confirmation")
       menuKeys.emit("key-released", Gdk.KEY_Return, 0, 0)
       key(Gdk.KEY_Escape)
       assert(describe().pending === null, "Escape did not cancel confirmation")
@@ -160,7 +198,7 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         const controller = keyboard(sidebar.window, "sysdef-sidebar-keys")
         const press = (value: number, modifiers = 0) => controller.emit("key-pressed", value, 0, modifiers)
         press(Gdk.KEY_End)
-        assert(details().focusindex === 11, "End did not reach the last tailnet device")
+        assert(sidebar.window.get_focus() === widgets(sidebar.window, "sidebar-row").at(-1), "End did not reach the last tailnet device")
         const last = widgets(sidebar.window, "sidebar-row").at(-1)!
         const detail = last.get_first_child()!.get_last_child()!
         assert(!detail.visible, "Device details should start collapsed")
@@ -175,10 +213,19 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         press(Gdk.KEY_j); assert(details().focusindex === 1, "j did not move down")
         press(Gdk.KEY_k); assert(details().focusindex === 0, "k did not move up")
         press(Gdk.KEY_j, Gdk.ModifierType.CONTROL_MASK); assert(details().focusindex === 0, "Ctrl+j was incorrectly treated as plain j")
-        press(Gdk.KEY_G); assert(details().focusindex === 11, "G did not reach the last row")
+        press(Gdk.KEY_G); assert(sidebar.window.get_focus() === widgets(sidebar.window, "sidebar-row").at(-1), "G did not reach the last row")
         press(Gdk.KEY_Home)
         const actions = widgets(sidebar.window, "sidebar-power") as Gtk.Button[]
-        assert(actions.length === 5, "Sidebar omitted a session action")
+        assert(actions.length === POWER_ACTIONS.length, "Sidebar omitted a session action")
+        const actionButton = (action: PowerAction) => actions.find(button => (button.get_child()?.get_last_child() as Gtk.Label).label === POWER_LABELS[action])!
+        const selectSidebarPower = (action: PowerAction) => {
+          press(Gdk.KEY_Home)
+          const target = actionButton(action)
+          assert(!!target, `Sidebar omitted ${action}`)
+          for (let i = 0; i < actions.indexOf(target); i++) press(Gdk.KEY_j)
+          assert(sidebar.window.get_focus() === target, `Sidebar navigation did not select ${action}`)
+          return target
+        }
         for (const action of actions) {
           const icon = action.get_child()?.get_first_child() as Gtk.Label
           assert(icon instanceof Gtk.Label && icon.has_css_class("sidebar-power-icon") && /^[\uE000-\uF8FF]$/.test(icon.label), "Session action omitted its Nerd Font glyph")
@@ -208,20 +255,23 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
           return values
         }
         assert(!labels(sidebar.window).some(text => text.includes("Enter / Space")), "Tailscale shortcut hint is still visible")
-        press(Gdk.KEY_j); press(Gdk.KEY_j)
-        const logout = actions[2]!
-        assert((logout.get_child()?.get_last_child() as Gtk.Label).label === "Log out", "Sidebar omitted Log out")
+        const reloadsBefore = calls.filter(c => JSON.stringify(c) === JSON.stringify(powerArgs("reload"))).length
+        selectSidebarPower("reload"); press(Gdk.KEY_Return)
+        await Promise.resolve(); await Promise.resolve()
+        assert(calls.filter(c => JSON.stringify(c) === JSON.stringify(powerArgs("reload"))).length === reloadsBefore + 1, "Sidebar reload did not run exactly once through the mock")
+        controller.emit("key-released", Gdk.KEY_Return, 0, 0)
+        sidebar.open(monitor)
+        selectSidebarPower("logout")
         press(Gdk.KEY_Return); press(Gdk.KEY_Return)
         assert(widgets(sidebar.window, "menu-confirm")[0]?.visible, "Sidebar power action skipped confirmation")
-        assert(!calls.some(c => c[0] === "hyprctl" || c[0] === "systemctl"), "Sidebar executed a desktop action")
+        assert(!calls.some(c => c[0] === "systemctl" || JSON.stringify(c) === JSON.stringify(powerArgs("logout"))), "Sidebar executed an unconfirmed desktop action")
         controller.emit("key-released", Gdk.KEY_Return, 0, 0)
         press(Gdk.KEY_Escape)
         assert(!sidebar.window.visible && sidebar.window.keymode === Astal.Keymode.NONE, "Sidebar Escape did not release keyboard focus")
         sidebar.open(monitor); press(Gdk.KEY_q)
         assert(!sidebar.window.visible && sidebar.window.keymode === Astal.Keymode.NONE, "q did not close and release keyboard focus")
         sidebar.open(monitor)
-        const lock = widgets(sidebar.window, "sidebar-power")[0] as Gtk.Button
-        assert((lock.get_child()?.get_last_child() as Gtk.Label).label === "Lock", "Sidebar omitted Lock")
+        selectSidebarPower("lock")
         const locksBefore = calls.filter(c => c[0] === "bash").length
         press(Gdk.KEY_Home); press(Gdk.KEY_Return)
         await Promise.resolve(); await Promise.resolve()
@@ -265,7 +315,7 @@ app.start({ instanceName: "sysdef-ui-smoke", css: style, main() {
         keys.emit("key-pressed", Gdk.KEY_Escape, 0, 0)
         assert(!controlledSidebar.window.visible, "Escape from landscape controls did not close the sidebar")
       } finally { controlledSidebar.close(); landscape.stop() }
-      console.log("GTK UI smoke passed: landscape sync/sliders/native keyboard safety, Caffeine sidebar/bar toggles and lid-close persistence, delayed monitor identity/workspace recovery, native constant widths, menu/search/keyboard, controller routing, power repeat safety, sidebar sections/offline devices/navigation/details and Escape. No desktop actions executed.")
+      console.log("GTK UI smoke passed: landscape sync/sliders/native keyboard safety, Caffeine sidebar/bar toggles and lid-close persistence, delayed monitor identity/workspace/popup recovery and cleanup, native constant widths, menu/search/keyboard, controller routing, mocked reload and logout identity/navigation/repeat safety, sidebar sections/offline devices/navigation/details and Escape. No desktop actions executed.")
       app.quit(0)
     } catch (error) { console.error(error); menus.close(); sidebar.close(); controlledSidebar.close(); landscape.stop(); app.quit(1) }
   })()
