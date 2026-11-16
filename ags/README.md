@@ -220,8 +220,14 @@ bash ags/check.sh weather # isolated fake curl: endpoint/location/fallback, life
 bun test test/weather-request.test.ts # explicit locations, URL escaping and Austin fallback
 bash ags/tools/wallpaper-service-smoke.sh # isolated stub renderer, state and session
 ags run ags/tools/wallpaper-preview.ts --gtk 4 # /tmp/sysdef-wallpaper-{0,6,12,18}.png
-ags run ags/tools/wallpaper-smoke.tsx --gtk 4 # two-second live window test only
+ags run ags/tools/wallpaper-smoke.tsx --gtk 4 # checks actual Hyprland background layer on initial map/remap
 ```
+
+Wallpaper layer-shell properties must be configured **before** `visible` in JSX.
+Mapping an already-animated window before assigning `BACKGROUND` can leave its
+surface on the default top layer, hiding applications (including after wake).
+The live smoke test checks Hyprland's actual layer list, not just the GTK property,
+and never locks, suspends, or changes monitor power.
 
 The preview also writes `/tmp/sysdef-wallpaper-{spring,summer,autumn,winter}.png`
 and `/tmp/sysdef-wallpaper-moon-{new,waxing,quarter,full,waning}.png` for deterministic

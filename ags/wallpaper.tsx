@@ -58,11 +58,14 @@ export function Wallpaper({ monitor, service, resources = () => ({ cpu: 0 }), we
     onFrame?.(buffer, (GLib.get_monotonic_time() - started) / 1000)
     return texture
   }
+  // Configure layer-shell before visibility can realize/map the surface. When
+  // animation is already enabled at startup/wake, mapping first leaves it on
+  // GTK layer-shell's default TOP layer, hiding every application underneath.
   const window = <window name={`wallpaper-${monitor.connector ?? monitor.model ?? "output"}`} application={app}
-    namespace="sysdef-wallpaper" gdkmonitor={monitor} visible={service.animated}
+    namespace="sysdef-wallpaper" gdkmonitor={monitor}
     layer={Astal.Layer.BACKGROUND} exclusivity={Astal.Exclusivity.IGNORE} keymode={Astal.Keymode.NONE}
     anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.BOTTOM | Astal.WindowAnchor.LEFT | Astal.WindowAnchor.RIGHT}
-    canTarget={false} focusable={false} resizable class="sysdef-wallpaper"
+    canTarget={false} focusable={false} resizable class="sysdef-wallpaper" visible={service.animated}
     onRealize={(self: Astal.Window) => self.get_surface()?.set_input_region(new Cairo.Region())}>{area}</window> as Astal.Window
   // Use GTK's presentation clock, not an idle-priority timeout which can be
   // starved by shell events. Unmapped/hidden widgets don't receive frame ticks.
