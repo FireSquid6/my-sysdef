@@ -14,6 +14,7 @@ Only the selected configuration files and individual skills are managed; private
 | `~/.pi/agent/themes/` | `pi/themes/` |
 | `~/.pi/agent/skills/herdr-orchestration/` | `pi/skills/herdr-orchestration/` |
 | `~/.pi/agent/skills/ags/` | `pi/skills/ags/` |
+| `~/.pi/agent/skills/<skill>/` | Each directory in `pi/skills/` (including the vendored Matt Pocock skills) |
 
 For another location, configure home-relative `personal.paths.pi`; Home Manager
 exports the corresponding absolute `PI_CODING_AGENT_DIR`. Evaluation does not
@@ -24,6 +25,19 @@ palette as Kitty and Neovim. Its definition lives in `themes/tokyonight-night.js
 
 Put user extensions in `extensions/`. Pi discovers them through the symlink;
 run `/reload` after adding extensions or editing configuration.
+
+## Vendored engineering skills
+
+The 11 skills from `pi-matt-pocock-skills` 0.2.0 are maintained directly in
+`pi/skills/`, including their supporting references. Attribution and license are
+preserved in `skills/MATT-POCOCK-NOTICE` and `skills/MATT-POCOCK-LICENSE`.
+The npm plugin is no longer loaded; its extension, agent runner and prompt
+chains are not vendored. The separate `pi-subagents` package remains configured.
+
+Home Manager automatically links each skill directory on every managed host;
+apply the configuration with `nix-update.sh` after pulling these changes, then
+run `/reload` in Pi. Grilling permits batches of up to 5 independent,
+non-conflicting questions, resolving dependencies before batching.
 
 ## Branch worktrees and context forks
 

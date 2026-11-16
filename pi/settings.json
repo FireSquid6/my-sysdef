@@ -6,11 +6,10 @@
   "defaultModel": "gpt-6.1-sol",
   "packages": [
     "npm:@tintinweb/pi-subagents",
-    "npm:pi-matt-pocock-skills",
     "npm:pi-context-view"
   ],
   "extensionChangelogVersions": {
     "{\"source\":\"npm:@tintinweb/pi-subagents\",\"scope\":\"user\"}": "0.23.2",
-    "{\"source\":\"npm:pi-matt-pocock-skills\",\"scope\":\"user\"}": "0.2.0"
+    "{\"source\":\"npm:pi-context-view\",\"scope\":\"user\"}": "0.8.4"
   }
 }
