@@ -156,16 +156,73 @@ server (enabled by default); no configuration changes are required.
 
 Ctrl+Alt+T opens the arcade menu in any layout (replacing the direct Tetris
 shortcut). Ctrl+Shift+T remains **new tab**. Choose Tetris, Minesweeper,
-Solitaire, 2048, or Breakout with a click, 1–5, or j/k / arrow keys followed by
-Enter. Escape closes the menu. Each game has an Arcade button to return to the
+Solitaire, 2048, Breakout, or **Solitaire Collection** with a click, 1–6, or j/k /
+arrow keys followed by Enter. Escape closes the menu. Each game has an Arcade button to return to the
 chooser, and saves its progress when closed.
 
 The entire arcade has a fixed, independent retro palette rather than inheriting
 the TTY theme: a block-pixel marquee and game sprites, beveled Tetris blocks,
 raised mine tiles and pixel flags/mines, and pixel-suit playing cards with
 patterned backs, numbered 2048 tiles, and colorful Breakout bricks. Theme changes
-to the workspace do not recolor these games. All five choices fit the original
+to the workspace do not recolor these games. All six entries fit the original
 480×340 launcher; games are modal overlays, never permanent sidebar panels.
+
+### Solitaire Collection
+
+Entry **6** opens a separate eight-game chooser (click, 1–8, or j/k + Enter):
+
+1. Shenzhen Solitaire — three suits, dragons, flower and foundations.
+2. Sigmar's Garden — free hex-marble pairs and ordered metal collection.
+3. Proletariat's Patience — distinct worker and royalty builds.
+4. Kabufuda Solitaire — matching groups, permanent seals and upper-cell unlocks.
+5. Cluj Solitaire — descending runs, explicitly labeled cheating and recovery.
+6. Cribbage Solitaire — four-column pegging, forced count resets and suffix scoring.
+7. Sawayama Solitaire — persistent draw-three waste, no recycle and a late reserve.
+8. Fortune's Foundation — tarot builds, two major fronts and a shared parked slot.
+
+Cards use original block-pixel suits, dragons, tarot and alchemy glyphs on the
+same cream/navy/cyan arcade palette. Sigmar uses explicit axial board coordinates;
+card games show reserves/foundations above the tableau. Scroll the board when a
+large layout extends beyond its viewport. Pile headers show counts; auxiliary
+piles display only their exposed card. No publisher art, music or logos are used.
+
+Click a source card, then a green-highlighted destination. Ambiguous moves and
+special actions (collect dragons, cheat, draw stock, remove gold) are explicit in
+the **Legal moves** list. Clicking a source again or pressing Backspace clears
+selection. The legal-move list is also a complete keyboard interface: j/k or
+Up/Down selects, Enter/Space executes. A listed move is legal, not a promise it
+preserves solvability. Both selection orders work for Sigmar pairs.
+
+- **u / y:** undo / redo the entire player action including automatic effects.
+  Fortune instead uses the documented single-use previous-action mirror:
+  no second consecutive undo and no redo. A new accepted action refreshes it.
+- **r, then y/n:** restart the exact original deal / cancel.
+- **n, then y/n:** discard progress for a new seed / cancel.
+- **d** or Kabufuda's difficulty button cycles Easy → Normal → Hard → Expert; confirm
+  before replacing the deal. New Deal preserves the current difficulty.
+- **b:** save and return to the collection chooser.
+- **? / F1:** game instructions and explicitly named fidelity policies.
+- **Escape:** cancel a pending confirmation, otherwise save and close.
+- **Ctrl+Alt+H:** centralized controls help without ending the deal.
+
+Each game saves independently under `zachtronics.<game>`. Saves include the actual
+initial board, engine policies, ordered commands, current state and undo cursor;
+restore validates inventory and replays commands, rather than reshuffling from a
+seed. Invalid/incompatible saves are rejected visibly. Changes save immediately,
+as well as through the normal close hook; cursor/selection is not rule state.
+
+These are functional reconstructions of the supplied design specs, not commercial
+seed/RNG or UI parity. Most games use unfiltered shuffled deals and do **not**
+promise solvability. Sigmar alone accepts generated boards with a complete legal
+solution witness; bounded generation failure is surfaced rather than returning
+an uncertified board. Named defaults cover the source documents' unresolved
+policies; optional variants are not all exposed by the UI. Cribbage consumes the
+whole deck (61+ wins); no invented hands or rounds. Fortune defaults to automatic
+fixed-point collection, tableau-only reserve exit and single-card moves. See
+[design documents](../docs/zachtronics-solitaire/README.md) for evidence and limits.
+
+Checks: `node --test herdr/tests/zach-*.test.mjs` (from repository root), plus
+`herdr-app check "$PWD/herdr/mods/tty-zachtronics"`.
 
 ### Tetris
 

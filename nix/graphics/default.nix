@@ -49,9 +49,14 @@ let
       "${graphics.nixVulkanIntel}/bin/nixVulkanIntel"
     else
       "${unconfigured}";
+  # nixGL supplies the driver, but not NVIDIA's external EGL platform bridge.
+  # Without this registry, EGL does not advertise Wayland support to clients
+  # such as Alacritty/glutin, even with a working Wayland display and driver.
+  eglPlatformDirectory = "${pkgs.egl-wayland}/share/egl/egl_external_platform.d";
   environment = pkgs.lib.optionalString nvidia ''
     export GBM_BACKENDS_PATH=${driver}/lib/gbm
     export GBM_BACKEND=nvidia-drm
+    export __EGL_EXTERNAL_PLATFORM_CONFIG_DIRS=${eglPlatformDirectory}
   '';
   check =
     if !configured then
@@ -92,7 +97,7 @@ let
           rm "$executable"
           makeWrapper ${gl} "$executable" \
             --add-flags ${vulkan} --add-flags "$original" \
-            ${pkgs.lib.optionalString nvidia "--set GBM_BACKENDS_PATH ${driver}/lib/gbm --set GBM_BACKEND nvidia-drm"}
+            ${pkgs.lib.optionalString nvidia "--set GBM_BACKENDS_PATH ${driver}/lib/gbm --set GBM_BACKEND nvidia-drm --set __EGL_EXTERNAL_PLATFORM_CONFIG_DIRS ${eglPlatformDirectory}"}
         done
         if [[ -d "$out/share/applications" ]]; then
           for entry in "$out"/share/applications/*.desktop; do

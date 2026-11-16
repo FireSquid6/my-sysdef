@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Update this workstation's shared Nix desktop, applications and user tools.
 # Optional build flags: ./nix-update.sh --max-jobs 2 --cores 20
+# Apply local fixes using existing pinned inputs: ./nix-update.sh --no-refresh
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 export PATH="$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
@@ -11,7 +12,11 @@ case "$(hostname -s)" in
   *) echo "No workstation profile for $(hostname -s); review nix/hosts.nix." >&2; exit 1 ;;
 esac
 
-nix flake update
+if [[ ${1:-} == --no-refresh ]]; then
+  shift
+else
+  nix flake update
+fi
 nix build --no-link "$@" ".#$profile"
 nix profile upgrade "$@" "$profile"
 

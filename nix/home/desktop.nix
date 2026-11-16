@@ -12,7 +12,7 @@
       package = pkgs.tokyonight-gtk-theme;
     };
     iconTheme = {
-      name = "Qogir-dark";
+      name = "Qogir-Dark";
       package = pkgs.qogir-icon-theme;
     };
     font = {
@@ -21,9 +21,18 @@
     };
     gtk4.theme = config.gtk.theme;
     gtk3.extraConfig = {
+      gtk-application-prefer-dark-theme = true;
       gtk-enable-event-sounds = false;
       gtk-enable-input-feedback-sounds = false;
     };
+  };
+  # GTK portal consumers (and libadwaita's dark-mode preference) read dconf,
+  # not just settings.ini. Keep this aligned with apply-desktop-theme.ts.
+  dconf.settings."org/gnome/desktop/interface" = {
+    gtk-theme = "Tokyonight-Dark";
+    icon-theme = "Qogir-Dark";
+    font-name = "Noto Sans 10";
+    color-scheme = "prefer-dark";
   };
   home = {
     pointerCursor = {
@@ -50,10 +59,15 @@
       setSessionVariables = true;
     };
     configFile = {
+      "qt5ct/qt5ct.conf".text = ''
+        [Appearance]
+        style=kvantum
+        icon_theme=Qogir-Dark
+      '';
       "qt6ct/qt6ct.conf".text = ''
         [Appearance]
         style=kvantum
-        icon_theme=Qogir-dark
+        icon_theme=Qogir-Dark
       '';
       "Kvantum/kvantum.kvconfig".text = ''
         [General]

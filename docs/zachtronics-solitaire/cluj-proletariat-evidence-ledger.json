@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": 1,
+      "url": "https://zachtronics.com/solitaire-rules",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 2,
+      "url": "https://zachtronics.com/solitaire-rules/images/lightning_0.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 3,
+      "url": "https://zachtronics.com/solitaire-rules/images/lightning_1.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 4,
+      "url": "https://zachtronics.com/solitaire-rules/images/lightning_2.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 5,
+      "url": "https://zachtronics.com/solitaire-rules/images/lightning_4.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 6,
+      "url": "https://zachtronics.com/solitaire-rules/images/burbank_0.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 7,
+      "url": "https://zachtronics.com/solitaire-rules/images/burbank_1.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 8,
+      "url": "https://zachtronics.com/solitaire-rules/images/burbank_2.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 9,
+      "url": "https://zachtronics.com/solitaire-rules/images/burbank_3.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 10,
+      "url": "https://zachtronics.com/solitaire-rules/images/vegas_0.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 11,
+      "url": "https://zachtronics.com/solitaire-rules/images/vegas_1.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 12,
+      "url": "https://zachtronics.com/solitaire-rules/images/vegas_2.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 13,
+      "url": "https://zachtronics.com/solitaire-rules/images/vegas_3.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 14,
+      "url": "https://zachtronics.com/solitaire-rules/images/vegas_logo.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 15,
+      "url": "https://zachtronics.com/solitaire-rules/images/burbank_logo.png",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 16,
+      "url": "https://github.com/Starwort/NEA",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 17,
+      "url": "https://steamcommunity.com/app/1988540/discussions/0/3385042609881177894",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 18,
+      "url": "https://raw.githubusercontent.com/aaronrudkin/exapunks_solitaire_bot/master/exa_logic.py",
+      "title": "",
+      "accessed": "2026-11-12"
+    },
+    {
+      "id": 19,
+      "url": "https://raw.githubusercontent.com/Hegemege/molek-syntez-solitaire-bot/master/game_state.py",
+      "title": "",
+      "accessed": "2026-11-12"
+    }
+  ]
+}

@@ -26,6 +26,7 @@ const GAMES = [
   { name: "SOLITAIRE", sprite: "cards", mod: "tty-solitaire", detail: "DRAW ONE / BUILD FOUR FOUNDATIONS", width: 900, height: 720 },
   { name: "2048", sprite: "merge", mod: "tty-2048", detail: "SLIDE TILES / MAKE THE MAGIC NUMBER", width: 480, height: 580 },
   { name: "BREAKOUT", sprite: "paddle", mod: "tty-breakout", detail: "BOUNCE THE BALL / BREAK EVERY BRICK", width: 620, height: 600 },
+  { name: "SOLITAIRE COLLECTION", sprite: "cards", mod: "tty-zachtronics", detail: "EIGHT GAMES / ZACHTRONICS RULES", width: 1040, height: 760 },
 ];
 
 function pixels(rows, scale, colors = INK) {
@@ -77,7 +78,7 @@ export default class Arcade extends View {
           .child(div().id("arcade-close").cursor_pointer().px(6).py(4).bg(t.chrome).border_2().border_color(t.border).hover(s => s.bg(t.hover))
             .on_click(() => this.dismiss()).child("Close")))
         .child(div().text_color(INK.p).text_size(11).child("* SELECT YOUR GAME *   NO COINS REQUIRED"))
-        .children(GAMES.map((game, index) => h_flex().id(`arcade-${game.mod}`).h(42).flex_none().px(8).gap(12).items_center().cursor_pointer()
+        .children(GAMES.map((game, index) => h_flex().id(`arcade-${game.mod}`).h(35).flex_none().px(8).gap(12).items_center().cursor_pointer()
           .border_2().border_color(index === this.selected ? INK.y : t.border)
           .bg(index === this.selected ? t.selected : t.chrome).hover(s => s.bg(t.hover))
           .on_click(() => this.launch(index))
