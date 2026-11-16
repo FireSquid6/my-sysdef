@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
 import { WorktreeRepository, shellQuote, type Plan, type Ref } from "./worktree-model";
 
@@ -13,7 +13,26 @@ export interface WorktreeUI {
 }
 const shortRef = (ref: Ref) => ref.kind === "origin" ? `origin/${ref.name}` : ref.kind === "head" ? "Current HEAD" : ref.name;
 
-export async function chooseWorktree(repo: WorktreeRepository, ui: WorktreeUI) {
+export interface Issue { number: number; title: string; url: string }
+export function issueBranchName(issue: Issue): string {
+  const slug = issue.title.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").slice(0, 70).replace(/^-+|-+$/g, "");
+  return `issue/${issue.number}${slug ? `-${slug}` : ""}`;
+}
+export function listIssues(cwd: string): Issue[] {
+  if (!Bun.which("gh")) throw new Error("Required tool missing: gh. Add GitHub CLI to the project's Nix flake/dev shell before using New branch from issue.");
+  const output = execFileSync("gh", ["issue", "list", "--state", "open", "--limit", "100", "--json", "number,title,url"], {
+    cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+  });
+  const issues: unknown = JSON.parse(output);
+  if (!Array.isArray(issues) || !issues.every(issue => Number.isSafeInteger(issue.number) && issue.number > 0 && typeof issue.title === "string" && typeof issue.url === "string")) {
+    throw new Error("GitHub CLI returned an invalid issue list.");
+  }
+  return issues;
+}
+const oneLine = (text: string) => text.replace(/[\u0000-\u001f\u007f-\u009f]/g, " ");
+
+export async function chooseWorktree(repo: WorktreeRepository, ui: WorktreeUI, loadIssues: (cwd: string) => Issue[] = listIssues) {
   ui.info(`Repository: ${JSON.stringify(repo.root)}\nPrimary checkout: ${JSON.stringify(repo.primary)}`);
   if (repo.dirty()) ui.info("Warning: this checkout has uncommitted changes. They will remain untouched and will NOT be transferred to a new worktree.");
   ui.info("Fetching origin…");
@@ -25,15 +44,26 @@ export async function chooseWorktree(repo: WorktreeRepository, ui: WorktreeUI) {
   const branches = repo.branches();
   const trees = repo.worktrees();
   const branch = await ui.pick("Branch", [
-    { label: "Create a new branch…", value: null as Ref | null },
-    ...branches.map(ref => ({ value: ref as Ref | null, label: `${shortRef(ref)}  [${ref.kind === "origin" ? "origin only → tracking local branch" : "local"}]${trees.some(tree => tree.branch === ref.name) ? "  · existing worktree" : ""}` })),
+    { label: "Create a new branch…", value: null as Ref | null | "issue" },
+    { label: "New branch from issue…", value: "issue" as const },
+    ...branches.map(ref => ({ value: ref as Ref | null | "issue", label: `${shortRef(ref)}  [${ref.kind === "origin" ? "origin only → tracking local branch" : "local"}]${trees.some(tree => tree.branch === ref.name) ? "  · existing worktree" : ""}` })),
   ]);
   let plan: Plan;
-  if (branch) plan = repo.planExisting(branch.name);
+  if (branch && branch !== "issue") plan = repo.planExisting(branch.name);
   else {
+    let suggested: string | undefined;
+    if (branch === "issue") {
+      ui.info("Loading open GitHub issues (up to 100; type to search)…");
+      const issues = loadIssues(repo.root);
+      if (!issues.length) throw new Error("No open GitHub issues found. No worktree was created.");
+      if (issues.length === 100) ui.info("Showing at most 100 open issues; older issues may not be included.");
+      const issue = await ui.pick("Issue", issues.map(issue => ({ value: issue, label: `#${issue.number}  ${oneLine(issue.title)}` })));
+      suggested = issueBranchName(issue);
+      ui.info(`Selected issue: #${issue.number} ${oneLine(issue.title)}\n${oneLine(issue.url)}`);
+    }
     let name: string;
     while (true) {
-      name = (await ui.input("New branch name: ")).trim();
+      name = (await ui.input(suggested ? `New branch name [${suggested}]: ` : "New branch name: ")).trim() || suggested || "";
       try {
         repo.validateBranch(name);
         if (repo.refs().some(ref => ref.name === name)) throw new Error("That branch exists already. Cancel and select it from the branch list, or enter another name.");

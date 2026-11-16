@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { WorktreeRepository, shellQuote } from "../scripts/worktree-model";
-import { Cancelled, chooseWorktree, PICKER_OPTIONS, type Choice, type WorktreeUI } from "../scripts/worktree";
+import { Cancelled, chooseWorktree, issueBranchName, PICKER_OPTIONS, type Choice, type WorktreeUI } from "../scripts/worktree";
 
 let dir: string, repo: string, home: string, remote: string;
 function git(cwd: string, ...args: string[]) {
@@ -210,6 +210,40 @@ describe("local worktree Git operations", () => {
 });
 
 describe("interactive worktree flow", () => {
+  test("creates a branch from an issue using the suggested name and selected base", async () => {
+    const prompts = ui({ select: ["New branch from issue", "#42", "origin/main"], inputs: [""], confirms: [true] });
+    const result = await chooseWorktree(model(), prompts.value, cwd => {
+      expect(cwd).toBe(repo);
+      return [{ number: 42, title: "Fix café login!", url: "https://github.com/example/repo/issues/42" }];
+    });
+    expect(git(result.folder, "branch", "--show-current")).toBe("issue/42-fix-cafe-login");
+    expect(git(result.folder, "rev-parse", "HEAD")).toBe(git(repo, "rev-parse", "origin/main"));
+    expect(prompts.questions).toEqual(["Create this worktree?"]);
+    expect(prompts.messages.join("\n")).toContain("https://github.com/example/repo/issues/42");
+  });
+  test("issue branch names can be overridden and still reject invalid or existing names", async () => {
+    const prompts = ui({ select: ["New branch from issue", "#7", "origin/main"], inputs: ["../bad", "main", "fix/custom"], confirms: [true] });
+    const result = await chooseWorktree(model(), prompts.value, () => [{ number: 7, title: "A\nB\tC\0D", url: "https://example.com/7" }]);
+    expect(git(result.folder, "branch", "--show-current")).toBe("fix/custom");
+    expect(prompts.selections[1]).toEqual(["#7  A B C D"]);
+    expect(prompts.messages.join("\n")).toContain("exists already");
+  });
+  test("empty lists, issue loading failures and issue picker cancellation create nothing", async () => {
+    const empty = ui({ select: ["New branch from issue"] });
+    await expect(chooseWorktree(model(), empty.value, () => [])).rejects.toThrow("No open GitHub issues");
+    const failed = ui({ select: ["New branch from issue"] });
+    await expect(chooseWorktree(model(), failed.value, () => { throw Error("gh authentication failed"); })).rejects.toThrow("gh authentication failed");
+    const cancelled = ui({ select: ["New branch from issue"] });
+    await expect(chooseWorktree(model(), cancelled.value, () => [{ number: 1, title: "Fix", url: "https://example.com/1" }])).rejects.toBeInstanceOf(Cancelled);
+    expect(fs.existsSync(home)).toBe(false);
+    expect(git(repo, "branch", "--format=%(refname:short)")).toBe("main");
+  });
+  test("suggested issue names are safe even for punctuation-only or very long titles", () => {
+    expect(issueBranchName({ number: 5, title: "../$() 😃", url: "" })).toBe("issue/5");
+    const name = issueBranchName({ number: 5, title: "A".repeat(200), url: "" });
+    expect(name).toHaveLength("issue/5-".length + 70);
+    model().validateBranch(name);
+  });
   test("the actual fzf options search visible labels and return the original choice ID", () => {
     for (const query of ["Create a new", "origin/main"]) {
       const result = spawnSync("fzf", [...PICKER_OPTIONS, `--filter=${query}`], { input: "0\tCreate a new branch…\0" + "1\torigin/main  [origin]\0", encoding: "utf8",

@@ -19,9 +19,13 @@ describe("background-only desktop translucency", () => {
     expect(spec).toContain("transparent = true")
     expect(spec).toContain('styles = { sidebars = "transparent", floats = "dark" }')
   })
-  test("Pi conversation and tool panels use terminal defaults, not fake alpha colors", () => {
+  test("Pi highlights user messages while agent and tool panels retain terminal defaults", () => {
     const theme = json("pi/themes/tokyonight-night.json")
-    for (const role of ["userMessageBg", "customMessageBg", "toolPendingBg", "toolSuccessBg", "toolErrorBg"]) expect(theme.colors[role]).toBe("")
+    expect(theme.colors.userMessageBg).toBe("selection")
+    expect(theme.vars[theme.colors.userMessageBg]).toBe("#283457")
+    expect(theme.colors.userMessageText).toBe("#e0e7ff")
+    expect(theme.colors.userMessageText).not.toBe(theme.colors.text)
+    for (const role of ["customMessageBg", "toolPendingBg", "toolSuccessBg", "toolErrorBg"]) expect(theme.colors[role]).toBe("")
     expect(theme.colors.selectedBg).toBe("selection")
     expect(theme.colors.searchMatchBg).toMatch(/^#[0-9a-f]{6}$/i)
     expect(theme.export).toEqual({ pageBg: "bg", cardBg: "bgDark", infoBg: "bgHighlight" })

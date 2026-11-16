@@ -9,6 +9,8 @@ worktree.ts
 The executable is `scripts/worktree.ts`, with a Bun shebang. With the sysdef
 scripts directory on PATH, no wrapper or `bun` prefix is needed. It requires
 **Bun, Git, fzf, and an interactive terminal**. It takes no arguments or flags.
+The **New branch from issue…** option additionally requires an authenticated
+GitHub CLI (`gh`), available through the project's Nix flake/dev shell.
 
 ## Flow
 
@@ -17,13 +19,19 @@ scripts directory on PATH, no wrapper or `bun` prefix is needed. It requires
    selected repository and its primary checkout. Outside Git, stop.
 2. Warn about dirty source files, but leave them untouched. Uncommitted changes
    are **not** copied into a newly created worktree.
-3. Fetch and prune origin's remote-tracking branches. This is the only network
-   operation; no remote machine, Pi, or Herdr commands are used. If origin is
+3. Fetch and prune origin's remote-tracking branches. Issue selection also queries
+   GitHub; no remote machine, Pi, or Herdr commands are used. If origin is
    missing or fetching fails, explain and ask whether to continue with available
    local/cached refs. The default answer is No.
 4. Search/select an existing local or origin branch, or choose **Create a new
    branch…** and enter its name. Where local and origin names coincide, select
    the local branch as-is; it is never reset to the origin version.
+   Alternatively, choose **New branch from issue…**, then search/select an open
+   GitHub issue. The list uses `gh`'s repository resolution from the selected
+   checkout and includes up to 100 open issues (not PRs). It does not modify the
+   issue. Accept the suggested `issue/<number>-<title-slug>` branch name with
+   Enter, or type a different name. Empty lists or GitHub CLI errors stop without
+   creating a branch/worktree; existing branch names are rejected, not overwritten.
 5. For a new branch, select its starting point. After a successful fetch, propose
    `origin/main`. Otherwise use cached `origin/HEAD`, then an unambiguous local
    `main` or `master` as a fallback proposal. If uncertain, say so and ask the user
