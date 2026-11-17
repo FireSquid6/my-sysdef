@@ -111,11 +111,11 @@
     "herdr-app": {
       "flake": false,
       "locked": {
-        "lastModified": 1794636473,
-        "narHash": "sha256-C65PIOFxmnpHoQ/Lh2v1nHlvcUzbeTrgLq7KnXDsIPk=",
+        "lastModified": 1794863450,
+        "narHash": "sha256-3m3uOXQahrUia4z5K7HJnhvgeVx4XDa+MWTTi5cxgTk=",
         "ref": "refs/heads/master",
-        "rev": "ec7b4e1c2c55528ab8b303c964b6dc0db45fb12c",
-        "revCount": 357,
+        "rev": "23bb6af9c5a3a8afba71129c58fab61a232cfa95",
+        "revCount": 367,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/firesquid6/herdr-app"
@@ -195,11 +195,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794715309,
-        "narHash": "sha256-awkBBs5ctFKgEYjpNGpi3t/VqF589n5EWfdinRb2gNI=",
+        "lastModified": 1794953782,
+        "narHash": "sha256-sTnTYa/VMHpUWVYb+GNY2xvlUkLpXzTJ8WCT3AAQ+hI=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "a1293da7dd8e497e08d26173f97e2976b36a31ea",
+        "rev": "4246683484a7b4ced0a0d880974b67137f092289",
         "type": "github"
       },
       "original": {
