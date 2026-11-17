@@ -13,7 +13,7 @@ function render(hour: number, file: string, environment: Partial<LandscapeEnviro
   drawLandscape((x, y, w, h, color, alpha = 1) => {
     cr.setSourceRGBA(color[0] / 255, color[1] / 255, color[2] / 255, alpha)
     cr.rectangle(x, y, w, h); cr.fill()
-  }, 480, date, seconds, { flow: 42, ...resources }, { ...resolveEnvironment(date), ...environment }, crops)
+  }, 480, date, seconds, { flow: 42, ...resources }, { ...resolveEnvironment(date), ...environment }, crops, { "minibox-one": true, deisslaptop: true, desktop: true })
   surface.writeToPNG(file)
   cr.$dispose()
   console.log(`Rendered ${file}`)

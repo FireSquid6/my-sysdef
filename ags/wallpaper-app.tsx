@@ -47,7 +47,7 @@ app.start({ instanceName: `${instance}-wallpaper`, requestHandler(argv, respond)
       drawLandscape((x, y, w, h, color, alpha = 1) => {
         canvas.setSourceRGBA(color[0] / 255, color[1] / 255, color[2] / 255, alpha)
         canvas.rectangle(x, y, w, h); canvas.fill()
-      }, width, scene.date, now, motion, scene.environment, scene.crops)
+      }, width, scene.date, now, motion, scene.environment, scene.crops, current.cities)
       if (GLib.mkdir_with_parents(dir, 0o700) !== 0) throw Error("Cannot create wallpaper runtime")
       // The image is RGB24 (opaque). Publish complete PNGs by atomic rename on
       // runtime tmpfs; Hyprlock never observes a partially encoded frame.
@@ -59,7 +59,7 @@ app.start({ instanceName: `${instance}-wallpaper`, requestHandler(argv, respond)
   }
   const windows = <For each={monitors}>{monitor => <This this={app}><Wallpaper monitor={monitor}
     service={{ animated: frame(value => !headless && (value?.animated ?? false)) }} resources={() => frame()?.resources ?? { cpu: 0 }}
-    weather={() => frame()?.weather ?? null} crops={() => frame()!.crops} controls={() => frame()!.controls}
+    cities={() => frame()!.cities} weather={() => frame()?.weather ?? null} crops={() => frame()!.crops} controls={() => frame()!.controls}
     onFrame={(_surface, milliseconds) => { rendered++; paintTotal += milliseconds; paintMax = Math.max(paintMax, milliseconds) }} /></This>}</For>
   void windows
   function cleanup() {

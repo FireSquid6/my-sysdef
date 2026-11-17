@@ -15,7 +15,7 @@ const pause = () => new Promise<void>(resolve => GLib.timeout_add(GLib.PRIORITY_
 const repository = GLib.getenv("SYSDEF_ROOT_DIR")!
 let failed = false
 createRoot(dispose => {
-  let packet: WallpaperFrame = { version: 1, animated: false, resources: { cpu: 0 }, crops: advanceCrops(null, new Date()), controls: DEFAULT_LANDSCAPE, weather: null }
+  let packet: WallpaperFrame = { version: 1, animated: false, cities: { "minibox-one": true, deisslaptop: false, desktop: true }, resources: { cpu: 0 }, crops: advanceCrops(null, new Date()), controls: DEFAULT_LANDSCAPE, weather: null }
   const disabled = createWallpaperRenderer(repository, () => packet, false)
   let attempts = 0, canceledAttempts = 0
   const renderer = createWallpaperRenderer(repository, () => packet, true, () => {

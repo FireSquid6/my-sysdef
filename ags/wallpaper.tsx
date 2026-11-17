@@ -8,6 +8,7 @@ import Graphene from "gi://Graphene?version=1.0"
 import Gsk from "gi://Gsk?version=4.0"
 import { nextFrameDeadline } from "./wallpaper-timing"
 import { drawLandscape } from "./wallpaper-scene"
+import type { CityActivity } from "./wallpaper-cities"
 import type { WallpaperService } from "./services/wallpaper"
 import { advanceMotion, type LandscapeMotion, type Resources } from "./wallpaper-resources"
 import { resolveEnvironment, type WeatherObservation } from "./wallpaper-weather"
@@ -26,7 +27,8 @@ const PixelCanvas = GObject.registerClass(class SysdefPixelWallpaper extends Gtk
   }
 })
 
-export function Wallpaper({ monitor, service, resources = () => ({ cpu: 0 }), weather = () => null, crops, controls, onFrame }: {
+export function Wallpaper({ monitor, service, cities, resources = () => ({ cpu: 0 }), weather = () => null, crops, controls, onFrame }: {
+  cities?: () => CityActivity
   monitor: Gdk.Monitor; service: Pick<WallpaperService, "animated">; resources?: () => Resources; weather?: () => WeatherObservation | null; crops?: () => CropState; controls?: () => LandscapeSettings; onFrame?: (surface: Cairo.ImageSurface, milliseconds: number) => void
 }) {
   let motion: LandscapeMotion = { cpu: 0, flow: 0 }
@@ -51,7 +53,7 @@ export function Wallpaper({ monitor, service, resources = () => ({ cpu: 0 }), we
     drawLandscape((x, y, w, h, color, alpha = 1) => {
       canvas.setSourceRGBA(color[0] / 255, color[1] / 255, color[2] / 255, alpha)
       canvas.rectangle(x, y, w, h); canvas.fill()
-    }, logicalWidth, scene.date, GLib.get_monotonic_time() / 1_000_000, motion, scene.environment, scene.crops)
+    }, logicalWidth, scene.date, GLib.get_monotonic_time() / 1_000_000, motion, scene.environment, scene.crops, cities?.())
     const pixels = Gdk.pixbuf_get_from_surface(buffer, 0, 0, logicalWidth, 270)
     if (!pixels) throw Error("Could not create wallpaper texture")
     const texture = Gdk.Texture.new_for_pixbuf(pixels)

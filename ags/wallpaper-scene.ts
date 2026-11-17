@@ -1,4 +1,5 @@
 /** Pure, deterministic pixel scene. All colors derive from Tokyo Night's palette. */
+import { INACTIVE_CITIES, type CityActivity } from "./wallpaper-cities"
 import { resourceLevel, type LandscapeMotion } from "./wallpaper-resources"
 import { advanceCrops, type CropState } from "./wallpaper-crops"
 import { resolveEnvironment, type LandscapeEnvironment } from "./wallpaper-weather"
@@ -165,7 +166,8 @@ export function precipitationPhase(index: number, seconds: number, snow: boolean
 export function drawLandscape(paint: Paint, width: number, date: Date, seconds: number,
   activity: Pick<LandscapeMotion, "flow" | "ram" | "disk" | "ramCrates"> = { flow: seconds * 0.35 },
   environment: LandscapeEnvironment = resolveEnvironment(date),
-  crops: CropState = advanceCrops(null, date, environment.latitude)) {
+  crops: CropState = advanceCrops(null, date, environment.latitude),
+  cities: CityActivity = INACTIVE_CITIES) {
   const flow = Number.isFinite(activity.flow) ? activity.flow : 0
   const { daylight: day, dusk, night } = lighting(date, environment)
   const { season, weather, cloud, precip, wind, moonPhase, moonIllumination } = environment
@@ -265,16 +267,42 @@ export function drawLandscape(paint: Paint, width: number, date: Date, seconds: 
     }
   }
   // Wider, closer peaks on a lower horizon leave substantially more open sky.
-  for (let layer = 0; layer < 3; layer++) for (let x = 0; x < width; x++) {
-    const u = x / width
-    const wave = u * (4.3 + layer * 1.4) + layer * 1.7
-    const triangle = (v: number) => Math.abs(Math.asin(Math.sin(v))) * 2 / Math.PI
-    const ridge = triangle(wave) * (34 - layer * 5) + triangle(u * 18 + layer) * 7
-    const y = Math.floor(114 + layer * 12 + ridge)
-    const face = Math.sin(wave) * Math.cos(wave) > 0 ? 0.14 : 0
-    paint(x, y, 1, 179 - y, shade(mix(layer === 0 ? TOKYO.purple : layer === 1 ? TOKYO.blue : TOKYO.teal, TOKYO.storm, face), 0.95 - layer * 0.12))
-    const cap = snowy ? 21 : season === "summer" ? 6 : 12
-    if (layer === 0 && ridge < cap) paint(x, y, 1, Math.floor((cap - ridge) * 0.55) + 1, shade(TOKYO.white))
+  const triangle = (v: number) => Math.abs(Math.asin(Math.sin(v))) * 2 / Math.PI
+  const ridgeAt = (x: number, layer: number) => triangle(x / width * (4.3 + layer * 1.4) + layer * 1.7) * (34 - layer * 5) + triangle(x / width * 18 + layer) * 7
+  for (let layer = 0; layer < 3; layer++) {
+    for (let x = 0; x < width; x++) {
+      const wave = x / width * (4.3 + layer * 1.4) + layer * 1.7
+      const ridge = ridgeAt(x, layer)
+      const y = Math.floor(114 + layer * 12 + ridge)
+      const face = Math.sin(wave) * Math.cos(wave) > 0 ? 0.14 : 0
+      paint(x, y, 1, 179 - y, shade(mix(layer === 0 ? TOKYO.purple : layer === 1 ? TOKYO.blue : TOKYO.teal, TOKYO.storm, face), 0.95 - layer * 0.12))
+      const cap = snowy ? 21 : season === "summer" ? 6 : 12
+      if (layer === 0 && ridge < cap) paint(x, y, 1, Math.floor((cap - ridge) * 0.55) + 1, shade(TOKYO.white))
+    }
+    // Draw on the supporting ridge before nearer terrain occludes the city feet.
+    for (const city of [
+      { machine: "minibox-one", u: 0.25, layer: 1 },
+      { machine: "deisslaptop", u: 0.84, layer: 1 },
+      { machine: "desktop", u: 0.44, layer: 2 },
+    ] as const) {
+      if (city.layer !== layer) continue
+      const active = cities[city.machine]
+      const masonry = mix(shade(TOKYO.storm, 0.8), shade(TOKYO.blue, 0.83), active ? 0.55 : 0.2)
+      const step = Math.max(2, Math.min(4, Math.floor(width / 80)))
+      for (let i = 0; i < 13; i++) {
+        const x = Math.floor(width * city.u) + (i - 6) * step
+        const w = Math.min(step, 2 + i % 3)
+        const base = Math.floor(114 + layer * 12 + Math.max(ridgeAt(x, layer), ridgeAt(x + w - 1, layer))) + 1
+        const height = 4 + Math.floor(hash(i + 7100) * 6) + (i === 6 ? 5 : 0)
+        paint(x, base - height, w, height, masonry)
+        paint(x, base - height, w, 1, shade(snowy ? TOKYO.white : TOKYO.blue, 0.9))
+        if (i === 6) paint(x + 1, base - height - 3, 1, 3, masonry)
+        for (let row = 2; row < height - 1; row += 3) for (let col = 1; col < w; col += 2) {
+          if (hash(i * 17 + row + col + 7200) > 0.3)
+            paint(x + col, base - height + row, 1, 1, TOKYO.gold, active ? night * (0.55 - cloud * 0.15) : 0)
+        }
+      }
+    }
   }
   for (let y = 174; y < 270; y++) {
     const depth = (y - 157) / 113
