@@ -4,6 +4,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     hermes.url = "github:firesquid6/hermes-agent";
+    nanosync = {
+      url = "github:firesquid6/nanosync";
+      inputs.nixpkgs.follows = "nixpkgs-desktop";
+    };
     herdr-app = {
       url = "git+https://github.com/firesquid6/herdr-app?submodules=1";
       flake = false;
@@ -43,6 +47,7 @@
       ags,
       home-manager,
       hermes,
+      nanosync,
       herdr-app,
       herdr-core,
       nixgl,
@@ -56,7 +61,7 @@
       forAllSystems = lib.genAttrs systems;
       hosts = import ./nix/hosts.nix;
       workstations = lib.filterAttrs (_: spec: spec.workstation or false) hosts;
-      packageSources = { inherit hermes herdr-app herdr-core; };
+      packageSources = { inherit hermes nanosync herdr-app herdr-core; };
       pkgsFor =
         system:
         import nixpkgs {
@@ -109,6 +114,9 @@
             {
               home = { inherit (spec) username homeDirectory; };
               personal.checkout = spec.checkout;
+              home.packages = lib.optionals (spec.system == "x86_64-linux") [
+                nanosync.packages.${spec.system}.default
+              ];
             }
           ];
         };
@@ -205,6 +213,18 @@
               '';
         }
         // lib.optionalAttrs (system == "x86_64-linux") {
+          nanosync =
+            let
+              package = self.packages.${system}.nanosync;
+            in
+            assert lib.all (bundle: builtins.elem "nanosync" bundle.managedPackages)
+              (builtins.attrValues workstationBundles);
+            assert builtins.elem (toString package)
+              (map toString homes."firesquid@minibox-one".config.home.packages);
+            (pkgsFor system).runCommand "nanosync-smoke" { } ''
+              ${package}/bin/nanosync --help > "$out"
+              grep -q 'Usage: nanosync' "$out"
+            '';
           desktop-contract = import ./nix/tests/desktop-contract.nix {
             pkgs = desktopPkgsFor system;
             inherit packageSources;

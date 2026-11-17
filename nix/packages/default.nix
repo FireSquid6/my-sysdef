@@ -11,7 +11,9 @@ in
   inherit (hermes.upstream) inputs;
 })
 // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 (
-  import ./desktop-apps { inherit pkgs; }
+  (import ./desktop-apps { inherit pkgs; }) // {
+    nanosync = packageSources.nanosync.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  }
 )
 // (import ./herdr { inherit pkgs packageSources; })
 // {

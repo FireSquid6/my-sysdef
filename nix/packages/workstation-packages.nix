@@ -56,6 +56,7 @@ let
     uv
     git
     gh
+    personalPackages.nanosync
     pi-coding-agent
     claude-code
     opencode
