@@ -2,12 +2,19 @@ import { expect, test } from "bun:test"
 import { parseWallpaperFrame, wallpaperRuntime, type WallpaperFrame } from "../ags/wallpaper-protocol"
 import { advanceCrops } from "../ags/wallpaper-crops"
 import { DEFAULT_LANDSCAPE } from "../ags/landscape-controls-model"
-const snapshot: WallpaperFrame = { version: 1, animated: true, resources: { cpu: 0.4 }, crops: advanceCrops(null, new Date(2026, 6, 15)), controls: DEFAULT_LANDSCAPE, weather: null }
+const snapshot: WallpaperFrame = { version: 1, animated: true, cities: { "minibox-one": true, deisslaptop: false, desktop: true }, resources: { cpu: 0.4 }, crops: advanceCrops(null, new Date(2026, 6, 15)), controls: DEFAULT_LANDSCAPE, weather: null }
 test("isolated renderer receives scene state without owning mutable preferences", () => {
   expect(parseWallpaperFrame(JSON.stringify(snapshot))).toEqual(snapshot)
   expect(parseWallpaperFrame(JSON.stringify({ ...snapshot, resources: { cpu: 4 } })).resources.cpu).toBe(1)
   for (const value of [null, {}, { ...snapshot, version: 2 }, { ...snapshot, animated: "yes" }, { ...snapshot, resources: { cpu: null } }, { ...snapshot, crops: {} }, { ...snapshot, controls: {} }, { ...snapshot, weather: {} }]) expect(() => parseWallpaperFrame(JSON.stringify(value))).toThrow()
   expect(() => parseWallpaperFrame(" ".repeat(65537))).toThrow()
+})
+test("city snapshots allow only boolean activity and default older frames to inactive", () => {
+  const cities = { "minibox-one": false, deisslaptop: false, desktop: false }
+  expect(parseWallpaperFrame(JSON.stringify({ ...snapshot, cities: undefined })).cities).toEqual(cities)
+  for (const value of [null, {}, { ...cities, desktop: "online" }, { ...cities, deisslaptop: 1 }]) {
+    expect(() => parseWallpaperFrame(JSON.stringify({ ...snapshot, cities: value }))).toThrow()
+  }
 })
 test("resource snapshots preserve RAM and disk, clamp fractions and reject malformed readings", () => {
   const frame = (resources: unknown) => parseWallpaperFrame(JSON.stringify({ ...snapshot, resources }))

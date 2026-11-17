@@ -74,6 +74,16 @@ trees leave these routes clear, and soil grain stays fixed during animation. Aft
 warm light, and emits wind-drifting smoke and embers; it fades before sunrise.
 All colors are blended from the Tokyo Night palette, including daytime lighting.
 
+Three distant cities represent tailnet machines: **minibox-one** on the left blue
+ridge, **deisslaptop** on the right blue ridge, and **desktop** (kotoko) on the
+center green hill. Active cities have brighter walls and warm windows at night;
+inactive cities remain dark. The current machine is always active. The shell
+checks other machines with bounded Tailscale pings (relay connections count),
+refreshing about every 30 seconds without overlapping probes. Failed probes mark
+remote cities inactive; no raw tailnet status enters renderer snapshots. The same
+city activity is used in the lockscreen image. `ags request -i sysdef status`
+includes the three activity flags under `cities`.
+
 The selection is saved in `$XDG_STATE_HOME/sysdef/wallpaper` (normally
 `~/.local/state/sysdef/wallpaper`). **Hyprpaper** uses the existing
 `~/.config/hypr/hyprpaper.conf` unchanged. AGS owns renderer handoff; don't also
