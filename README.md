@@ -45,23 +45,25 @@ installation, profile upgrade, Home Manager activation or a graphical test.
 The retired TypeScript configuration engine and engine-only tests have been
 removed. Live dotfiles, backups and runtime state remain.
 
-## Workstation package updates (explicit mutation)
+## Host updates (explicit mutation)
 
 ```sh
-# On a reviewed, known workstation host only:
+# On a reviewed, known host only:
 ./nix-update.sh
 # Optional build parallelism:
 ./nix-update.sh --max-jobs 2 --cores 20
 ```
 
-The updater chooses one of the two known workstation names, updates the flake
-lock, builds that host's bundle, then upgrades its user-profile entry only after
-a successful build. Review and commit lock/recipe changes. This is an update
-procedure for an existing installed entry; it does not adopt another host's home.
+The updater updates the flake lock and builds before applying changes. On
+`kotoko` and `deisslaptop`, it upgrades the existing workstation user-profile
+entry. On `minibox-one`, it switches the full `firesquid@minibox-one` Home Manager
+configuration, including managed Pi skills. Use `--no-refresh` to keep pinned
+inputs. Review and commit lock/recipe changes; review the migration guide before
+first adopting a home's files.
 
-No OS activation, wholesale Home Manager activation, sudo, compositor/service
-restarts or garbage collection occurs. Running applications retain their old
-code. Never kill Herdr holders or log out active agents to complete migration.
+No OS activation, sudo, explicit compositor/service restarts or garbage collection
+occurs. Home Manager may reconcile managed services on minibox. Running applications
+retain their old code. Never kill Herdr holders or log out active agents to complete migration.
 The base system, drivers, PAM/Hyprlock, portals, Steam/FHS integration and
 privileged services remain native. Keep native fallbacks and private backups.
 The separate `start-nix-hyprland` launcher and **Hyprland (Nix)** login session

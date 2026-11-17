@@ -49,7 +49,26 @@ describe("Nix update script (mock Nix only)", () => {
       "profile upgrade --max-jobs 2 --cores 20 deisslaptop-apps",
     ]);
   });
-  test("does not guess a desktop profile on an unknown host", () => {
+  test("builds and switches the minibox Home Manager configuration", () => {
+    expect(update("", "minibox-one")).toEqual({ code: 0, calls: [
+      "flake update",
+      'build --no-link --max-jobs 2 --cores 20 .#homeConfigurations."firesquid@minibox-one".activationPackage',
+      "run --max-jobs 2 --cores 20 .#home-manager -- switch --flake .#firesquid@minibox-one --max-jobs 2 --cores 20",
+    ] });
+  });
+  test("minibox can switch without refreshing inputs", () => {
+    const result = update("", "minibox-one", false);
+    expect(result.code).toBe(0);
+    expect(result.calls).toHaveLength(2);
+    expect(result.calls[0]).toStartWith("build ");
+    expect(result.calls[1]).toStartWith("run ");
+  });
+  test("a failed minibox build never switches the configuration", () => {
+    const result = update("build", "minibox-one");
+    expect(result.code).toBe(7);
+    expect(result.calls).toHaveLength(2);
+  });
+  test("does not guess a profile on an unknown host", () => {
     expect(update("", "other-host")).toEqual({ code: 1, calls: [] });
   });
   test("an input-update failure prevents building or upgrading", () => {
