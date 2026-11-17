@@ -1,6 +1,6 @@
 # Desktop application packages
 
-`default.nix` exports five independent x86_64-linux packages. It does not enable
+`default.nix` exports six independent x86_64-linux packages. It does not enable
 a desktop environment, display manager, service, or autostart entry. The parent
 configuration decides which packages to install.
 
@@ -8,9 +8,14 @@ configuration decides which packages to install.
 | --- | --- | --- | --- |
 | `emdash-app` | generalaction/emdash | 0.4.16 | `emdash` |
 | `youtube-music-for-desktop` | Venipa/ytmdesktop2 | 0.17.13 | `youtube-music-for-desktop` |
+| `noteview` | FireSquid6/noteview | 2.1.1 | `noteview` |
 | `mdserve` | FireSquid6/noteview (renamed from mdserve) | 1.0.0 | `mdserve` |
 | `openchamber` | openchamber/openchamber, web release | 2.0.3 | `openchamber` |
 | `openchamber-desktop` | openchamber/openchamber, Electron release | 2.0.3 | `openchamber-desktop` |
+
+Noteview uses the upstream compiled Bun binary (the release asset is spelled
+`notesview`) and defaults Puppeteer to Nix Chromium for PDF export. The legacy
+`mdserve` package remains available separately.
 
 The web and desktop OpenChamber packages are separate products, not aliases.
 The web package uses Nix Node 24, builds node-pty against that runtime, and
@@ -28,10 +33,10 @@ nix-build --no-out-link nix/packages/desktop-apps/checks.nix \
   --arg pkgs 'import /nix/store/yxkqzvl5bf7knrh55lbl5xjxksq6ydmp-source {}'
 ```
 
-This builds all five packages and checks:
+This builds all six packages and checks:
 
 - freedesktop desktop-file validity, installed executable references, and icons;
-- `mdserve --help`, `openchamber --help`, and `openchamber --version`;
+- `noteview --help`, `mdserve --help`, `openchamber --help`, and `openchamber --version`;
 - OpenChamber web's update/install refusal APIs, including rejection before any
   installer network fetch.
 
@@ -40,7 +45,15 @@ spawns a real node-pty terminal, requiring successful output and exit within ten
 seconds. CLI install checks use temporary homes and timeouts. No daemon, browser,
 user startup configuration, or software updater is invoked by these checks.
 
-## Actual validation and limits
+## Noteview validation and limits
+
+Version 2.1.1 built successfully, passed its CLI install checks and the shared
+desktop-app checks, and produced a one-page PDF using Nix Chromium. Installed on
+deisslaptop with `./nix-update.sh --no-refresh`. The upstream release's static-site
+export fails looking for `/$bunfs/static/main.text.css`; this binary packaging bug
+is not fixed here. Browser UI and PDF styling have not been visually validated.
+
+## Original five-package validation and limits
 
 Validated against the nixpkgs source above on x86_64-linux:
 
@@ -65,6 +78,6 @@ GPU acceleration, audio, login, desktop portals, keyring, tray integration, and
 agent/OpenCode workflows still need interactive testing on the target Linux
 workstation. No web server or OpenCode server was started. AppImage desktop entries
 retain upstream `--no-sandbox`; do not interpret the FHS bubblewrap environment
-as an Electron security sandbox. Binary AppImages and mdserve are not rebuilt
+as an Electron security sandbox. Binary AppImages, noteview and mdserve are not rebuilt
 from source. No OS deployment or flake integration is implied by these package
 checks.

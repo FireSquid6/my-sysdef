@@ -40,6 +40,7 @@ pkgs.runCommand "desktop-apps-checks"
         ]
       }
 
+      ${apps.noteview}/bin/noteview --help | grep -F 'Usage: noteview'
       ${apps.mdserve}/bin/mdserve --help | grep -F 'Serve a directory of markdown files'
       ${apps.openchamber}/bin/openchamber --version | grep -Fx '2.0.3'
       ${apps.openchamber}/bin/openchamber --help | grep -F 'USAGE:'

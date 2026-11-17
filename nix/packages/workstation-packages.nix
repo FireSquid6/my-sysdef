@@ -163,6 +163,7 @@ let
         pyqt6
       ]
     ))
+    personalPackages.noteview
     personalPackages.glances-cli
     personalPackages.s-nail
   ];
