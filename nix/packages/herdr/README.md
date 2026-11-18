@@ -35,9 +35,10 @@ nix flake update herdr-core herdr-app
 ```
 
 Update versions in `default.nix` to match each source's Cargo package version.
-If Cargo dependencies change, replace the corresponding `fetchCargoVendor`
-`hash` with `pkgs.lib.fakeHash`, build its `cargoDeps`, and use Nix's reported
-actual hash. Then build both applications:
+If Cargo dependencies change, run `./regenerate-hashes.sh` from the checkout root.
+It refreshes and verifies all repo-owned package source, Cargo and npm hashes
+against the current pins. Use `./regenerate-hashes.sh -p herdr-desktop` or
+`-p herdr-core` to refresh only one package. Then build both applications:
 
 ```sh
 nix build --no-link --impure --expr \

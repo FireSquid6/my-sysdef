@@ -44,7 +44,7 @@ let
       pname = "herdr-desktop";
       version = "0.1.15";
       src = packageSources.herdr-app;
-      hash = "sha256-usCdairGam65XVKtb1jJpRC0tNXnoafAnMFQjPgvgqQ=";
+      hash = "sha256-zlM5znXgU3Ruoln0enbjw/yfXWXYncZbwUDlioDmZj8=";
     };
   });
 in

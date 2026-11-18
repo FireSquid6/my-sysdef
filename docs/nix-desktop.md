@@ -126,6 +126,33 @@ selects one of the two known workstation host names, updates the lock, builds
 before upgrading and refreshes application metadata. Review/commit lock changes.
 It never performs OS/Home Manager activation, sudo or restarts.
 
+To refresh all 15 hashes maintained in local package recipes after changing pins
+or package versions:
+
+```sh
+nix flake update
+./regenerate-hashes.sh
+./nix-update.sh --no-refresh
+```
+
+To regenerate only one package, use `./regenerate-hashes.sh --package herdr-desktop`
+(or `-p herdr-desktop`). All source and dependency hashes for that package are
+included; `--help` lists the available package names.
+
+`regenerate-hashes.sh` builds each source/Cargo/npm fetch with a placeholder hash,
+records Nix's actual hash, then verifies that fetch again. It does not update
+versions, inputs, lockfiles or profiles, and does not compile full applications.
+A failed fetch or Ctrl-C restores the current hash; earlier verified updates stay.
+Review the resulting diff: regenerated hashes trust the bytes fetched now.
+Do not edit recipes or run other Nix updates concurrently: placeholders briefly
+exist in the checkout. An uncatchable kill or power loss can leave a placeholder;
+restore it from Git before retrying.
+
+Scope is local package recipes only. Upstream nixpkgs/flake-owned hashes
+(including inherited Herdr Zig dependencies), the host NVIDIA driver hash and
+language lockfiles stay with their existing owners. New local hash assignments
+require an inventory entry; the script stops rather than silently skipping them.
+
 The initial closure is substantial; cached builds reuse unchanged outputs.
 Successful evaluation is not evidence that downloads/builds or GPU checks finished.
 Running programs keep loaded code. Reopen applications normally when appropriate;
