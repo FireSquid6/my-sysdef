@@ -237,11 +237,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794860527,
-        "narHash": "sha256-LNshMQSD7+s7/YVz+L4AnMdO93FVZqZLPybdBXmcPi0=",
+        "lastModified": 1794980020,
+        "narHash": "sha256-AXOVaovkJLUr+L/GMPYlVWBYnbFKrYjEDbjrh/6XPY8=",
         "owner": "firesquid6",
         "repo": "nanosync",
-        "rev": "b92568e7b39e52370b6dc1a2ebf39f94172b4478",
+        "rev": "eded0f329a08a4962200913a198cd74293f09fc5",
         "type": "github"
       },
       "original": {

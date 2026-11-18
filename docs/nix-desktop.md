@@ -126,6 +126,25 @@ selects one of the two known workstation host names, updates the lock, builds
 before upgrading and refreshes application metadata. Review/commit lock changes.
 It never performs OS/Home Manager activation, sudo or restarts.
 
+Check custom package pins without changing files:
+
+```sh
+./check-package-updates.sh
+./check-package-updates.sh --package herdr-desktop  # or -p
+```
+
+The checker covers locally pinned release packages, browser-use's Python pin,
+Kvantum's Git revision and the Hermes/Herdr/Nanosync flake source pins. Pure
+wrappers around nixpkgs packages have no independent version to check. It queries
+npm, PyPI, GitHub and the s-nail download index. GitHub release checks ignore
+prereleases/drafts and require the packaged asset, searching the latest 100
+releases; a missing asset is an error, not a claim that the package is current.
+`UPDATE` means a newer stable version is available; `PIN DIFFERS` means the Git
+branch tip differs, not necessarily that it is a newer compatible version.
+Network/API failures are reported per package and exit nonzero; available updates
+alone still exit zero. GitHub requests are unauthenticated and subject to rate
+limits. This does not update files, verify upgrade compatibility or build packages.
+
 To refresh all 15 hashes maintained in local package recipes after changing pins
 or package versions:
 
