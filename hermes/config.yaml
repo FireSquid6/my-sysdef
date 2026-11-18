@@ -76,6 +76,8 @@ display:
   cleanup_progress: false
   long_running_notifications: true
   busy_ack_detail: true
+  in_app_tips: false
+  in_app_tours: false
 tts:
   provider: openai
   use_gateway: true
