@@ -234,14 +234,15 @@
         "bun2nix": "bun2nix",
         "nixpkgs": [
           "nixpkgs-desktop"
-        ]
+        ],
+        "nixpkgs-android": "nixpkgs-android"
       },
       "locked": {
-        "lastModified": 1795023861,
-        "narHash": "sha256-kAhiROryfJ55tA6fzG59NrRceal6w+XMT9SDNUChZIY=",
+        "lastModified": 1795052182,
+        "narHash": "sha256-vqOqspHgmlolW3FI2p8heGges+bs+hYDxQu74Gy5C6c=",
         "owner": "firesquid6",
         "repo": "nanosync",
-        "rev": "0ea2e2bd0cbf9906f73dafd47f2d93bc85669ab3",
+        "rev": "0ecc3e3d1856a06c55b613012e990973d8e83d8e",
         "type": "github"
       },
       "original": {
@@ -280,6 +281,22 @@
         "owner": "NixOS",
         "ref": "nixos-unstable",
         "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs-android": {
+      "locked": {
+        "lastModified": 1794386569,
+        "narHash": "sha256-x9sADJvoVG0L6RejZB+/BB4YiGZFBZrfTlhF4uBq1tQ=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "d4f25a3e562008648d45bcf2d70bcc7422cad84e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "d4f25a3e562008648d45bcf2d70bcc7422cad84e",
         "type": "github"
       }
     },
