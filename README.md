@@ -45,6 +45,37 @@ installation, profile upgrade, Home Manager activation or a graphical test.
 The retired TypeScript configuration engine and engine-only tests have been
 removed. Live dotfiles, backups and runtime state remain.
 
+## Minibox desktop
+
+`minibox-one` keeps the core tools and adds a small DWM/X11 session, Alacritty
+(with the shared Tokyo Night colors), and JetBrains Mono Nerd Font. It does not
+install the workstation desktop bundle or enable a display manager/autologin.
+The X server, input driver and AMD Mesa wrapper are supplied by Nix; the host
+still supplies the kernel, amdgpu and logind/console permissions.
+
+Apply with `./nix-update.sh --no-refresh`, then log in on a **local Linux TTY**
+and run `start-minibox-desktop`. It deliberately refuses SSH/terminal-window
+launches. Display `:0` must be free. Existing SSH/agent sessions are not stopped.
+
+| Shortcut | Action |
+| --- | --- |
+| Super+T or Super+Shift+T | Open Alacritty |
+| Super+Shift+Q | Close focused window |
+| Super+H/K, Super+J/L | Previous/next window (DWM stack, not spatial focus) |
+| Super+1–9 | Switch workspace/tag |
+| Super+Shift+1–9 | Move window and follow |
+| Super+Ctrl+1–9 | Move window without following |
+| Super+Enter | Promote window to master |
+| Super+Space | Switch tiled/floating layout |
+| Super+Shift+Space or Super+Shift+F | Toggle floating window |
+| Super+Ctrl+H/L | Resize master area |
+| Alt+Shift+left/right drag | Move/resize floating window |
+| Super+Ctrl+Shift+Q | End desktop session |
+
+DWM's compiled bindings live in `nix/packages/dwm/config.h`; rebuild after edits.
+`nix build .#checks.x86_64-linux.minibox-desktop` checks workspace bindings,
+window closing, terminal launching and the non-TTY guard under Xvfb.
+
 ## Nanosync
 
 Nanosync is pinned from `github:firesquid6/nanosync` in `flake.lock` and installed
