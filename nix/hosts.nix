@@ -17,8 +17,8 @@ in
     hostname = "kotoko";
     graphics = {
       backend = "nvidia";
-      version = "615.78.08";
-      driverHash = "sha256-Pj9t3cLudnoIGFMAr3vjyyhuznZpjS3eNSRZl4LQf/4=";
+      version = "620.70.06";
+      driverHash = "sha256-KRGOOr0IwHVZvMo9nHYjjQOUkK8DYqLlvPy+cgSv1LE=";
     };
   };
   "firesquid@deisslaptop" = workstation // {
