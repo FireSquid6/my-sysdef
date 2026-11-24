@@ -41,3 +41,6 @@ if status is-interactive
   export PATH="$PATH:$HOME/.autosmith/bin"
   export PATH="$PATH:$HOME/.fly/bin"
 end
+
+# Hutch
+fish_add_path --global '/home/firesquid/.hutch/bin'

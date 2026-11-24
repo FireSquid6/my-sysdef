@@ -49,8 +49,9 @@ removed. Live dotfiles, backups and runtime state remain.
 
 Nanosync is pinned from `github:firesquid6/nanosync` in `flake.lock` and installed
 on minibox-one and both workstations. Upstream currently packages x86-64 Linux
-only; the portable ARM example does not include it. No sync service is started,
-and existing vaults, credentials and runtime data remain unmanaged.
+only; the portable ARM example does not include it. Hyprland starts a detached
+`sync` tmux session syncing `~/notes` in continuous watch mode instead of opening Obsidian.
+Existing vault bindings, credentials and runtime data remain unmanaged.
 
 The upstream repository is private. On each host, grant Nix GitHub access before
 updating or fetching it (requires an authenticated `gh` with repository access):
