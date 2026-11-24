@@ -109,7 +109,7 @@ Edit `nix/hosts.nix` if necessary:
 
 | Output | Architecture | Selection |
 | --- | --- | --- |
-| `firesquid@minibox-one` | x86_64 Linux | Core/headless (an assumption; current legacy YAML also enabled desktop/apps) |
+| `firesquid@minibox-one` | x86_64 Linux | Core tools + minimal DWM/Alacritty X11 desktop; manually started from a local TTY (see README) |
 | `firesquid@desktop` | x86_64 Linux | Workstation |
 | `firesquid@deisslaptop` | x86_64 Linux | Workstation |
 | `firesquid@aarch64-linux` | ARM Linux | Explicit portable core example, not discovered hardware |

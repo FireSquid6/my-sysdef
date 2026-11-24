@@ -105,7 +105,11 @@
         in
         manager.lib.homeManagerConfiguration {
           pkgs = if workstation then desktopPkgsFor spec.system else pkgsFor spec.system;
-          extraSpecialArgs = lib.optionalAttrs workstation {
+          extraSpecialArgs = {
+            inherit nixgl;
+            graphicsSettings = spec.graphics or null;
+          }
+          // lib.optionalAttrs workstation {
             workstationBundle = workstationBundles."${spec.username}@${spec.hostname}";
           };
           modules = [
@@ -213,6 +217,10 @@
               '';
         }
         // lib.optionalAttrs (system == "x86_64-linux") {
+          minibox-desktop = import ./nix/tests/minibox-desktop.nix {
+            pkgs = pkgsFor system;
+            home = homes."firesquid@minibox-one".config;
+          };
           nanosync =
             let
               package = self.packages.${system}.nanosync;

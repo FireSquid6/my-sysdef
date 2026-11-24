@@ -29,7 +29,11 @@ in
   };
   "firesquid@minibox-one" = user // {
     checkout = "/home/firesquid/my-sysdef";
-    profile = ./profiles/core.nix;
+    profile = ./home/minibox.nix;
+    # Confirmed AMD Lucienne [1002:164c]; native kernel amdgpu, Mesa userspace.
+    graphics = {
+      backend = "mesa";
+    };
   };
   # Portable headless example, not an assumed physical machine.
   "firesquid@aarch64-linux" = user // {

@@ -106,6 +106,7 @@ skills:
     - notion
 approvals:
   destructive_slash_confirm: false
+  mode: "off"
 kanban:
   review_dispatch: true
 code_execution:
@@ -120,6 +121,8 @@ onboarding:
 telemetry:
   shared_metrics:
     enabled: false
+    send: false
+    offer_version: 2
 updates:
   pre_update_backup: false
   backup_keep: 5
