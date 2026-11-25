@@ -1,18 +1,21 @@
 {
-  "zoom": 1,
+  "zoom": 1.1,
   "sounds": {
     "enabled": true
   },
+  "font": "JetBrains Mono",
+  "font_size": 15.0,
   "font_ligatures": false,
-  "minimum_contrast": 1,
+  "ui_font": "JetBrains Mono",
+  "browser_url": "https://www.google.com",
+  "browser_search": "https://www.google.com/search?q={query}",
+  "browser_chrome": "browser-chrome",
+  "minimum_contrast": 1.0,
   "appearance": "dark",
   "theme": "tokyonight-night",
   "colors": {
     "background": "#1a1b2600",
     "canvas": "#16161e00",
     "chrome": "#16161eff"
-  },
-  "font": "JetBrains Mono",
-  "ui_font": "JetBrains Mono",
-  "font_size": 15
+  }
 }
