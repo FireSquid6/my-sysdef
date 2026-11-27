@@ -45,6 +45,7 @@ let
     ++ [
       personalPackages.youtube-music-for-desktop
       personalPackages.openchamber-desktop
+      personalPackages.terminal-browser
     ];
   tools = with pkgs; [
     bashInteractive
